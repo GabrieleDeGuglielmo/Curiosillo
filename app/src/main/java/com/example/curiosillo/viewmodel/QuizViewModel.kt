@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class QuizUiModel(
+    val questionId:    Int,
     val questionText:  String,
     val answers:       List<String>,
     val correctAnswer: String,
@@ -44,6 +45,7 @@ class QuizViewModel(private val repo: CuriosityRepository) : ViewModel() {
             val raw = repo.getQuizQuestionsWithCategory(minOf(available, 5))
             questions = raw.map { q ->
                 QuizUiModel(
+                    questionId    = q.id,
                     questionText  = q.questionText,
                     answers       = listOf(q.correctAnswer, q.wrongAnswer1, q.wrongAnswer2, q.wrongAnswer3).shuffled(),
                     correctAnswer = q.correctAnswer,
@@ -59,6 +61,9 @@ class QuizViewModel(private val repo: CuriosityRepository) : ViewModel() {
         val s = _state.value as? QuizUiState.Question ?: return
         val ok = sel == s.question.correctAnswer
         if (ok) score++
+        viewModelScope.launch {
+            repo.salvaRisposta(s.question.questionId, ok)
+        }
         _state.value = QuizUiState.Answered(s.question, sel, ok, s.current, s.total, score)
     }
 

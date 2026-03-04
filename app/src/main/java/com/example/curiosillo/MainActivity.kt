@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.curiosillo.ui.CuriosityScreen
 import com.example.curiosillo.ui.HomeScreen
+import com.example.curiosillo.ui.ProfileScreen
 import com.example.curiosillo.ui.QuizScreen
 import com.example.curiosillo.ui.theme.CuriosilloTheme
 
@@ -27,6 +28,7 @@ class MainActivity : ComponentActivity() {
                         composable("home")      { HomeScreen(nav) }
                         composable("curiosity") { CuriosityScreen(nav) }
                         composable("quiz")      { QuizScreen(nav) }
+                        composable("profile")   { ProfileScreen(nav) }
                     }
                 }
             }

@@ -87,4 +87,21 @@ class CuriosityRepository(private val db: AppDatabase) {
     suspend fun countRead()              = curDao.countRead()
     suspend fun getQuizQuestionsWithCategory(n: Int) = quizDao.getRandomWithCategory(n)
     suspend fun countAvailableQuestions() = quizDao.countAvailable()
+    private val quizAnswerDao = db.quizAnswerDao()
+
+    // Statistiche profilo
+    suspend fun totalCuriosità()       = db.userProgressDao().totalCuriosità()
+    suspend fun curiositàImparate()    = db.userProgressDao().curiositàImparate()
+    suspend fun quizNonRisposti()      = db.quizAnswerDao().quizNonRisposti()
+
+    // Salva la risposta data durante un quiz
+    suspend fun salvaRisposta(questionId: Int, isCorrect: Boolean) {
+        quizAnswerDao.inserisci(QuizAnswer(questionId = questionId, isCorrect = isCorrect))
+    }
+
+    // Reset completo: azzera isRead e cancella tutta la storia risposte
+    suspend fun resetProgressi() {
+        db.userProgressDao().resetProgressi()
+        quizAnswerDao.resetTutto()
+    }
 }

@@ -96,7 +96,7 @@ private fun NoQuestionsContent(onBack: () -> Unit) {
                 .height(58.dp),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Text("<- Torna al Menu", style = MaterialTheme.typography.titleMedium)
+            Text("Torna al Menu", style = MaterialTheme.typography.titleMedium)
         }
     }
 }
@@ -321,7 +321,7 @@ private fun SummaryContent(s: QuizUiState.Summary, onRestart: () -> Unit, onHome
                 .height(58.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Text("<- Torna al Menu", style = MaterialTheme.typography.titleMedium)
+            Text("Torna al Menu", style = MaterialTheme.typography.titleMedium)
         }
     }
 }

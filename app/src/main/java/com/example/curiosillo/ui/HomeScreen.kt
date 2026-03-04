@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiObjects
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -32,6 +33,19 @@ import com.example.curiosillo.ui.theme.Secondary
 fun HomeScreen(nav: NavController) {
     Box(modifier = Modifier.fillMaxSize().background(
         Brush.verticalGradient(listOf(Color(0xFFFFF3E0), Color.White)))) {
+        IconButton(
+            onClick  = { nav.navigate("profile") },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = "Profilo",
+                modifier = Modifier.size(28.dp),
+                tint = Primary
+            )
+        }
         Column(
             modifier = Modifier.fillMaxSize().padding(28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
