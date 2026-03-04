@@ -16,6 +16,7 @@ import com.example.curiosillo.ui.ProfileScreen
 import com.example.curiosillo.ui.QuizScreen
 import com.example.curiosillo.ui.theme.CuriosilloTheme
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.example.curiosillo.ui.BookmarkScreen
 import com.example.curiosillo.ui.CategoryPickerScreen
 
 class MainActivity : ComponentActivity() {
@@ -38,6 +39,7 @@ class MainActivity : ComponentActivity() {
                         composable("curiosity") { CuriosityScreen(nav) }
                         composable("quiz")      { QuizScreen(nav) }
                         composable("profile")   { ProfileScreen(nav) }
+                        composable("preferiti") { BookmarkScreen(nav) }
                     }
                 }
             }

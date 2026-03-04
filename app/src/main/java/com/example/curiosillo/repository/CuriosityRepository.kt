@@ -7,6 +7,8 @@ class CuriosityRepository(private val db: AppDatabase) {
     private val curDao        = db.curiosityDao()
     private val quizDao       = db.quizQuestionDao()
     private val quizAnswerDao = db.quizAnswerDao()
+    private val bookmarkDao = db.bookmarkDao()
+
 
     // ── Seed ──────────────────────────────────────────────────────────────────
 
@@ -113,6 +115,13 @@ class CuriosityRepository(private val db: AppDatabase) {
     suspend fun toggleBookmark(c: Curiosity)      = curDao.update(c.copy(isBookmarked = !c.isBookmarked))
     suspend fun getBookmarked()                   = curDao.getBookmarked()
     suspend fun getCategorie()                    = curDao.getCategorie()
+    suspend fun cercaBookmark(query: String = "", categoria: String = "") =
+        bookmarkDao.cerca(query, categoria)
+
+    suspend fun categorieBookmark() = bookmarkDao.categorieBookmark()
+
+    suspend fun rimuoviBookmark(c: Curiosity) =
+        bookmarkDao.update(c.copy(isBookmarked = false))
 
     // ── Quiz ──────────────────────────────────────────────────────────────────
 

@@ -17,6 +17,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun quizQuestionDao(): QuizQuestionDao
     abstract fun userProgressDao(): UserProgressDao
     abstract fun quizAnswerDao(): QuizAnswerDao
+    abstract fun bookmarkDao(): BookmarkDao
+
 
     companion object {
         @Volatile

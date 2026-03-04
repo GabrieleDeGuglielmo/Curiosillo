@@ -34,7 +34,7 @@ import com.example.curiosillo.viewmodel.ProfileViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(nav: NavController) {
-    val ctx  = LocalContext.current
+    val ctx = LocalContext.current
     val repo = (ctx.applicationContext as CuriosityApplication).repository
     val vm: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory(repo))
     val state by vm.state.collectAsState()
@@ -43,9 +43,9 @@ fun ProfileScreen(nav: NavController) {
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
-            icon    = { Icon(Icons.Default.Delete, null, tint = Error) },
-            title   = { Text("Resetta i progressi?", fontWeight = FontWeight.Bold) },
-            text    = {
+            icon = { Icon(Icons.Default.Delete, null, tint = Error) },
+            title = { Text("Resetta i progressi?", fontWeight = FontWeight.Bold) },
+            text = {
                 Text(
                     "Tutte le curiosità torneranno a \"non lette\" e il quiz verrà bloccato. " +
                             "Questa azione non può essere annullata.",
@@ -55,7 +55,7 @@ fun ProfileScreen(nav: NavController) {
             confirmButton = {
                 Button(
                     onClick = { vm.resetProgressi(); showResetDialog = false },
-                    colors  = ButtonDefaults.buttonColors(containerColor = Error)
+                    colors = ButtonDefaults.buttonColors(containerColor = Error)
                 ) {
                     Text("Sì, resetta", fontWeight = FontWeight.Bold)
                 }
@@ -104,22 +104,28 @@ fun ProfileScreen(nav: NavController) {
                             .background(Primary, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Person, null,
+                        Icon(
+                            Icons.Default.Person, null,
                             modifier = Modifier.size(52.dp),
-                            tint = Color.White)
+                            tint = Color.White
+                        )
                     }
                     Spacer(Modifier.height(12.dp))
-                    Text("Il mio profilo",
+                    Text(
+                        "Il mio profilo",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold)
+                        fontWeight = FontWeight.Bold
+                    )
                     Spacer(Modifier.height(32.dp))
 
                     // ── Statistiche ───────────────────────────────────────────
-                    Text("Le mie statistiche",
+                    Text(
+                        "Le mie statistiche",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF555555),
-                        modifier = Modifier.fillMaxWidth())
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     Spacer(Modifier.height(12.dp))
 
                     Row(
@@ -127,22 +133,22 @@ fun ProfileScreen(nav: NavController) {
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         StatCard(
-                            modifier  = Modifier.weight(1f),
-                            valore    = "${state.curiositàImparate}",
+                            modifier = Modifier.weight(1f),
+                            valore = "${state.curiositàImparate}",
                             etichetta = "Curiosità\nimparate",
-                            colore    = Primary
+                            colore = Primary
                         )
                         StatCard(
-                            modifier  = Modifier.weight(1f),
-                            valore    = "${state.totalCuriosità}",
+                            modifier = Modifier.weight(1f),
+                            valore = "${state.totalCuriosità}",
                             etichetta = "Curiosità\ntotali",
-                            colore    = Secondary
+                            colore = Secondary
                         )
                         StatCard(
-                            modifier  = Modifier.weight(1f),
-                            valore    = "${state.quizDisponibili}",
+                            modifier = Modifier.weight(1f),
+                            valore = "${state.quizDisponibili}",
                             etichetta = "Quiz\nnon risposti",
-                            colore    = Tertiary
+                            colore = Tertiary
                         )
                     }
 
@@ -158,74 +164,55 @@ fun ProfileScreen(nav: NavController) {
                         )
                         Spacer(Modifier.height(8.dp))
                         LinearProgressIndicator(
-                            progress  = { percentuale },
-                            modifier  = Modifier.fillMaxWidth().height(10.dp),
-                            color     = Primary,
+                            progress = { percentuale },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(10.dp),
+                            color = Primary,
                             trackColor = Color(0xFFE0E0E0)
                         )
                     }
 
-                    // ── Curiosità salvate ─────────────────────────────────────
+// ── Preferiti ─────────────────────────────────────────────────────────────
                     Spacer(Modifier.height(28.dp))
-                    Text("Curiosità salvate (${state.totaleBookmark})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF555555),
-                        modifier = Modifier.fillMaxWidth())
-                    Spacer(Modifier.height(10.dp))
-
-                    if (state.salvati.isEmpty()) {
+                    Button(
+                        onClick = { nav.navigate("preferiti") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                    ) {
+                        Icon(Icons.Default.Bookmark, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
                         Text(
-                            "Nessuna curiosità salvata ancora.\nPremi il segnalibro durante la lettura!",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray,
-                            modifier = Modifier.padding(vertical = 8.dp)
+                            "I miei preferiti (${state.totaleBookmark})",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
                         )
-                    } else {
-                        state.salvati.forEach { curiosità ->
-                            Card(
-                                modifier  = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                shape     = RoundedCornerShape(14.dp),
-                                colors    = CardDefaults.cardColors(containerColor = Color.White),
-                                elevation = CardDefaults.cardElevation(2.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text(curiosità.title,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.SemiBold)
-                                        Text(curiosità.category,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = Color.Gray)
-                                    }
-                                    Icon(Icons.Default.Bookmark, null,
-                                        tint = Primary,
-                                        modifier = Modifier.size(20.dp))
-                                }
-                            }
-                        }
                     }
 
                     Spacer(Modifier.height(28.dp))
 
                     // ── Pulsante reset ────────────────────────────────────────
                     OutlinedButton(
-                        onClick  = { showResetDialog = true },
-                        modifier = Modifier.fillMaxWidth().height(54.dp),
-                        shape    = RoundedCornerShape(14.dp),
-                        colors   = ButtonDefaults.outlinedButtonColors(contentColor = Error),
-                        border   = ButtonDefaults.outlinedButtonBorder.copy(
+                        onClick = { showResetDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Error),
+                        border = ButtonDefaults.outlinedButtonBorder.copy(
                             brush = androidx.compose.ui.graphics.SolidColor(Error)
                         )
                     ) {
                         Icon(Icons.Default.Delete, null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Resetta progressi",
+                        Text(
+                            "Resetta progressi",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold)
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                     Spacer(Modifier.height(8.dp))
                 }
@@ -242,9 +229,9 @@ private fun StatCard(
     colore: Color
 ) {
     Card(
-        modifier  = modifier,
-        shape     = RoundedCornerShape(16.dp),
-        colors    = CardDefaults.cardColors(containerColor = colore),
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = colore),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(
@@ -253,14 +240,18 @@ private fun StatCard(
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(valore, fontSize = 32.sp,
+            Text(
+                valore, fontSize = 32.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White)
+                color = Color.White
+            )
             Spacer(Modifier.height(4.dp))
-            Text(etichetta,
+            Text(
+                etichetta,
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.9f),
-                textAlign = TextAlign.Center)
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
