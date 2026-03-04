@@ -1,0 +1,16 @@
+# Build outputs
+*.iml
+.gradle/
+/local.properties
+/.idea/
+/build/
+app/build/
+/captures/
+
+# Keystore files
+*.jks
+*.keystore
+
+# OS files
+.DS_Store
+Thumbs.db
