@@ -1,5 +1,6 @@
 package com.example.curiosillo.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,9 +13,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -37,7 +41,7 @@ fun CuriosityScreen(nav: NavController) {
 
     Scaffold(topBar = {
         TopAppBar(
-            title = { Text("Curiosità del Giorno", fontWeight = FontWeight.SemiBold) },
+            title = { Text("Curiosita del Giorno", fontWeight = FontWeight.SemiBold) },
             navigationIcon = { IconButton({ nav.popBackStack() }) {
                 Icon(Icons.Default.ArrowBack, "Indietro") } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent))
@@ -49,7 +53,7 @@ fun CuriosityScreen(nav: NavController) {
                 is CuriosityUiState.Loading ->
                     CircularProgressIndicator(Modifier.align(Alignment.Center))
                 is CuriosityUiState.Empty ->
-                    Text("Nessuna curiosità disponibile!\nTorna presto.",
+                    Text("Nessuna curiosita disponibile!\nTorna presto.",
                         Modifier.align(Alignment.Center).padding(24.dp),
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyLarge)
@@ -62,41 +66,61 @@ fun CuriosityScreen(nav: NavController) {
 
 @Composable
 private fun CuriosityContent(s: CuriosityUiState.Success, onLearn: () -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally) {
-        // Category badge
-        SuggestionChip({}, { Text(s.curiosity.category + "  " + s.curiosity.emoji) })
-        Spacer(Modifier.height(12.dp))
-        Text(s.curiosity.title,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            color = Color(0xFF1C1B1F))
-        Spacer(Modifier.height(20.dp))
-        Card(Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(4.dp)) {
-            Text(s.curiosity.body, Modifier.padding(20.dp),
-                style = MaterialTheme.typography.bodyLarge,
-                lineHeight = 27.sp, color = Color(0xFF3C3C3C))
-        }
-        Spacer(Modifier.height(20.dp))
-        Text("curiosità imparate: ${s.readCount}",
-            style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-        Spacer(Modifier.height(24.dp))
-        if (!s.curiosity.isRead) {
-            Button(onLearn, Modifier.fillMaxWidth().height(58.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Primary)) {
-                Text("Ho imparato!", style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold)
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+
+        // Immagine categoria — full width, nessun padding laterale
+        Image(
+            painter = painterResource(id = categoryImage(s.curiosity.category)),
+            contentDescription = s.curiosity.category,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+                .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)),
+            contentScale = ContentScale.Crop
+        )
+
+        Column(Modifier.padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(Modifier.height(16.dp))
+
+            // Badge categoria
+            SuggestionChip({}, { Text(s.curiosity.category + "  " + s.curiosity.emoji) })
+            Spacer(Modifier.height(10.dp))
+
+            Text(s.curiosity.title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = Color(0xFF1C1B1F))
+            Spacer(Modifier.height(20.dp))
+
+            Card(Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(4.dp)) {
+                Text(s.curiosity.body, Modifier.padding(20.dp),
+                    style = MaterialTheme.typography.bodyLarge,
+                    lineHeight = 27.sp, color = Color(0xFF3C3C3C))
             }
-        } else {
-            OutlinedButton(onLearn, Modifier.fillMaxWidth().height(58.dp),
-                shape = RoundedCornerShape(16.dp)) {
-                Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(16.dp))
+            Text("Curiosità imparate: ${s.readCount}",
+                style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+            Spacer(Modifier.height(24.dp))
+
+            if (!s.curiosity.isRead) {
+                Button(onLearn, Modifier.fillMaxWidth().height(58.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Primary)) {
+                    Text("Ho imparato!", style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold)
+                }
+            } else {
+                OutlinedButton(onLearn, Modifier.fillMaxWidth().height(58.dp),
+                    shape = RoundedCornerShape(16.dp)) {
+                    Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium)
+                }
             }
+            Spacer(Modifier.height(24.dp))
         }
     }
 }

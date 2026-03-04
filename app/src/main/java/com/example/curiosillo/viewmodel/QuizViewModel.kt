@@ -13,7 +13,8 @@ data class QuizUiModel(
     val questionText:  String,
     val answers:       List<String>,
     val correctAnswer: String,
-    val explanation:   String
+    val explanation:   String,
+    val category:      String = ""
 )
 
 sealed class QuizUiState {
@@ -40,11 +41,15 @@ class QuizViewModel(private val repo: CuriosityRepository) : ViewModel() {
             _state.value = QuizUiState.Loading
             val available = repo.countAvailableQuestions()
             if (available == 0) { _state.value = QuizUiState.NoQuestions; return@launch }
-            val raw = repo.getQuizQuestions(minOf(available, 5))
+            val raw = repo.getQuizQuestionsWithCategory(minOf(available, 5))
             questions = raw.map { q ->
-                QuizUiModel(q.questionText,
-                    listOf(q.correctAnswer, q.wrongAnswer1, q.wrongAnswer2, q.wrongAnswer3).shuffled(),
-                    q.correctAnswer, q.explanation)
+                QuizUiModel(
+                    questionText  = q.questionText,
+                    answers       = listOf(q.correctAnswer, q.wrongAnswer1, q.wrongAnswer2, q.wrongAnswer3).shuffled(),
+                    correctAnswer = q.correctAnswer,
+                    explanation   = q.explanation,
+                    category      = q.category
+                )
             }
             currentIndex = 0; score = 0; push()
         }

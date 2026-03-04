@@ -85,6 +85,6 @@ class CuriosityRepository(private val db: AppDatabase) {
     suspend fun getNext()                = curDao.getNext()
     suspend fun markAsRead(c: Curiosity) = curDao.update(c.copy(isRead = true))
     suspend fun countRead()              = curDao.countRead()
-    suspend fun getQuizQuestions(n: Int) = quizDao.getRandomFromRead(n)
+    suspend fun getQuizQuestionsWithCategory(n: Int) = quizDao.getRandomWithCategory(n)
     suspend fun countAvailableQuestions() = quizDao.countAvailable()
 }
