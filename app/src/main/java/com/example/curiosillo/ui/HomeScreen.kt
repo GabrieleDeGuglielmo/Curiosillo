@@ -27,7 +27,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.R
@@ -38,7 +37,7 @@ import com.example.curiosillo.ui.theme.Secondary
 fun HomeScreen(nav: NavController) {
     val ctx = LocalContext.current
     val prefs = (ctx.applicationContext as CuriosityApplication).categoryPrefs
-    val categoriaAttiva by prefs.categoriaAttiva.collectAsState(initial = "")
+    val categorieAttive by prefs.categorieAttive.collectAsState(initial = emptySet())
 
     Box(
         modifier = Modifier
@@ -107,26 +106,24 @@ fun HomeScreen(nav: NavController) {
             ) { nav.navigate("category_picker/quiz") }
 
             // Chip categoria attiva — visibile solo se c'è un filtro selezionato
-            if (categoriaAttiva.isNotEmpty()) {
+            if (categorieAttive.isNotEmpty()) {
                 Spacer(Modifier.height(20.dp))
                 Row(
                     horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "Categoria attiva: ",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
+                    Text("Filtro attivo: ", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                     AssistChip(
                         onClick = { nav.navigate("category_picker/curiosity") },
-                        label = { Text(categoriaAttiva, fontWeight = FontWeight.SemiBold) },
+                        label   = {
+                            val testo = if (categorieAttive.size == 1)
+                                categorieAttive.first()
+                            else
+                                "${categorieAttive.size} categorie"
+                            Text(testo, fontWeight = FontWeight.SemiBold)
+                        },
                         trailingIcon = {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Rimuovi filtro",
-                                modifier = Modifier.size(14.dp)
-                            )
+                            Icon(Icons.Default.Close, "Rimuovi filtro", modifier = Modifier.size(14.dp))
                         }
                     )
                 }

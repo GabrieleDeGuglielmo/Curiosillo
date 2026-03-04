@@ -5,11 +5,11 @@ import androidx.room.*
 @Dao
 interface CuriosityDao {
     @Query("""
-        SELECT * FROM curiosity 
-        WHERE (:category = '' OR category = :category)
-        ORDER BY isRead ASC, RANDOM() LIMIT 1
-    """)
-    suspend fun getNext(category: String = ""): Curiosity?
+    SELECT * FROM curiosity 
+    WHERE (:tuttle = 1 OR category IN (:categorie))
+    ORDER BY isRead ASC, RANDOM() LIMIT 1
+""")
+    suspend fun getNext(categorie: List<String>, tuttle: Int): Curiosity?
 
     @Query("SELECT COUNT(*) FROM curiosity")
     suspend fun totaleCuriosità(): Int

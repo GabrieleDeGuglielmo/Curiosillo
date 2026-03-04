@@ -13,15 +13,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class CategoryViewModel(
-    private val repo: CuriosityRepository,
+    private val repo:  CuriosityRepository,
     private val prefs: CategoryPreferences
 ) : ViewModel() {
 
     private val _categorie = MutableStateFlow<List<String>>(emptyList())
     val categorie: StateFlow<List<String>> = _categorie.asStateFlow()
 
-    val categoriaAttiva: StateFlow<String> = prefs.categoriaAttiva
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+    val categorieAttive: StateFlow<Set<String>> = prefs.categorieAttive
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     init {
         viewModelScope.launch {
@@ -29,12 +29,16 @@ class CategoryViewModel(
         }
     }
 
-    fun setCategoria(categoria: String) {
-        viewModelScope.launch { prefs.setCategoria(categoria) }
+    fun toggleCategoria(categoria: String) {
+        viewModelScope.launch { prefs.toggleCategoria(categoria) }
+    }
+
+    fun resetCategorie() {
+        viewModelScope.launch { prefs.resetCategorie() }
     }
 
     class Factory(
-        private val repo: CuriosityRepository,
+        private val repo:  CuriosityRepository,
         private val prefs: CategoryPreferences
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
