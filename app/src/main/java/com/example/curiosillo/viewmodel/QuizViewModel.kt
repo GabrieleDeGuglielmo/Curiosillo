@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.curiosillo.data.CategoryPreferences
+import com.example.curiosillo.domain.GamificationEngine
+import com.example.curiosillo.domain.RisultatoAzione
 import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,44 +14,38 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class QuizUiModel(
-    val questionId: Int,
-    val questionText: String,
-    val answers: List<String>,
+    val questionId:    Int,
+    val questionText:  String,
+    val answers:       List<String>,
     val correctAnswer: String,
-    val explanation: String,
-    val category: String = ""
+    val explanation:   String,
+    val category:      String = ""
 )
 
 sealed class QuizUiState {
-    object Loading : QuizUiState()
+    object Loading     : QuizUiState()
     object NoQuestions : QuizUiState()
-    data class Question(
-        val question: QuizUiModel,
-        val current: Int,
-        val total: Int,
-        val score: Int
-    ) : QuizUiState()
-
-    data class Answered(
-        val question: QuizUiModel, val selectedAnswer: String,
-        val isCorrect: Boolean, val current: Int, val total: Int, val score: Int
-    ) : QuizUiState()
-
+    data class Question(val question: QuizUiModel, val current: Int, val total: Int, val score: Int) : QuizUiState()
+    data class Answered(val question: QuizUiModel, val selectedAnswer: String,
+        val isCorrect: Boolean, val current: Int, val total: Int, val score: Int) : QuizUiState()
     data class Summary(val score: Int, val total: Int) : QuizUiState()
 }
 
-class QuizViewModel(private val repo: CuriosityRepository, private val prefs: CategoryPreferences) :
-    ViewModel() {
+class QuizViewModel(
+    private val repo:   CuriosityRepository,
+    private val prefs:  CategoryPreferences,
+    private val engine: GamificationEngine
+) : ViewModel() {
+
     private val _state = MutableStateFlow<QuizUiState>(QuizUiState.Loading)
     val state: StateFlow<QuizUiState> = _state.asStateFlow()
-
-    private var questions = listOf<QuizUiModel>()
+    private val _risultatoAzione = MutableStateFlow<RisultatoAzione?>(null)
+    val risultatoAzione: StateFlow<RisultatoAzione?> = _risultatoAzione.asStateFlow()
+    private var questions    = listOf<QuizUiModel>()
     private var currentIndex = 0
-    private var score = 0
+    private var score        = 0
 
-    init {
-        startQuiz()
-    }
+    init { startQuiz() }
 
     fun startQuiz() {
         viewModelScope.launch {
@@ -59,9 +55,14 @@ class QuizViewModel(private val repo: CuriosityRepository, private val prefs: Ca
             if (available == 0) { _state.value = QuizUiState.NoQuestions; return@launch }
             val raw = repo.getQuizQuestionsWithCategory(minOf(available, 5), categorie)
             questions = raw.map { q ->
-                QuizUiModel(q.id, q.questionText,
-                    listOf(q.correctAnswer, q.wrongAnswer1, q.wrongAnswer2, q.wrongAnswer3).shuffled(),
-                    q.correctAnswer, q.explanation, q.category)
+                QuizUiModel(
+                    questionId    = q.id,
+                    questionText  = q.questionText,
+                    answers       = listOf(q.correctAnswer, q.wrongAnswer1, q.wrongAnswer2, q.wrongAnswer3).shuffled(),
+                    correctAnswer = q.correctAnswer,
+                    explanation   = q.explanation,
+                    category      = q.category
+                )
             }
             currentIndex = 0; score = 0; push()
         }
@@ -73,12 +74,16 @@ class QuizViewModel(private val repo: CuriosityRepository, private val prefs: Ca
         if (ok) score++
         viewModelScope.launch {
             repo.salvaRisposta(s.question.questionId, ok)
+            val risultato = engine.onRispostaQuiz(ok)
+            _risultatoAzione.value = risultato
         }
         _state.value = QuizUiState.Answered(s.question, sel, ok, s.current, s.total, score)
     }
 
-    fun next() {
-        currentIndex++; push()
+    fun next() { currentIndex++; push() }
+
+    fun consumaRisultato() {
+        _risultatoAzione.value = null
     }
 
     private fun push() {
@@ -88,11 +93,12 @@ class QuizViewModel(private val repo: CuriosityRepository, private val prefs: Ca
     }
 
     class Factory(
-        private val repo: CuriosityRepository,
-        private val prefs: CategoryPreferences
+        private val repo:   CuriosityRepository,
+        private val prefs:  CategoryPreferences,
+        private val engine: GamificationEngine
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(c: Class<T>): T =
-            QuizViewModel(repo, prefs) as T
+            QuizViewModel(repo, prefs, engine) as T
     }
 }

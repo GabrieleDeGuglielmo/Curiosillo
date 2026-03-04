@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
+import com.example.curiosillo.data.BadgeSbloccato
 import com.example.curiosillo.ui.theme.Error
 import com.example.curiosillo.ui.theme.Secondary
 import com.example.curiosillo.ui.theme.Success
@@ -38,12 +40,61 @@ import com.example.curiosillo.viewmodel.QuizViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuizScreen(nav: NavController) {
-    val ctx = LocalContext.current
-    val repo = (ctx.applicationContext as CuriosityApplication).repository
-    val app = ctx.applicationContext as CuriosityApplication
-    val vm: QuizViewModel = viewModel(factory = QuizViewModel.Factory(repo, app.categoryPrefs))
+    val ctx  = LocalContext.current
+    val app  = ctx.applicationContext as CuriosityApplication
+    val vm: QuizViewModel = viewModel(
+        factory = QuizViewModel.Factory(app.repository, app.categoryPrefs, app.gamificationEngine)
+    )
     val state by vm.state.collectAsState()
 
+    val risultato by vm.risultatoAzione.collectAsState()
+    var badgeDaMostrare by remember { mutableStateOf<BadgeSbloccato?>(null) }
+    var badgeQueue      by remember { mutableStateOf<List<BadgeSbloccato>>(emptyList()) }
+
+    LaunchedEffect(risultato) {
+        risultato?.let {
+            if (it.badgeSbloccati.isNotEmpty()) {
+                badgeQueue      = it.badgeSbloccati
+                badgeDaMostrare = badgeQueue.first()
+            }
+            vm.consumaRisultato()
+        }
+    }
+    badgeDaMostrare?.let { badge ->
+        AlertDialog(
+            onDismissRequest = {
+                val resto = badgeQueue.drop(1)
+                badgeQueue      = resto
+                badgeDaMostrare = resto.firstOrNull()
+            },
+            icon  = { Text(badge.icona, fontSize = 48.sp) },
+            title = {
+                Text("Badge sbloccato!",
+                    fontWeight = FontWeight.Bold,
+                    textAlign  = TextAlign.Center)
+            },
+            text  = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(badge.nome,
+                        style      = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Text(badge.descrizione,
+                        textAlign = TextAlign.Center,
+                        color     = Color.Gray)
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val resto = badgeQueue.drop(1)
+                    badgeQueue      = resto
+                    badgeDaMostrare = resto.firstOrNull()
+                }) {
+                    Text("Ottimo!", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
     Scaffold(topBar = {
         TopAppBar(
             title = { Text("Quiz", fontWeight = FontWeight.SemiBold) },
@@ -87,7 +138,8 @@ private fun NoQuestionsContent(onBack: () -> Unit) {
             fontWeight = FontWeight.Bold, textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(12.dp))
-        Text("Leggi prima alcune curiosità e premi\n\"Ho imparato!\" per sbloccare il quiz.",
+        Text(
+            "Leggi prima alcune curiosità e premi\n\"Ho imparato!\" per sbloccare il quiz.",
             textAlign = TextAlign.Center, color = Color.Gray
         )
         Spacer(Modifier.height(32.dp))
@@ -104,9 +156,11 @@ private fun NoQuestionsContent(onBack: () -> Unit) {
 
 @Composable
 private fun QuestionContent(s: QuizUiState.Question, onAnswer: (String) -> Unit) {
-    Column(Modifier
-        .fillMaxSize()
-        .verticalScroll(rememberScrollState())) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
 
         // Immagine categoria — stessa logica di CuriosityScreen
         Image(
@@ -166,9 +220,11 @@ private fun QuestionContent(s: QuizUiState.Question, onAnswer: (String) -> Unit)
 
 @Composable
 private fun AnsweredContent(s: QuizUiState.Answered, onNext: () -> Unit) {
-    Column(Modifier
-        .fillMaxSize()
-        .verticalScroll(rememberScrollState())) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
 
         Image(
             painter = painterResource(id = categoryImage(s.question.category)),

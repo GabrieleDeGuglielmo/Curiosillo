@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
+import com.example.curiosillo.data.BadgeSbloccato
 import com.example.curiosillo.ui.theme.Primary
 import com.example.curiosillo.ui.theme.Success
 import com.example.curiosillo.viewmodel.CuriosityUiState
@@ -36,14 +37,109 @@ import com.example.curiosillo.viewmodel.CuriosityViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CuriosityScreen(nav: NavController) {
-    val ctx  = LocalContext.current
-    val app  = ctx.applicationContext as CuriosityApplication
-    val repo = app.repository
+    val ctx = LocalContext.current
+    val app = ctx.applicationContext as CuriosityApplication
     val vm: CuriosityViewModel =
-        viewModel(factory = CuriosityViewModel.Factory(repo, app.categoryPrefs))
+        viewModel(
+            factory = CuriosityViewModel.Factory(
+                app.repository,
+                app.categoryPrefs,
+                app.gamificationEngine
+            )
+        )
     val state by vm.state.collectAsState()
+    val risultato by vm.risultatoAzione.collectAsState()
+    var badgeDaMostrare by remember { mutableStateOf<BadgeSbloccato?>(null) }
+    var badgeQueue by remember { mutableStateOf<List<BadgeSbloccato>>(emptyList()) }
+
+// Quando arriva un risultato, metti i badge in coda
+    LaunchedEffect(risultato) {
+        risultato?.let {
+            if (it.badgeSbloccati.isNotEmpty()) {
+                badgeQueue = it.badgeSbloccati
+                badgeDaMostrare = badgeQueue.first()
+            }
+            vm.consumaRisultato()
+        }
+    }
+    badgeDaMostrare?.let { badge ->
+        AlertDialog(
+            onDismissRequest = {
+                val resto = badgeQueue.drop(1)
+                badgeQueue = resto
+                badgeDaMostrare = resto.firstOrNull()
+            },
+            icon  = { Text(badge.icona, fontSize = 48.sp) },
+            title = {
+                Text("Badge sbloccato!",
+                    fontWeight = FontWeight.Bold,
+                    textAlign  = TextAlign.Center)
+            },
+            text  = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(badge.nome,
+                        style      = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Text(badge.descrizione,
+                        textAlign = TextAlign.Center,
+                        color     = Color.Gray)
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val resto = badgeQueue.drop(1)
+                    badgeQueue = resto
+                    badgeDaMostrare = resto.firstOrNull()
+                }) {
+                    Text("Ottimo!", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
 
     Scaffold(topBar = {
+        badgeDaMostrare?.let { badge ->
+            AlertDialog(
+                onDismissRequest = {
+                    val resto = badgeQueue.drop(1)
+                    badgeQueue = resto
+                    badgeDaMostrare = resto.firstOrNull()
+                },
+                icon = { Text(badge.icona, fontSize = 48.sp) },
+                title = {
+                    Text(
+                        "Badge sbloccato!",
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                },
+                text = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            badge.nome,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            badge.descrizione,
+                            textAlign = TextAlign.Center,
+                            color = Color.Gray
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        val resto = badgeQueue.drop(1)
+                        badgeQueue = resto
+                        badgeDaMostrare = resto.firstOrNull()
+                    }) {
+                        Text("Ottimo!", fontWeight = FontWeight.Bold)
+                    }
+                }
+            )
+        }
         TopAppBar(
             title = { Text("Pillola", fontWeight = FontWeight.SemiBold) },
             navigationIcon = {
@@ -63,18 +159,24 @@ fun CuriosityScreen(nav: NavController) {
             when (val s = state) {
                 is CuriosityUiState.Loading ->
                     CircularProgressIndicator(Modifier.align(Alignment.Center))
+
                 is CuriosityUiState.Empty ->
                     Text(
                         "Nessuna curiosità disponibile!\nTorna presto.",
-                        Modifier.align(Alignment.Center).padding(24.dp),
+                        Modifier
+                            .align(Alignment.Center)
+                            .padding(24.dp),
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyLarge
                     )
+
                 is CuriosityUiState.Success ->
-                    CuriosityContent(s,
+                    CuriosityContent(
+                        s,
                         onLearn = { vm.markLearned() },
                         onBookmark = { vm.toggleBookmark() }
                     )
+
                 is CuriosityUiState.Learned -> LearnedContent { vm.load() }
             }
         }
@@ -169,7 +271,9 @@ private fun CuriosityContent(
             if (!s.curiosity.isRead) {
                 Button(
                     onLearn,
-                    Modifier.fillMaxWidth().height(58.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .height(58.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Primary)
                 ) {
@@ -182,7 +286,9 @@ private fun CuriosityContent(
             } else {
                 OutlinedButton(
                     onLearn,
-                    Modifier.fillMaxWidth().height(58.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .height(58.dp),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium)
@@ -219,7 +325,9 @@ private fun LearnedContent(onNext: () -> Unit) {
         Spacer(Modifier.height(32.dp))
         Button(
             onNext,
-            Modifier.fillMaxWidth().height(58.dp),
+            Modifier
+                .fillMaxWidth()
+                .height(58.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
             Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium)

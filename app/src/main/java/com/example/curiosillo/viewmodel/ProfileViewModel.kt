@@ -3,41 +3,50 @@ package com.example.curiosillo.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.curiosillo.data.Curiosity
+import com.example.curiosillo.data.BadgeSbloccato
+import com.example.curiosillo.data.GamificationPreferences
 import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class ProfileUiState(
-    val totalCuriosità: Int = 0,
-    val curiositàImparate: Int = 0,
-    val quizDisponibili: Int = 0,
-    val totaleBookmark: Int = 0,
-    val salvati: List<Curiosity> = emptyList(),
-    val isLoading: Boolean = true
+    val totalCuriosità:    Int                  = 0,
+    val curiositàImparate: Int                  = 0,
+    val quizDisponibili:   Int                  = 0,
+    val totaleBookmark:    Int                  = 0,
+    val xpTotali:          Int                  = 0,
+    val streakCorrente:    Int                  = 0,
+    val streakMassima:     Int                  = 0,
+    val badgeSbloccati:    List<BadgeSbloccato> = emptyList(),
+    val isLoading:         Boolean              = true
 )
 
-class ProfileViewModel(private val repo: CuriosityRepository) : ViewModel() {
+class ProfileViewModel(
+    private val repo:       CuriosityRepository,
+    private val gamifPrefs: GamificationPreferences
+) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileUiState())
     val state: StateFlow<ProfileUiState> = _state.asStateFlow()
 
-    init {
-        caricaStatistiche()
-    }
+    init { caricaStatistiche() }
 
     fun caricaStatistiche() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
             _state.value = ProfileUiState(
-                totalCuriosità = repo.totaleCuriosità(),
+                totalCuriosità    = repo.totaleCuriosità(),
                 curiositàImparate = repo.curiositàImparate(),
-                quizDisponibili = repo.quizNonRisposti(),
-                totaleBookmark = repo.totaleBookmark(),
-                salvati = repo.getBookmarked(),
-                isLoading = false
+                quizDisponibili   = repo.quizNonRisposte(),
+                totaleBookmark    = repo.totaleBookmark(),
+                xpTotali          = gamifPrefs.xpTotali.first(),
+                streakCorrente    = gamifPrefs.streakCorrente.first(),
+                streakMassima     = gamifPrefs.streakMassima.first(),
+                badgeSbloccati    = repo.badgeSbloccati(),
+                isLoading         = false
             )
         }
     }
@@ -45,12 +54,17 @@ class ProfileViewModel(private val repo: CuriosityRepository) : ViewModel() {
     fun resetProgressi() {
         viewModelScope.launch {
             repo.resetProgressi()
+            gamifPrefs.reset()
             caricaStatistiche()
         }
     }
 
-    class Factory(private val repo: CuriosityRepository) : ViewModelProvider.Factory {
+    class Factory(
+        private val repo:       CuriosityRepository,
+        private val gamifPrefs: GamificationPreferences
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(c: Class<T>): T = ProfileViewModel(repo) as T
+        override fun <T : ViewModel> create(c: Class<T>): T =
+            ProfileViewModel(repo, gamifPrefs) as T
     }
 }

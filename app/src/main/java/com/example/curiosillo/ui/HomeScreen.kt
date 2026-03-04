@@ -11,9 +11,7 @@ import androidx.compose.material.icons.filled.EmojiObjects
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,14 +28,20 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.R
+import com.example.curiosillo.ui.components.GamificationBanner
 import com.example.curiosillo.ui.theme.Primary
 import com.example.curiosillo.ui.theme.Secondary
 
 @Composable
 fun HomeScreen(nav: NavController) {
-    val ctx = LocalContext.current
-    val prefs = (ctx.applicationContext as CuriosityApplication).categoryPrefs
+    val ctx        = LocalContext.current
+    val app        = ctx.applicationContext as CuriosityApplication
+    val prefs      = app.categoryPrefs
+    val gamifPrefs = app.gamificationPrefs
+
     val categorieAttive by prefs.categorieAttive.collectAsState(initial = emptySet())
+    val xpTotali        by gamifPrefs.xpTotali.collectAsState(initial = 0)
+    val streakCorrente  by gamifPrefs.streakCorrente.collectAsState(initial = 0)
 
     Box(
         modifier = Modifier
@@ -45,17 +49,13 @@ fun HomeScreen(nav: NavController) {
             .background(Brush.verticalGradient(listOf(Color(0xFFFFF3E0), Color.White)))
     ) {
         IconButton(
-            onClick = { nav.navigate("profile") },
+            onClick  = { nav.navigate("profile") },
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(12.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = "Profilo",
-                modifier = Modifier.size(28.dp),
-                tint = Primary
-            )
+            Icon(Icons.Default.Person, "Profilo",
+                modifier = Modifier.size(28.dp), tint = Primary)
         }
 
         Column(
@@ -75,55 +75,56 @@ fun HomeScreen(nav: NavController) {
                 contentScale = ContentScale.Crop
             )
             Spacer(Modifier.height(16.dp))
-            Text(
-                "Curiosillo",
+            Text("Curiosillo",
                 style = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.ExtraBold,
-                color = Primary
-            )
-            Text(
-                "Impara qualcosa di nuovo ogni giorno",
+                color = Primary)
+            Text("Impara qualcosa di nuovo ogni giorno",
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color(0xFF888888),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 6.dp, bottom = 56.dp)
+                modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
+
+            // ── Banner gamification ───────────────────────────────────────────
+            GamificationBanner(
+                xpTotali       = xpTotali,
+                streakCorrente = streakCorrente,
+                modifier       = Modifier.padding(bottom = 24.dp)
             )
 
-            MenuCard(
-                Icons.Default.EmojiObjects,
+            MenuCard(Icons.Default.EmojiObjects,
                 "Scopri una Curiosità",
                 "Leggi e impara qualcosa di sorprendente",
-                Primary
-            ) { nav.navigate("category_picker/curiosity") }
+                Primary) { nav.navigate("category_picker/curiosity") }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(16.dp))
 
-            MenuCard(
-                Icons.Default.Quiz,
+            MenuCard(Icons.Default.Quiz,
                 "Fai un Quiz",
                 "Metti alla prova le tue conoscenze",
-                Secondary
-            ) { nav.navigate("category_picker/quiz") }
+                Secondary) { nav.navigate("category_picker/quiz") }
 
-            // Chip categoria attiva — visibile solo se c'è un filtro selezionato
+            // ── Chip categoria attiva ─────────────────────────────────────────
             if (categorieAttive.isNotEmpty()) {
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
                 Row(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    Text("Filtro attivo: ", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text("Filtro attivo: ",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray)
                     AssistChip(
                         onClick = { nav.navigate("category_picker/curiosity") },
                         label   = {
                             val testo = if (categorieAttive.size == 1)
                                 categorieAttive.first()
-                            else
-                                "${categorieAttive.size} categorie"
+                            else "${categorieAttive.size} categorie"
                             Text(testo, fontWeight = FontWeight.SemiBold)
                         },
                         trailingIcon = {
-                            Icon(Icons.Default.Close, "Rimuovi filtro", modifier = Modifier.size(14.dp))
+                            Icon(Icons.Default.Close, "Rimuovi filtro",
+                                modifier = Modifier.size(14.dp))
                         }
                     )
                 }
@@ -134,41 +135,27 @@ fun HomeScreen(nav: NavController) {
 
 @Composable
 private fun MenuCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    color: Color,
-    onClick: () -> Unit
+    icon: ImageVector, title: String, subtitle: String,
+    color: Color, onClick: () -> Unit
 ) {
     Card(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(110.dp),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = color),
+        onClick   = onClick,
+        modifier  = Modifier.fillMaxWidth().height(110.dp),
+        shape     = RoundedCornerShape(22.dp),
+        colors    = CardDefaults.cardColors(containerColor = color),
         elevation = CardDefaults.cardElevation(8.dp)
     ) {
         Row(
-            Modifier
-                .fillMaxSize()
-                .padding(horizontal = 26.dp),
+            Modifier.fillMaxSize().padding(horizontal = 26.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(icon, null, Modifier.size(52.dp), Color.White.copy(alpha = 0.9f))
             Spacer(Modifier.width(20.dp))
             Column {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.85f)
-                )
+                Text(title, style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold, color = Color.White)
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.85f))
             }
         }
     }
