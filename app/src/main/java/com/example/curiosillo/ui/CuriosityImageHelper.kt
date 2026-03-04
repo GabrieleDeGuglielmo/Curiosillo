@@ -15,3 +15,15 @@ fun categoryImage(category: String): Int = when (category.lowercase()) {
     "cibo"     -> R.drawable.curiosity_cibo
     else       -> R.drawable.curiosity_default
 }
+
+fun emojiCategoria(category: String): String = when (category) {
+    "Scienza"    -> "🔬"
+    "Animali"    -> "🐾"
+    "Storia"     -> "📜"
+    "Sport"      -> "⚽"
+    "Arte"       -> "🎨"
+    "Tecnologia" -> "💻"
+    "Natura"     -> "🌿"
+    "Cibo"       -> "🍽️"
+    else         -> "✨"
+}

@@ -2,6 +2,7 @@ package com.example.curiosillo.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,14 +49,17 @@ fun HomeScreen(nav: NavController) {
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(Color(0xFFFFF3E0), Color.White)))
     ) {
-        IconButton(
-            onClick  = { nav.navigate("profile") },
+        Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(12.dp)
+                .size(42.dp)
+                .background(Primary.copy(alpha = 0.12f), CircleShape)
+                .clickable { nav.navigate("profile") },
+            contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Default.Person, "Profilo",
-                modifier = Modifier.size(28.dp), tint = Primary)
+                modifier = Modifier.size(26.dp), tint = Primary)
         }
 
         Column(

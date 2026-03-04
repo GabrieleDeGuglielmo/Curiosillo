@@ -221,7 +221,7 @@ private fun CuriosityContent(
             ) {
                 SuggestionChip(
                     onClick = {},
-                    label = { Text(s.curiosity.category + "  " + s.curiosity.emoji) }
+                    label = { Text(emojiCategoria(s.curiosity.category) + " " + s.curiosity.category) }
                 )
                 IconToggleButton(
                     checked = s.curiosity.isBookmarked,
