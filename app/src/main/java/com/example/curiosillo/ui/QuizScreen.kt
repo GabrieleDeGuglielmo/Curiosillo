@@ -40,7 +40,8 @@ import com.example.curiosillo.viewmodel.QuizViewModel
 fun QuizScreen(nav: NavController) {
     val ctx = LocalContext.current
     val repo = (ctx.applicationContext as CuriosityApplication).repository
-    val vm: QuizViewModel = viewModel(factory = QuizViewModel.Factory(repo))
+    val app = ctx.applicationContext as CuriosityApplication
+    val vm: QuizViewModel = viewModel(factory = QuizViewModel.Factory(repo, app.categoryPrefs))
     val state by vm.state.collectAsState()
 
     Scaffold(topBar = {

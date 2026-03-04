@@ -3,12 +3,14 @@ package com.example.curiosillo.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.curiosillo.data.CategoryPreferences
 import com.example.curiosillo.data.Curiosity
 import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 sealed class CuriosityUiState {
     object Loading : CuriosityUiState()
@@ -17,7 +19,7 @@ sealed class CuriosityUiState {
     data class Success(val curiosity: Curiosity, val readCount: Int) : CuriosityUiState()
 }
 
-class CuriosityViewModel(private val repo: CuriosityRepository) : ViewModel() {
+class CuriosityViewModel(private val repo: CuriosityRepository,     private val prefs: CategoryPreferences) : ViewModel() {
     private val _state = MutableStateFlow<CuriosityUiState>(CuriosityUiState.Loading)
     val state: StateFlow<CuriosityUiState> = _state.asStateFlow()
 
@@ -26,9 +28,11 @@ class CuriosityViewModel(private val repo: CuriosityRepository) : ViewModel() {
     fun load() {
         viewModelScope.launch {
             _state.value = CuriosityUiState.Loading
-            val c = repo.getNext()
-            _state.value = if (c != null) CuriosityUiState.Success(c, repo.countRead())
-                           else CuriosityUiState.Empty
+            val categoria = prefs.categoriaAttiva.first()
+            val c = repo.getNext(categoria)
+            _state.value = if (c != null)
+                CuriosityUiState.Success(c, repo.curiositàImparate())
+            else CuriosityUiState.Empty
         }
     }
 
@@ -40,8 +44,22 @@ class CuriosityViewModel(private val repo: CuriosityRepository) : ViewModel() {
         }
     }
 
-    class Factory(private val repo: CuriosityRepository) : ViewModelProvider.Factory {
+    fun toggleBookmark() {
+        val s = _state.value as? CuriosityUiState.Success ?: return
+        viewModelScope.launch {
+            repo.toggleBookmark(s.curiosity)
+            _state.value = s.copy(
+                curiosity = s.curiosity.copy(isBookmarked = !s.curiosity.isBookmarked)
+            )
+        }
+    }
+
+    class Factory(
+        private val repo: CuriosityRepository,
+        private val prefs: CategoryPreferences
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(c: Class<T>): T = CuriosityViewModel(repo) as T
+        override fun <T : ViewModel> create(c: Class<T>): T =
+            CuriosityViewModel(repo, prefs) as T
     }
 }

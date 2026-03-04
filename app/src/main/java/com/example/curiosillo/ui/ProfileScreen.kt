@@ -2,10 +2,13 @@ package com.example.curiosillo.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -14,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -38,7 +40,6 @@ fun ProfileScreen(nav: NavController) {
     val state by vm.state.collectAsState()
     var showResetDialog by remember { mutableStateOf(false) }
 
-    // Dialogo di conferma reset
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
@@ -90,12 +91,13 @@ fun ProfileScreen(nav: NavController) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .verticalScroll(rememberScrollState())  // ← aggiunto scroll
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Spacer(Modifier.height(12.dp))
 
-                    // Avatar
+                    // ── Avatar ────────────────────────────────────────────────
                     Box(
                         modifier = Modifier
                             .size(90.dp)
@@ -112,7 +114,7 @@ fun ProfileScreen(nav: NavController) {
                         fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(32.dp))
 
-                    // Statistiche
+                    // ── Statistiche ───────────────────────────────────────────
                     Text("Le mie statistiche",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
@@ -125,26 +127,26 @@ fun ProfileScreen(nav: NavController) {
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         StatCard(
-                            modifier = Modifier.weight(1f),
-                            valore   = "${state.curiositàImparate}",
+                            modifier  = Modifier.weight(1f),
+                            valore    = "${state.curiositàImparate}",
                             etichetta = "Curiosità\nimparate",
-                            colore   = Primary
+                            colore    = Primary
                         )
                         StatCard(
-                            modifier = Modifier.weight(1f),
-                            valore   = "${state.totalCuriosità}",
+                            modifier  = Modifier.weight(1f),
+                            valore    = "${state.totalCuriosità}",
                             etichetta = "Curiosità\ntotali",
-                            colore   = Secondary
+                            colore    = Secondary
                         )
                         StatCard(
-                            modifier = Modifier.weight(1f),
-                            valore   = "${state.quizDisponibili}",
-                            etichetta = "Quiz\ndisponibili",
-                            colore   = Tertiary
+                            modifier  = Modifier.weight(1f),
+                            valore    = "${state.quizDisponibili}",
+                            etichetta = "Quiz\nnon risposti",
+                            colore    = Tertiary
                         )
                     }
 
-                    // Barra progresso
+                    // ── Barra progresso ───────────────────────────────────────
                     if (state.totalCuriosità > 0) {
                         Spacer(Modifier.height(28.dp))
                         val percentuale = state.curiositàImparate.toFloat() / state.totalCuriosità
@@ -156,16 +158,60 @@ fun ProfileScreen(nav: NavController) {
                         )
                         Spacer(Modifier.height(8.dp))
                         LinearProgressIndicator(
-                            progress = { percentuale },
-                            modifier = Modifier.fillMaxWidth().height(10.dp),
-                            color    = Primary,
+                            progress  = { percentuale },
+                            modifier  = Modifier.fillMaxWidth().height(10.dp),
+                            color     = Primary,
                             trackColor = Color(0xFFE0E0E0)
                         )
                     }
 
-                    Spacer(Modifier.weight(1f))
+                    // ── Curiosità salvate ─────────────────────────────────────
+                    Spacer(Modifier.height(28.dp))
+                    Text("Curiosità salvate (${state.totaleBookmark})",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF555555),
+                        modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(10.dp))
 
-                    // Pulsante reset
+                    if (state.salvati.isEmpty()) {
+                        Text(
+                            "Nessuna curiosità salvata ancora.\nPremi il segnalibro durante la lettura!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    } else {
+                        state.salvati.forEach { curiosità ->
+                            Card(
+                                modifier  = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                shape     = RoundedCornerShape(14.dp),
+                                colors    = CardDefaults.cardColors(containerColor = Color.White),
+                                elevation = CardDefaults.cardElevation(2.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(curiosità.title,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold)
+                                        Text(curiosità.category,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.Gray)
+                                    }
+                                    Icon(Icons.Default.Bookmark, null,
+                                        tint = Primary,
+                                        modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(28.dp))
+
+                    // ── Pulsante reset ────────────────────────────────────────
                     OutlinedButton(
                         onClick  = { showResetDialog = true },
                         modifier = Modifier.fillMaxWidth().height(54.dp),
@@ -175,8 +221,7 @@ fun ProfileScreen(nav: NavController) {
                             brush = androidx.compose.ui.graphics.SolidColor(Error)
                         )
                     ) {
-                        Icon(Icons.Default.Delete, null,
-                            modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Delete, null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Resetta progressi",
                             style = MaterialTheme.typography.titleSmall,
@@ -203,11 +248,14 @@ private fun StatCard(
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 20.dp, horizontal = 8.dp).fillMaxWidth(),
+            modifier = Modifier
+                .padding(vertical = 20.dp, horizontal = 8.dp)
+                .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(valore, fontSize = 32.sp,
-                fontWeight = FontWeight.ExtraBold, color = Color.White)
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White)
             Spacer(Modifier.height(4.dp))
             Text(etichetta,
                 style = MaterialTheme.typography.bodySmall,

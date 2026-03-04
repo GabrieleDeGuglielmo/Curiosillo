@@ -10,5 +10,6 @@ data class Curiosity(
     val body: String,
     val category: String,
     val emoji: String = "",
-    val isRead: Boolean = false
+    val isRead: Boolean = false,
+    val isBookmarked: Boolean = false
 )

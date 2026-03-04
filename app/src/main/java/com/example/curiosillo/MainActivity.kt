@@ -16,6 +16,7 @@ import com.example.curiosillo.ui.ProfileScreen
 import com.example.curiosillo.ui.QuizScreen
 import com.example.curiosillo.ui.theme.CuriosilloTheme
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.example.curiosillo.ui.CategoryPickerScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,6 +29,12 @@ class MainActivity : ComponentActivity() {
                     val nav = rememberNavController()
                     NavHost(navController = nav, startDestination = "home") {
                         composable("home")      { HomeScreen(nav) }
+                        composable("category_picker/curiosity") {
+                            CategoryPickerScreen(nav, destinazione = "curiosity")
+                        }
+                        composable("category_picker/quiz") {
+                            CategoryPickerScreen(nav, destinazione = "quiz")
+                        }
                         composable("curiosity") { CuriosityScreen(nav) }
                         composable("quiz")      { QuizScreen(nav) }
                         composable("profile")   { ProfileScreen(nav) }

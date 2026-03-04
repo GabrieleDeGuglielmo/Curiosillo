@@ -2,6 +2,7 @@ package com.example.curiosillo
 
 import android.app.Application
 import com.example.curiosillo.data.AppDatabase
+import com.example.curiosillo.data.CategoryPreferences
 import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -11,6 +12,7 @@ class CuriosityApplication : Application() {
     private val scope = CoroutineScope(SupervisorJob())
     val database   by lazy { AppDatabase.getDatabase(this) }
     val repository by lazy { CuriosityRepository(database) }
+    val categoryPrefs     by lazy { CategoryPreferences(this) }
 
     override fun onCreate() {
         super.onCreate()

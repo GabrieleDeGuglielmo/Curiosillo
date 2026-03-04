@@ -16,20 +16,32 @@ data class QuizQuestionWithCategory(
 
 @Dao
 interface QuizQuestionDao {
+
     @Query("""
         SELECT q.*, c.category FROM quiz_question q
         INNER JOIN curiosity c ON q.curiosityId = c.id
         WHERE c.isRead = 1
+        AND (:category = '' OR c.category = :category)
         ORDER BY RANDOM() LIMIT :limit
     """)
-    suspend fun getRandomWithCategory(limit: Int): List<QuizQuestionWithCategory>
+    suspend fun getRandomWithCategory(limit: Int, category: String = ""): List<QuizQuestionWithCategory>
 
     @Query("""
         SELECT COUNT(*) FROM quiz_question q
         INNER JOIN curiosity c ON q.curiosityId = c.id
         WHERE c.isRead = 1
+        AND (:category = '' OR c.category = :category)
     """)
-    suspend fun countAvailable(): Int
+    suspend fun countAvailable(category: String = ""): Int
+
+    @Query("""
+        SELECT COUNT(*) FROM quiz_question q
+        INNER JOIN curiosity c ON q.curiosityId = c.id
+        WHERE c.isRead = 1
+        AND q.id NOT IN (SELECT DISTINCT questionId FROM quiz_answer)
+        AND (:category = '' OR c.category = :category)
+    """)
+    suspend fun quizNonRisposti(category: String = ""): Int
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(items: List<QuizQuestion>)

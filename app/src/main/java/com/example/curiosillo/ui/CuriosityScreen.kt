@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,29 +37,44 @@ import com.example.curiosillo.viewmodel.CuriosityViewModel
 @Composable
 fun CuriosityScreen(nav: NavController) {
     val ctx  = LocalContext.current
-    val repo = (ctx.applicationContext as CuriosityApplication).repository
-    val vm: CuriosityViewModel = viewModel(factory = CuriosityViewModel.Factory(repo))
+    val app  = ctx.applicationContext as CuriosityApplication
+    val repo = app.repository
+    val vm: CuriosityViewModel =
+        viewModel(factory = CuriosityViewModel.Factory(repo, app.categoryPrefs))
     val state by vm.state.collectAsState()
 
     Scaffold(topBar = {
         TopAppBar(
-            title = { Text("Curiosita del Giorno", fontWeight = FontWeight.SemiBold) },
-            navigationIcon = { IconButton({ nav.popBackStack() }) {
-                Icon(Icons.Default.ArrowBack, "Indietro") } },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent))
+            title = { Text("Pillola", fontWeight = FontWeight.SemiBold) },
+            navigationIcon = {
+                IconButton({ nav.popBackStack() }) {
+                    Icon(Icons.Default.ArrowBack, "Indietro")
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+        )
     }) { pad ->
-        Box(Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFFFFF3E0), Color.White)))
-            .padding(pad)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(Color(0xFFFFF3E0), Color.White)))
+                .padding(pad)
+        ) {
             when (val s = state) {
                 is CuriosityUiState.Loading ->
                     CircularProgressIndicator(Modifier.align(Alignment.Center))
                 is CuriosityUiState.Empty ->
-                    Text("Nessuna curiosita disponibile!\nTorna presto.",
+                    Text(
+                        "Nessuna curiosità disponibile!\nTorna presto.",
                         Modifier.align(Alignment.Center).padding(24.dp),
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodyLarge)
-                is CuriosityUiState.Success -> CuriosityContent(s) { vm.markLearned() }
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                is CuriosityUiState.Success ->
+                    CuriosityContent(s,
+                        onLearn = { vm.markLearned() },
+                        onBookmark = { vm.toggleBookmark() }
+                    )
                 is CuriosityUiState.Learned -> LearnedContent { vm.load() }
             }
         }
@@ -65,10 +82,17 @@ fun CuriosityScreen(nav: NavController) {
 }
 
 @Composable
-private fun CuriosityContent(s: CuriosityUiState.Success, onLearn: () -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-
-        // Immagine categoria — full width, nessun padding laterale
+private fun CuriosityContent(
+    s: CuriosityUiState.Success,
+    onLearn: () -> Unit,
+    onBookmark: () -> Unit
+) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        // Immagine categoria
         Image(
             painter = painterResource(id = categoryImage(s.curiosity.category)),
             contentDescription = s.curiosity.category,
@@ -79,44 +103,88 @@ private fun CuriosityContent(s: CuriosityUiState.Success, onLearn: () -> Unit) {
             contentScale = ContentScale.Crop
         )
 
-        Column(Modifier.padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            Modifier.padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Spacer(Modifier.height(16.dp))
 
-            // Badge categoria
-            SuggestionChip({}, { Text(s.curiosity.category + "  " + s.curiosity.emoji) })
-            Spacer(Modifier.height(10.dp))
+            // Badge categoria + pulsante bookmark sulla stessa riga
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
+            ) {
+                SuggestionChip(
+                    onClick = {},
+                    label = { Text(s.curiosity.category + "  " + s.curiosity.emoji) }
+                )
+                IconToggleButton(
+                    checked = s.curiosity.isBookmarked,
+                    onCheckedChange = { onBookmark() }
+                ) {
+                    Icon(
+                        imageVector = if (s.curiosity.isBookmarked)
+                            Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                        contentDescription = "Salva",
+                        tint = if (s.curiosity.isBookmarked) Primary else Color.Gray
+                    )
+                }
+            }
 
-            Text(s.curiosity.title,
+            Spacer(Modifier.height(10.dp))
+            Text(
+                s.curiosity.title,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                color = Color(0xFF1C1B1F))
+                color = Color(0xFF1C1B1F)
+            )
             Spacer(Modifier.height(20.dp))
 
-            Card(Modifier.fillMaxWidth(),
+            Card(
+                Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(4.dp)) {
-                Text(s.curiosity.body, Modifier.padding(20.dp),
+                elevation = CardDefaults.cardElevation(4.dp)
+            ) {
+                Text(
+                    s.curiosity.body,
+                    Modifier.padding(20.dp),
                     style = MaterialTheme.typography.bodyLarge,
-                    lineHeight = 27.sp, color = Color(0xFF3C3C3C))
+                    lineHeight = 27.sp,
+                    color = Color(0xFF3C3C3C)
+                )
             }
             Spacer(Modifier.height(16.dp))
-            Text("Curiosità imparate: ${s.readCount}",
-                style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+            Text(
+                "Curiosità imparate: ${s.readCount}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
             Spacer(Modifier.height(24.dp))
 
             if (!s.curiosity.isRead) {
-                Button(onLearn, Modifier.fillMaxWidth().height(58.dp),
+                Button(
+                    onLearn,
+                    Modifier.fillMaxWidth().height(58.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Primary)) {
-                    Text("Ho imparato!", style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold)
+                    colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                ) {
+                    Text(
+                        "Ho imparato!",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             } else {
-                OutlinedButton(onLearn, Modifier.fillMaxWidth().height(58.dp),
-                    shape = RoundedCornerShape(16.dp)) {
+                OutlinedButton(
+                    onLearn,
+                    Modifier.fillMaxWidth().height(58.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
                     Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium)
                 }
             }
@@ -127,20 +195,33 @@ private fun CuriosityContent(s: CuriosityUiState.Success, onLearn: () -> Unit) {
 
 @Composable
 private fun LearnedContent(onNext: () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(32.dp),
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center) {
+        verticalArrangement = Arrangement.Center
+    ) {
         Icon(Icons.Default.CheckCircle, null, Modifier.size(90.dp), tint = Success)
         Spacer(Modifier.height(20.dp))
-        Text("Fantastico!", style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold)
+        Text(
+            "Fantastico!",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
         Spacer(Modifier.height(10.dp))
-        Text("Hai imparato qualcosa di nuovo!\nOra puoi fare il quiz su questa curiosità.",
+        Text(
+            "Hai imparato qualcosa di nuovo!\nOra puoi fare il quiz su questa curiosità.",
             style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center, color = Color.Gray)
+            textAlign = TextAlign.Center,
+            color = Color.Gray
+        )
         Spacer(Modifier.height(32.dp))
-        Button(onNext, Modifier.fillMaxWidth().height(58.dp),
-            shape = RoundedCornerShape(16.dp)) {
+        Button(
+            onNext,
+            Modifier.fillMaxWidth().height(58.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
             Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium)
         }
     }
