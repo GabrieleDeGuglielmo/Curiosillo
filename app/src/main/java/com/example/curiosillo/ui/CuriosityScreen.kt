@@ -37,7 +37,7 @@ fun CuriosityScreen(nav: NavController) {
 
     Scaffold(topBar = {
         TopAppBar(
-            title = { Text("curiosità del Giorno", fontWeight = FontWeight.SemiBold) },
+            title = { Text("Curiosità del Giorno", fontWeight = FontWeight.SemiBold) },
             navigationIcon = { IconButton({ nav.popBackStack() }) {
                 Icon(Icons.Default.ArrowBack, "Indietro") } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent))
