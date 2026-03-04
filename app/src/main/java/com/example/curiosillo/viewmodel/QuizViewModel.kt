@@ -54,23 +54,14 @@ class QuizViewModel(private val repo: CuriosityRepository, private val prefs: Ca
     fun startQuiz() {
         viewModelScope.launch {
             _state.value = QuizUiState.Loading
-            val categoria = prefs.categoriaAttiva.first()
-            val available = repo.countAvailableQuestions(categoria)
-            if (available == 0) {
-                _state.value = QuizUiState.NoQuestions; return@launch
-            }
-            val raw = repo.getQuizQuestionsWithCategory(minOf(available, 5), categoria)
+            val categorie = prefs.categorieAttive.first()
+            val available = repo.countAvailableQuestions(categorie)
+            if (available == 0) { _state.value = QuizUiState.NoQuestions; return@launch }
+            val raw = repo.getQuizQuestionsWithCategory(minOf(available, 5), categorie)
             questions = raw.map { q ->
-                QuizUiModel(
-                    q.id, q.questionText,
-                    listOf(
-                        q.correctAnswer,
-                        q.wrongAnswer1,
-                        q.wrongAnswer2,
-                        q.wrongAnswer3
-                    ).shuffled(),
-                    q.correctAnswer, q.explanation, q.category
-                )
+                QuizUiModel(q.id, q.questionText,
+                    listOf(q.correctAnswer, q.wrongAnswer1, q.wrongAnswer2, q.wrongAnswer3).shuffled(),
+                    q.correctAnswer, q.explanation, q.category)
             }
             currentIndex = 0; score = 0; push()
         }

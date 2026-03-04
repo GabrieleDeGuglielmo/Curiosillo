@@ -14,7 +14,7 @@ data class BookmarkUiState(
     val risultati:  List<Curiosity> = emptyList(),
     val categorie:  List<String>    = emptyList(),
     val query:      String          = "",
-    val categoria:  String          = "",
+    val categorieSelezionate: Set<String> = emptySet(),
     val isLoading:  Boolean         = true,
     val dettaglio:  Curiosity?      = null   // pillola aperta nel bottom sheet
 )
@@ -31,7 +31,7 @@ class BookmarkViewModel(private val repo: CuriosityRepository) : ViewModel() {
             val categorie = repo.categorieBookmark()
             val risultati = repo.cercaBookmark(
                 _state.value.query,
-                _state.value.categoria
+                _state.value.categorieSelezionate
             )
             _state.value = _state.value.copy(
                 risultati  = risultati,
@@ -47,8 +47,14 @@ class BookmarkViewModel(private val repo: CuriosityRepository) : ViewModel() {
     }
 
     fun onCategoriaSelezionata(cat: String) {
-        val nuova = if (_state.value.categoria == cat) "" else cat
-        _state.value = _state.value.copy(categoria = nuova)
+        val correnti = _state.value.categorieSelezionate.toMutableSet()
+        if (correnti.contains(cat)) correnti.remove(cat) else correnti.add(cat)
+        _state.value = _state.value.copy(categorieSelezionate = correnti)
+        cerca()
+    }
+
+    fun resetCategorie() {
+        _state.value = _state.value.copy(categorieSelezionate = emptySet())
         cerca()
     }
 
@@ -72,7 +78,7 @@ class BookmarkViewModel(private val repo: CuriosityRepository) : ViewModel() {
         viewModelScope.launch {
             val risultati = repo.cercaBookmark(
                 _state.value.query,
-                _state.value.categoria
+                _state.value.categorieSelezionate
             )
             _state.value = _state.value.copy(risultati = risultati)
         }

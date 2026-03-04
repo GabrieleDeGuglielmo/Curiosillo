@@ -35,7 +35,7 @@ fun CategoryPickerScreen(nav: NavController, destinazione: String) {
         factory = CategoryViewModel.Factory(app.repository, app.categoryPrefs)
     )
     val categorie       by vm.categorie.collectAsState()
-    val categoriaAttiva by vm.categoriaAttiva.collectAsState()
+    val categorieAttive by vm.categorieAttive.collectAsState()
 
     Scaffold(topBar = {
         TopAppBar(
@@ -68,32 +68,34 @@ fun CategoryPickerScreen(nav: NavController, destinazione: String) {
                 // Prima card: "Tutte"
                 item {
                     CategoriaCard(
-                        nome     = "Tutte",
-                        attiva   = categoriaAttiva == "",
-                        colore   = Color(0xFF607D8B),
-                        onClick  = { vm.setCategoria("") }
+                        nome    = "Tutte",
+                        attiva  = categorieAttive.isEmpty(),
+                        colore  = Color(0xFF607D8B),
+                        onClick = { vm.resetCategorie() }
                     )
                 }
                 items(categorie) { cat ->
                     CategoriaCard(
                         nome    = cat,
-                        attiva  = cat == categoriaAttiva,
+                        attiva  = categorieAttive.contains(cat),
                         colore  = coloreCategoria(cat),
-                        onClick = { vm.setCategoria(cat) }
+                        onClick = { vm.toggleCategoria(cat) }
                     )
                 }
             }
 
             Spacer(Modifier.height(20.dp))
             Button(
-                onClick  = { nav.navigate(destinazione) {
-                    popUpTo("home")
-                }},
+                onClick  = { nav.navigate(destinazione) { popUpTo("home") } },
                 modifier = Modifier.fillMaxWidth().height(58.dp),
                 shape    = RoundedCornerShape(16.dp)
             ) {
-                Text("Avanti →", style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold)
+                val label = when {
+                    categorieAttive.isEmpty()    -> "Avanti — Tutte le categorie"
+                    categorieAttive.size == 1    -> "Avanti — ${categorieAttive.first()}"
+                    else                         -> "Avanti — ${categorieAttive.size} categorie"
+                }
+                Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(16.dp))
         }

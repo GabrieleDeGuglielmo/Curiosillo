@@ -7,18 +7,24 @@ import androidx.room.Update
 @Dao
 interface BookmarkDao {
 
-    @Query("""
-        SELECT * FROM curiosity 
-        WHERE isBookmarked = 1
-        AND (:categoria = '' OR category = :categoria)
-        AND (
-            :query = ''
-            OR title LIKE '%' || :query || '%'
-            OR body  LIKE '%' || :query || '%'
-        )
-        ORDER BY title ASC
-    """)
-    suspend fun cerca(query: String = "", categoria: String = ""): List<Curiosity>
+    @Query(
+        """
+    SELECT * FROM curiosity 
+    WHERE isBookmarked = 1
+    AND (:tutte = 1 OR category IN (:categorie))
+    AND (
+        :query = ''
+        OR title LIKE '%' || :query || '%'
+        OR body  LIKE '%' || :query || '%'
+    )
+    ORDER BY title ASC
+"""
+    )
+    suspend fun cerca(
+        query: String = "",
+        categorie: List<String>,
+        tutte: Int
+    ): List<Curiosity>
 
     @Query("SELECT COUNT(*) FROM curiosity WHERE isBookmarked = 1")
     suspend fun totale(): Int

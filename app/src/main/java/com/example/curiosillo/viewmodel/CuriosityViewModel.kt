@@ -28,8 +28,8 @@ class CuriosityViewModel(private val repo: CuriosityRepository,     private val 
     fun load() {
         viewModelScope.launch {
             _state.value = CuriosityUiState.Loading
-            val categoria = prefs.categoriaAttiva.first()
-            val c = repo.getNext(categoria)
+            val categorie = prefs.categorieAttive.first()
+            val c = repo.getNext(categorie)
             _state.value = if (c != null)
                 CuriosityUiState.Success(c, repo.curiositàImparate())
             else CuriosityUiState.Empty
