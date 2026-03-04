@@ -15,10 +15,12 @@ import com.example.curiosillo.ui.HomeScreen
 import com.example.curiosillo.ui.ProfileScreen
 import com.example.curiosillo.ui.QuizScreen
 import com.example.curiosillo.ui.theme.CuriosilloTheme
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        installSplashScreen()
         setContent {
             CuriosilloTheme {
                 Surface(modifier = Modifier.fillMaxSize(),
