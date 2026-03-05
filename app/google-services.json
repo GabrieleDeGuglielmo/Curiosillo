@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "235758737875",
+    "project_id": "curiosillo-d7331",
+    "storage_bucket": "curiosillo-d7331.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:235758737875:android:b6219b2c7e3e1e2116f726",
+        "android_client_info": {
+          "package_name": "com.example.curiosillo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDzcVFD5-mc1m-mW2pMFKfMQQJgo9TNE-Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

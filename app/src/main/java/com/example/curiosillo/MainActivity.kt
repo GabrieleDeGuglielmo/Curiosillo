@@ -10,6 +10,7 @@ import androidx.core.view.WindowCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.ui.screens.*
 import com.example.curiosillo.ui.theme.CuriosilloTheme
 
@@ -27,14 +28,31 @@ class MainActivity : ComponentActivity() {
 
             CuriosilloTheme(darkTheme = isDarkMode) {
                 val nav = rememberNavController()
-                NavHost(nav, startDestination = "home") {
-                    composable("home")          { HomeScreen(nav) }
-                    composable("curiosity")     { CuriosityScreen(nav) }
-                    composable("quiz")          { QuizScreen(nav) }
-                    composable("profile")       { ProfileScreen(nav) }
-                    composable("preferiti")     { BookmarkScreen(nav) }
-                    composable("ripasso")       { RipassoScreen(nav) }
-                    composable("quiz_stats")    { QuizStatsScreen(nav) }
+
+                // Punto di partenza: login se non loggato, home se già loggato
+                val startDestination = if (FirebaseManager.isLoggato) "home" else "login"
+
+                NavHost(nav, startDestination = startDestination) {
+                    composable("login") {
+                        LoginScreen(onLoginSuccesso = {
+                            nav.navigate("home") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        })
+                    }
+                    composable("home")       { HomeScreen(nav) }
+                    composable("curiosity")  { CuriosityScreen(nav) }
+                    composable("quiz")       { QuizScreen(nav) }
+                    composable("profile")    { ProfileScreen(nav,
+                        onLogout = {
+                            nav.navigate("login") {
+                                popUpTo("home") { inclusive = true }
+                            }
+                        })
+                    }
+                    composable("preferiti")  { BookmarkScreen(nav) }
+                    composable("ripasso")    { RipassoScreen(nav) }
+                    composable("quiz_stats") { QuizStatsScreen(nav) }
                     composable("category_picker/{dest}") { back ->
                         val dest = back.arguments?.getString("dest") ?: "curiosity"
                         CategoryPickerScreen(nav, dest)

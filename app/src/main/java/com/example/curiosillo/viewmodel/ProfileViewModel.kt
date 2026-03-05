@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.curiosillo.data.BadgeSbloccato
 import com.example.curiosillo.data.GamificationPreferences
+import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +22,9 @@ data class ProfileUiState(
     val streakCorrente:    Int                  = 0,
     val streakMassima:     Int                  = 0,
     val badgeSbloccati:    List<BadgeSbloccato> = emptyList(),
+    val username:          String               = "",
+    val email:             String               = "",
+    val isLoggato:         Boolean              = false,
     val isLoading:         Boolean              = true
 )
 
@@ -37,6 +41,18 @@ class ProfileViewModel(
     fun caricaStatistiche() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
+
+            val user     = FirebaseManager.utenteCorrente
+            val username = when {
+                user == null         -> ""
+                user.displayName != null -> user.displayName!!
+                else -> {
+                    // prova a caricare username da Firestore
+                    val profilo = FirebaseManager.caricaProfilo(user.uid)
+                    (profilo?.get("username") as? String) ?: ""
+                }
+            }
+
             _state.value = ProfileUiState(
                 totalCuriosità    = repo.totaleCuriosità(),
                 curiositàImparate = repo.curiositàImparate(),
@@ -46,6 +62,9 @@ class ProfileViewModel(
                 streakCorrente    = gamifPrefs.streakCorrente.first(),
                 streakMassima     = gamifPrefs.streakMassima.first(),
                 badgeSbloccati    = repo.badgeSbloccati(),
+                username          = username,
+                email             = user?.email ?: "",
+                isLoggato         = user != null,
                 isLoading         = false
             )
         }
@@ -57,6 +76,11 @@ class ProfileViewModel(
             gamifPrefs.reset()
             caricaStatistiche()
         }
+    }
+
+    fun logout(onLogout: () -> Unit) {
+        FirebaseManager.logout()
+        onLogout()
     }
 
     class Factory(

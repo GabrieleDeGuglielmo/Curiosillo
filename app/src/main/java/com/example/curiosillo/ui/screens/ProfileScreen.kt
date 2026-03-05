@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -38,7 +40,7 @@ import com.example.curiosillo.viewmodel.ProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(nav: NavController) {
+fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
     val ctx = LocalContext.current
     val app = ctx.applicationContext as CuriosityApplication
     val vm: ProfileViewModel = viewModel(
@@ -46,6 +48,7 @@ fun ProfileScreen(nav: NavController) {
     )
     val state by vm.state.collectAsState()
     var showResetDialog      by remember { mutableStateOf(false) }
+    var showLogoutDialog     by remember { mutableStateOf(false) }
     var badgeDettaglio       by remember { mutableStateOf<BadgeDefinizione?>(null) }
     var badgeSbloccatoAppena by remember { mutableStateOf<BadgeSbloccato?>(null) }
 
@@ -56,9 +59,8 @@ fun ProfileScreen(nav: NavController) {
             onDismissRequest = { badgeDettaglio = null },
             icon  = { Text(def.icona, fontSize = 40.sp) },
             title = {
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text(def.nome, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                }
+                Text(def.nome, fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             },
             text  = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -87,9 +89,8 @@ fun ProfileScreen(nav: NavController) {
             onDismissRequest = { badgeSbloccatoAppena = null },
             icon  = { Text(badge.icona, fontSize = 48.sp) },
             title = {
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("Badge sbloccato!", fontWeight = FontWeight.Bold)
-                }
+                Text("Badge sbloccato!", fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             },
             text  = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -108,15 +109,16 @@ fun ProfileScreen(nav: NavController) {
         )
     }
 
-    // Dialog reset
+    // Dialog reset progressi
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
             icon  = { Icon(Icons.Default.Delete, null, tint = Error) },
-            title = { Text("Resetta i progressi?", fontWeight = FontWeight.Bold) },
+            title = { Text("Resetta i progressi?", fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
             text  = {
                 Text("Tutte le curiosità torneranno a \"non lette\", il quiz verrà bloccato " +
-                    "e XP, streak e badge verranno azzerati. Questa azione non può essere annullata.",
+                        "e XP, streak e badge verranno azzerati. Questa azione non può essere annullata.",
                     textAlign = TextAlign.Center)
             },
             confirmButton = {
@@ -126,6 +128,31 @@ fun ProfileScreen(nav: NavController) {
             },
             dismissButton = {
                 OutlinedButton(onClick = { showResetDialog = false }) { Text("Annulla") }
+            }
+        )
+    }
+
+    // Dialog logout
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            icon  = { Icon(Icons.Default.Logout, null, tint = Error) },
+            title = { Text("Esci dall'account?", fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+            text  = {
+                Text("I tuoi progressi sono salvati su cloud e saranno disponibili al prossimo accesso.",
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showLogoutDialog = false
+                    vm.logout(onLogout)
+                }, colors = ButtonDefaults.buttonColors(containerColor = Error)
+                ) { Text("Esci", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showLogoutDialog = false }) { Text("Annulla") }
             }
         )
     }
@@ -160,7 +187,66 @@ fun ProfileScreen(nav: NavController) {
             ) {
                 Spacer(Modifier.height(12.dp))
 
-                // Avatar
+                // ── Sezione account ───────────────────────────────────────────
+                if (state.isLoggato) {
+                    Card(
+                        modifier  = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                        shape     = RoundedCornerShape(18.dp),
+                        colors    = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        ),
+                        elevation = CardDefaults.cardElevation(0.dp)
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth(),
+                            verticalAlignment     = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                Box(
+                                    Modifier.size(44.dp)
+                                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        state.username.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize   = 20.sp,
+                                        color      = Color.White
+                                    )
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        state.username.ifBlank { "Utente" },
+                                        style      = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color      = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    if (state.email.isNotBlank()) {
+                                        Text(
+                                            state.email,
+                                            style    = MaterialTheme.typography.bodySmall,
+                                            color    = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                            }
+                            TextButton(
+                                onClick = { showLogoutDialog = true },
+                                colors  = ButtonDefaults.textButtonColors(contentColor = Error)
+                            ) {
+                                Icon(Icons.Default.Logout, null, Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Esci", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
+
+                // ── Avatar + titolo ───────────────────────────────────────────
                 Box(Modifier.size(90.dp).background(MaterialTheme.colorScheme.primary, CircleShape),
                     contentAlignment = Alignment.Center) {
                     Icon(Icons.Default.Person, null, Modifier.size(52.dp), tint = Color.White)
@@ -190,22 +276,14 @@ fun ProfileScreen(nav: NavController) {
                             onDismissRequest = { showStreakInfo = false },
                             icon  = { Text("🔥", fontSize = 32.sp) },
                             title = {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        "Come funziona la streak?",
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign  = TextAlign.Center
-                                    )
-                                }
+                                Text("Come funziona la streak?", fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                             },
                             text  = {
                                 Text("La streak conta i giorni consecutivi in cui hai letto almeno " +
-                                    "una pillola e premuto \"Ho imparato!\"\n\nSe salti un giorno, " +
-                                    "la streak riparte da 1.\n\nPiù alta è la streak, più XP bonus " +
-                                    "guadagni ogni giorno!",
+                                        "una pillola e premuto \"Ho imparato!\"\n\nSe salti un giorno, " +
+                                        "la streak riparte da 1.\n\nPiù alta è la streak, più XP bonus " +
+                                        "guadagni ogni giorno!",
                                     textAlign = TextAlign.Center,
                                     color     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                             },
@@ -270,7 +348,7 @@ fun ProfileScreen(nav: NavController) {
                     Spacer(Modifier.height(10.dp))
                 }
 
-                // Pulsanti
+                // Pulsanti azione
                 Spacer(Modifier.height(28.dp))
                 Button(onClick = { nav.navigate("preferiti") },
                     modifier = Modifier.fillMaxWidth().height(54.dp),
@@ -297,8 +375,7 @@ fun ProfileScreen(nav: NavController) {
                     modifier = Modifier.fillMaxWidth().height(54.dp),
                     shape    = RoundedCornerShape(14.dp),
                     colors   = ButtonDefaults.outlinedButtonColors(contentColor = Error),
-                    border   = ButtonDefaults.outlinedButtonBorder.copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(Error))
+                    border   = ButtonDefaults.outlinedButtonBorder.copy(brush = SolidColor(Error))
                 ) {
                     Icon(Icons.Default.Delete, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
@@ -313,7 +390,7 @@ fun ProfileScreen(nav: NavController) {
 
 @Composable
 private fun BadgeCard(def: BadgeDefinizione, sbloccato: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val cardBg = if (sbloccato) Color(0xFF1A1A2E) else MaterialTheme.colorScheme.surfaceVariant
+    val cardBg    = if (sbloccato) Color(0xFF1A1A2E) else MaterialTheme.colorScheme.surfaceVariant
     val textColor = if (sbloccato) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
     Card(onClick = onClick, modifier = modifier.height(110.dp),
         shape     = RoundedCornerShape(14.dp),
@@ -328,8 +405,7 @@ private fun BadgeCard(def: BadgeDefinizione, sbloccato: Boolean, modifier: Modif
             Spacer(Modifier.height(4.dp))
             Text(def.nome, style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
-                color = textColor, maxLines = 2,
-                overflow = TextOverflow.Ellipsis)
+                color = textColor, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }

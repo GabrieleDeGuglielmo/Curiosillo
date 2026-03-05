@@ -123,7 +123,7 @@ fun HomeScreen(nav: NavController) {
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 30.dp, end = 12.dp)
+                .padding(top = 35.dp, end = 12.dp)
                 .size(42.dp)
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape)
                 .clickable { nav.navigate("profile") },

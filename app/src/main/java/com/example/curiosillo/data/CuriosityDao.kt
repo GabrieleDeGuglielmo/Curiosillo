@@ -7,6 +7,9 @@ interface CuriosityDao {
 
     // ── Lettura ───────────────────────────────────────────────────────────────
 
+    @Query("SELECT * FROM curiosity WHERE isRead = 1 AND externalId IS NOT NULL")
+    suspend fun getPilloleLette(): List<Curiosity>
+
     @Query("SELECT * FROM curiosity WHERE isRead = 0 AND externalId IS NOT NULL AND (:cat = '' OR category = :cat) ORDER BY RANDOM() LIMIT 1")
     suspend fun getNext(cat: String = ""): Curiosity?
 

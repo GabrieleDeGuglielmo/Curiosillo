@@ -3,6 +3,8 @@ package com.example.curiosillo.domain
 import com.example.curiosillo.data.BadgeCatalogo
 import com.example.curiosillo.data.BadgeSbloccato
 import com.example.curiosillo.data.GamificationPreferences
+import com.example.curiosillo.firebase.FirebaseManager
+import com.example.curiosillo.firebase.SyncManager
 import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.flow.first
 
@@ -17,8 +19,8 @@ class GamificationEngine(
     private val prefs: GamificationPreferences,
     private val repo:  CuriosityRepository
 ) {
+    private val syncManager = SyncManager(repo, prefs)
 
-    // Chiamato quando l'utente preme "Ho imparato!"
     suspend fun onPillolaLetta(): RisultatoAzione {
         var xp = 10
         val badgeSbloccati = mutableListOf<BadgeSbloccato>()
@@ -31,9 +33,9 @@ class GamificationEngine(
         prefs.aggiungiXp(xp)
         val xpDopo = prefs.xpTotali.first()
 
-        val giaSbloccati  = repo.idBadgeSbloccati()
-        val pilloleLette  = repo.curiositàImparate()
-        val bookmark      = repo.totaleBookmark()
+        val giaSbloccati = repo.idBadgeSbloccati()
+        val pilloleLette = repo.curiositàImparate()
+        val bookmark     = repo.totaleBookmark()
 
         badgeSbloccati += controllaBadge(giaSbloccati, "prima_pillola") { pilloleLette >= 1  }
         badgeSbloccati += controllaBadge(giaSbloccati, "pillole_10")    { pilloleLette >= 10 }
@@ -51,6 +53,12 @@ class GamificationEngine(
 
         badgeSbloccati.forEach { repo.sbloccaBadge(it) }
 
+        // Sync su Firebase se loggato
+        FirebaseManager.uid?.let { uid ->
+            syncManager.sincronizzaGamification(uid)
+            badgeSbloccati.forEach { FirebaseManager.aggiungiBadge(uid, it.id) }
+        }
+
         return RisultatoAzione(
             xpGuadagnati    = xp,
             badgeSbloccati  = badgeSbloccati,
@@ -59,7 +67,6 @@ class GamificationEngine(
         )
     }
 
-    // Chiamato dopo ogni risposta al quiz
     suspend fun onRispostaQuiz(corretta: Boolean): RisultatoAzione {
         val badgeSbloccati = mutableListOf<BadgeSbloccato>()
         val xp             = if (corretta) 20 else 0
@@ -81,6 +88,12 @@ class GamificationEngine(
 
         badgeSbloccati.forEach { repo.sbloccaBadge(it) }
 
+        // Sync su Firebase se loggato
+        FirebaseManager.uid?.let { uid ->
+            syncManager.sincronizzaGamification(uid)
+            badgeSbloccati.forEach { FirebaseManager.aggiungiBadge(uid, it.id) }
+        }
+
         return RisultatoAzione(
             xpGuadagnati   = xp,
             badgeSbloccati = badgeSbloccati,
@@ -95,11 +108,7 @@ class GamificationEngine(
     ): List<BadgeSbloccato> {
         if (id in giaSbloccati || !condizione()) return emptyList()
         val def = BadgeCatalogo.trovaPerId(id) ?: return emptyList()
-        return listOf(BadgeSbloccato(
-            id          = def.id,
-            nome        = def.nome,
-            descrizione = def.descrizione,
-            icona       = def.icona
-        ))
+        return listOf(BadgeSbloccato(id = def.id, nome = def.nome,
+            descrizione = def.descrizione, icona = def.icona))
     }
 }

@@ -10,9 +10,7 @@ class CuriosityRepository(private val db: AppDatabase) {
     private val badgeDao      = db.badgeDao()
     private val sessionDao    = db.quizSessionDao()
 
-    // ── Seed ─────────────────────────────────────────────────────────────────
-    // DB vuoto al primo avvio — i contenuti arrivano tutti dal JSON remoto.
-    suspend fun initializeSeedData() { /* nessun seed hardcodato */ }
+    suspend fun initializeSeedData() { /* contenuti arrivano dal JSON remoto */ }
 
     // ── Curiosità ─────────────────────────────────────────────────────────────
 
@@ -26,6 +24,9 @@ class CuriosityRepository(private val db: AppDatabase) {
     suspend fun toggleBookmark(c: Curiosity) =
         curDao.update(c.copy(isBookmarked = !c.isBookmarked))
 
+    suspend fun rimuoviBookmark(c: Curiosity) =
+        curDao.update(c.copy(isBookmarked = false))
+
     suspend fun getBookmarked(): List<Curiosity> = curDao.getBookmarked()
 
     suspend fun searchBookmarked(query: String, cats: Set<String>): List<Curiosity> =
@@ -35,9 +36,6 @@ class CuriosityRepository(private val db: AppDatabase) {
 
     suspend fun cercaBookmark(query: String, cats: Set<String>): List<Curiosity> =
         curDao.searchBookmarked(query, cats.toList(), cats.isEmpty())
-
-    suspend fun rimuoviBookmark(c: Curiosity) =
-        curDao.update(c.copy(isBookmarked = false))
 
     suspend fun getCategorie(): List<String> = curDao.getCategorie()
 
@@ -54,6 +52,9 @@ class CuriosityRepository(private val db: AppDatabase) {
         return if (categorie.isEmpty()) curDao.getPerRipasso(soglia)
         else curDao.getPerRipassoFiltered(soglia, categorie.toList())
     }
+
+    /** Usato da SyncManager per migrare le pillole lette su Firebase */
+    suspend fun getPilloleLette(): List<Curiosity> = curDao.getPilloleLette()
 
     // ── Sync remoto ───────────────────────────────────────────────────────────
 
@@ -94,12 +95,12 @@ class CuriosityRepository(private val db: AppDatabase) {
 
     // ── Badge ─────────────────────────────────────────────────────────────────
 
-    suspend fun badgeSbloccati(): List<BadgeSbloccato>         = badgeDao.getTutti()
-    suspend fun idBadgeSbloccati(): Set<String>                = badgeDao.getTutti().map { it.id }.toSet()
-    suspend fun sbloccaBadge(b: BadgeSbloccato)                = badgeDao.inserisci(b)
-    suspend fun isBadgeSbloccato(id: String): Boolean          = badgeDao.esiste(id)
+    suspend fun badgeSbloccati(): List<BadgeSbloccato>  = badgeDao.getTutti()
+    suspend fun idBadgeSbloccati(): Set<String>         = badgeDao.getTutti().map { it.id }.toSet()
+    suspend fun sbloccaBadge(b: BadgeSbloccato)         = badgeDao.inserisci(b)
+    suspend fun isBadgeSbloccato(id: String): Boolean  = badgeDao.esiste(id)
 
-    // ── Statistiche profilo ───────────────────────────────────────────────────
+    // ── Statistiche ───────────────────────────────────────────────────────────
 
     suspend fun totaleCuriosità()   = curDao.totaleCuriosità()
     suspend fun curiositàImparate() = curDao.curiositàImparate()
