@@ -8,8 +8,14 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities  = [Curiosity::class, QuizQuestion::class, QuizAnswer::class, BadgeSbloccato::class],
-    version   = 4,
+    entities  = [
+        Curiosity::class,
+        QuizQuestion::class,
+        QuizAnswer::class,
+        BadgeSbloccato::class,
+        QuizSession::class
+    ],
+    version   = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -19,6 +25,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun quizAnswerDao(): QuizAnswerDao
     abstract fun bookmarkDao(): BookmarkDao
     abstract fun badgeDao(): BadgeDao
+    abstract fun quizSessionDao(): QuizSessionDao
 
     companion object {
         @Volatile
@@ -31,7 +38,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "curiosillo.db"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build().also { INSTANCE = it }
             }
 
@@ -70,6 +77,28 @@ abstract class AppDatabase : RoomDatabase() {
                         descrizione TEXT NOT NULL,
                         icona TEXT NOT NULL,
                         sbloccatoAt INTEGER NOT NULL
+                    )
+                """)
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Aggiunge nota personale e timestamp lettura a curiosity
+                database.execSQL(
+                    "ALTER TABLE curiosity ADD COLUMN nota TEXT NOT NULL DEFAULT ''"
+                )
+                database.execSQL(
+                    "ALTER TABLE curiosity ADD COLUMN readAt INTEGER NOT NULL DEFAULT 0"
+                )
+                // Nuova tabella sessioni quiz per statistiche temporali
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS quiz_session (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        correctAnswers INTEGER NOT NULL,
+                        totalAnswers INTEGER NOT NULL,
+                        categoria TEXT NOT NULL DEFAULT '',
+                        playedAt INTEGER NOT NULL
                     )
                 """)
             }

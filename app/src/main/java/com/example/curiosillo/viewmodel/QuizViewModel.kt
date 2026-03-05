@@ -39,11 +39,14 @@ class QuizViewModel(
 
     private val _state = MutableStateFlow<QuizUiState>(QuizUiState.Loading)
     val state: StateFlow<QuizUiState> = _state.asStateFlow()
+
     private val _risultatoAzione = MutableStateFlow<RisultatoAzione?>(null)
     val risultatoAzione: StateFlow<RisultatoAzione?> = _risultatoAzione.asStateFlow()
+
     private var questions    = listOf<QuizUiModel>()
     private var currentIndex = 0
     private var score        = 0
+    private var categoriaAttiva = ""
 
     init { startQuiz() }
 
@@ -51,6 +54,7 @@ class QuizViewModel(
         viewModelScope.launch {
             _state.value = QuizUiState.Loading
             val categorie = prefs.categorieAttive.first()
+            categoriaAttiva = if (categorie.size == 1) categorie.first() else ""
             val available = repo.countAvailableQuestions(categorie)
             if (available == 0) { _state.value = QuizUiState.NoQuestions; return@launch }
             val raw = repo.getQuizQuestionsWithCategory(minOf(available, 5), categorie)
@@ -80,11 +84,18 @@ class QuizViewModel(
         _state.value = QuizUiState.Answered(s.question, sel, ok, s.current, s.total, score)
     }
 
-    fun next() { currentIndex++; push() }
-
-    fun consumaRisultato() {
-        _risultatoAzione.value = null
+    fun next() {
+        currentIndex++
+        // Se è l'ultima domanda, salva la sessione
+        if (currentIndex >= questions.size) {
+            viewModelScope.launch {
+                repo.salvaSessioneQuiz(score, questions.size, categoriaAttiva)
+            }
+        }
+        push()
     }
+
+    fun consumaRisultato() { _risultatoAzione.value = null }
 
     private fun push() {
         _state.value = if (currentIndex < questions.size)
