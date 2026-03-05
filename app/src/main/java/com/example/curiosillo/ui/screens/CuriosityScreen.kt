@@ -155,8 +155,8 @@ fun CuriosityScreen(nav: NavController) {
 @Composable
 private fun CuriosityContent(
     s:           CuriosityUiState.Success,
-    pad:         androidx.compose.foundation.layout.PaddingValues,
-    gradientBg:  androidx.compose.ui.graphics.Brush,
+    pad:         PaddingValues,
+    gradientBg:  Brush,
     onLearn:     () -> Unit,
     onBookmark:  () -> Unit,
     onSalvaNota: (String) -> Unit

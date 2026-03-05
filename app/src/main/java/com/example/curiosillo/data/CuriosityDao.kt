@@ -1,65 +1,70 @@
 package com.example.curiosillo.data
 
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.Query
-import androidx.room.Update
+import androidx.room.*
 
 @Dao
 interface CuriosityDao {
 
-    @Insert
-    suspend fun insertAll(list: List<Curiosity>): List<Long>
+    // ── Lettura ───────────────────────────────────────────────────────────────
 
-    @Update
-    suspend fun update(c: Curiosity)
+    @Query("SELECT * FROM curiosity WHERE isRead = 0 AND (:cat = '' OR category = :cat) ORDER BY RANDOM() LIMIT 1")
+    suspend fun getNext(cat: String = ""): Curiosity?
+
+    @Query("SELECT * FROM curiosity WHERE isRead = 0 AND (category IN (:cats)) ORDER BY RANDOM() LIMIT 1")
+    suspend fun getNextFiltered(cats: List<String>): Curiosity?
+
+    @Query("SELECT * FROM curiosity WHERE isBookmarked = 1 ORDER BY id DESC")
+    suspend fun getBookmarked(): List<Curiosity>
+
+    @Query("""
+        SELECT * FROM curiosity 
+        WHERE isBookmarked = 1 
+          AND (:query = '' OR title LIKE '%' || :query || '%' OR body LIKE '%' || :query || '%')
+          AND (:tutте = 1 OR category IN (:cats))
+        ORDER BY id DESC
+    """)
+    suspend fun searchBookmarked(query: String, cats: List<String>, tutте: Boolean): List<Curiosity>
+
+    @Query("SELECT DISTINCT category FROM curiosity ORDER BY category")
+    suspend fun getCategorie(): List<String>
 
     @Query("SELECT COUNT(*) FROM curiosity")
-    suspend fun totaleCuriosità(): Int
+    suspend fun count(): Int
 
     @Query("SELECT COUNT(*) FROM curiosity WHERE isRead = 1")
     suspend fun curiositàImparate(): Int
 
+    @Query("SELECT COUNT(*) FROM curiosity")
+    suspend fun totaleCuriosità(): Int
+
     @Query("SELECT COUNT(*) FROM curiosity WHERE isBookmarked = 1")
     suspend fun totaleBookmark(): Int
 
-    @Query("""
-        SELECT * FROM curiosity
-        WHERE (:tutte = 1 OR category IN (:categorie))
-        ORDER BY isRead ASC, RANDOM() LIMIT 1
-    """)
-    suspend fun getNext(categorie: List<String>, tutte: Int): Curiosity?
+    @Query("SELECT * FROM curiosity WHERE isRead = 1 AND (:cat = '' OR category = :cat) ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END, readAt ASC")
+    suspend fun getTutteImparate(cat: String = ""): List<Curiosity>
 
-    @Query("SELECT * FROM curiosity WHERE isBookmarked = 1")
-    suspend fun getBookmarked(): List<Curiosity>
+    @Query("SELECT * FROM curiosity WHERE isRead = 1 AND (:cat = '' OR category = :cat) AND (readAt IS NULL OR readAt <= :soglia) ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END, readAt ASC")
+    suspend fun getPerRipasso(soglia: Long, cat: String = ""): List<Curiosity>
 
-    @Query("SELECT DISTINCT category FROM curiosity ORDER BY category ASC")
-    suspend fun getCategorie(): List<String>
+    @Query("SELECT * FROM curiosity WHERE isRead = 1 AND (category IN (:cats)) AND (readAt IS NULL OR readAt <= :soglia) ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END, readAt ASC")
+    suspend fun getPerRipassoFiltered(soglia: Long, cats: List<String>): List<Curiosity>
 
-    // ── Ripasso ───────────────────────────────────────────────────────────────
-    // Restituisce pillole lette più di minDaysAgo giorni fa, ordinate dalla più vecchia
-    @Query("""
-        SELECT * FROM curiosity
-        WHERE isRead = 1
-        AND readAt > 0
-        AND readAt < :soglia
-        AND (:tutte = 1 OR category IN (:categorie))
-        ORDER BY readAt ASC
-    """)
-    suspend fun getPerRipasso(
-        soglia:    Long,
-        categorie: List<String>,
-        tutte:     Int
-    ): List<Curiosity>
+    // ── Sync remoto ───────────────────────────────────────────────────────────
 
-    @Query("""
-        SELECT * FROM curiosity
-        WHERE isRead = 1
-        AND (:tutte = 1 OR category IN (:categorie))
-        ORDER BY readAt ASC
-    """)
-    suspend fun getTutteImparate(
-        categorie: List<String>,
-        tutte:     Int
-    ): List<Curiosity>
+    @Query("SELECT * FROM curiosity WHERE externalId = :externalId LIMIT 1")
+    suspend fun getByExternalId(externalId: String): Curiosity?
+
+    // ── Scrittura ─────────────────────────────────────────────────────────────
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(items: List<Curiosity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(item: Curiosity): Long
+
+    @Update
+    suspend fun update(item: Curiosity)
+
+    @Query("UPDATE curiosity SET isRead = 0, isBookmarked = 0, nota = '', readAt = NULL WHERE 1=1")
+    suspend fun resetProgressi()
 }

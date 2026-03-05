@@ -2,57 +2,62 @@ package com.example.curiosillo.data
 
 import androidx.room.*
 
-data class QuizQuestionWithCategory(
-    val id: Int,
-    val curiosityId: Int,
-    val questionText: String,
-    val correctAnswer: String,
-    val wrongAnswer1: String,
-    val wrongAnswer2: String,
-    val wrongAnswer3: String,
-    val explanation: String,
-    val category: String
-)
-
 @Dao
 interface QuizQuestionDao {
 
-    @Query(
-        """
-    SELECT q.*, c.category FROM quiz_question q
-    INNER JOIN curiosity c ON q.curiosityId = c.id
-    WHERE c.isRead = 1
-    AND (:tutte = 1 OR c.category IN (:categorie))
-    ORDER BY RANDOM() LIMIT :limit
-"""
-    )
-    suspend fun getRandomWithCategory(
-        limit: Int,
-        categorie: List<String>,
-        tutte: Int
-    ): List<QuizQuestionWithCategory>
+    @Query("""
+    SELECT qq.* FROM quiz_question qq
+    INNER JOIN curiosity c ON c.id = qq.curiosityId
+    LEFT JOIN quiz_answer qa ON qa.questionId = qq.id
+    WHERE qa.id IS NULL
+      AND c.isRead = 1
+      AND (:cat = '' OR qq.category = :cat)
+    ORDER BY RANDOM()
+    LIMIT :n
+""")
+    suspend fun getRandomWithCategory(n: Int, cat: String = ""): List<QuizQuestion>
 
-    @Query(
-        """
-    SELECT COUNT(*) FROM quiz_question q
-    INNER JOIN curiosity c ON q.curiosityId = c.id
-    WHERE c.isRead = 1
-    AND (:tutte = 1 OR c.category IN (:categorie))
-"""
-    )
-    suspend fun countAvailable(categorie: List<String>, tutte: Int): Int
+    @Query("""
+    SELECT qq.* FROM quiz_question qq
+    INNER JOIN curiosity c ON c.id = qq.curiosityId
+    LEFT JOIN quiz_answer qa ON qa.questionId = qq.id
+    WHERE qa.id IS NULL
+      AND c.isRead = 1
+      AND (qq.category IN (:cats))
+    ORDER BY RANDOM()
+    LIMIT :n
+""")
+    suspend fun getRandomFiltered(n: Int, cats: List<String>): List<QuizQuestion>
 
-    @Query(
-        """
-    SELECT COUNT(*) FROM quiz_question q
-    INNER JOIN curiosity c ON q.curiosityId = c.id
-    WHERE c.isRead = 1
-    AND q.id NOT IN (SELECT DISTINCT questionId FROM quiz_answer)
-    AND (:tutte = 1 OR c.category IN (:categorie))
-"""
-    )
-    suspend fun quizNonRisposti(categorie: List<String>, tutte: Int): Int
+    @Query("""
+    SELECT COUNT(*) FROM quiz_question qq
+    INNER JOIN curiosity c ON c.id = qq.curiosityId
+    LEFT JOIN quiz_answer qa ON qa.questionId = qq.id
+    WHERE qa.id IS NULL
+      AND c.isRead = 1
+      AND (:cat = '' OR qq.category = :cat)
+""")
+    suspend fun countAvailable(cat: String = ""): Int
+
+    @Query("""
+    SELECT COUNT(*) FROM quiz_question qq
+    INNER JOIN curiosity c ON c.id = qq.curiosityId
+    LEFT JOIN quiz_answer qa ON qa.questionId = qq.id
+    WHERE qa.id IS NULL
+      AND c.isRead = 1
+""")
+    suspend fun quizNonRisposti(): Int
+
+    // Sync remoto
+    @Query("SELECT * FROM quiz_question WHERE curiosityId = :curiosityId LIMIT 1")
+    suspend fun getByCuriosityId(curiosityId: Int): QuizQuestion?
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(items: List<QuizQuestion>)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(item: QuizQuestion): Long
+
+    @Update
+    suspend fun update(item: QuizQuestion)
 }

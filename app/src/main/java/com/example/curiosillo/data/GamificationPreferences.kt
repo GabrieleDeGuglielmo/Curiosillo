@@ -1,6 +1,8 @@
 package com.example.curiosillo.data
 
 import android.content.Context
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -36,7 +38,8 @@ class GamificationPreferences(private val context: Context) {
     suspend fun registraLettura(): Boolean {
         var streakAumentata = false
         context.gamificationStore.edit { prefs ->
-            val oggi         = LocalDate.now().toEpochDay()
+            val oggiMs       = System.currentTimeMillis()
+            val oggi         = oggiMs / (24L * 60 * 60 * 1000)
             val ieri         = oggi - 1
             val ultimoGiorno = prefs[ULTIMO_ACCESSO] ?: -1L
 

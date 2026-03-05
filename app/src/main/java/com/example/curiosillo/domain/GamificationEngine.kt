@@ -89,7 +89,7 @@ class GamificationEngine(
     }
 
     private fun controllaBadge(
-        giaSbloccati: List<String>,
+        giaSbloccati: Set<String>,
         id: String,
         condizione: () -> Boolean
     ): List<BadgeSbloccato> {

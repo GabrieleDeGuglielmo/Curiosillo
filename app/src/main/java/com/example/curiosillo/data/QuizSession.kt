@@ -1,10 +1,6 @@
 package com.example.curiosillo.data
 
-import androidx.room.Dao
-import androidx.room.Entity
-import androidx.room.Insert
-import androidx.room.PrimaryKey
-import androidx.room.Query
+import androidx.room.*
 
 @Entity(tableName = "quiz_session")
 data class QuizSession(
@@ -16,9 +12,9 @@ data class QuizSession(
 )
 
 data class StatCategoria(
-    val category:  String,
-    val corrette:  Int,
-    val totale:    Int
+    val category: String,
+    val corrette: Int,
+    val totale:   Int
 )
 
 @Dao
@@ -31,17 +27,13 @@ interface QuizSessionDao {
     suspend fun ultime20(): List<QuizSession>
 
     @Query("""
-        SELECT c.category as category,
-               SUM(CASE WHEN qa.isCorrect = 1 THEN 1 ELSE 0 END) as corrette,
-               COUNT(qa.id) as totale
-        FROM quiz_answer qa
-        INNER JOIN quiz_question qq ON qa.questionId = qq.id
-        INNER JOIN curiosity c ON qq.curiosityId = c.id
-        GROUP BY c.category
-        ORDER BY corrette DESC
+        SELECT categoria as category,
+               SUM(correctAnswers) as corrette,
+               SUM(totalAnswers) as totale
+        FROM quiz_session
+        WHERE categoria != ''
+        GROUP BY categoria
+        ORDER BY totale DESC
     """)
     suspend fun statPerCategoria(): List<StatCategoria>
-
-    @Query("DELETE FROM quiz_session")
-    suspend fun resetTutto()
 }

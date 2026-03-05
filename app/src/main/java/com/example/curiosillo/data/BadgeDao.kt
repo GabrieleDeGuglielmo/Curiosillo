@@ -5,15 +5,12 @@ import androidx.room.*
 @Dao
 interface BadgeDao {
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun sblocca(badge: BadgeSbloccato)
-
     @Query("SELECT * FROM badge_sbloccato ORDER BY sbloccatoAt ASC")
-    suspend fun tutti(): List<BadgeSbloccato>
+    suspend fun getTutti(): List<BadgeSbloccato>
 
-    @Query("SELECT id FROM badge_sbloccato")
-    suspend fun idSbloccati(): List<String>
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun inserisci(badge: BadgeSbloccato)
 
-    @Query("DELETE FROM badge_sbloccato")
-    suspend fun resetTutto()
+    @Query("SELECT COUNT(*) > 0 FROM badge_sbloccato WHERE id = :id")
+    suspend fun esiste(id: String): Boolean
 }
