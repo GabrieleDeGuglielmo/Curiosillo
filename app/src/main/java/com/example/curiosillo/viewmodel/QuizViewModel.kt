@@ -57,7 +57,7 @@ class QuizViewModel(
             categoriaAttiva = if (categorie.size == 1) categorie.first() else ""
             val available = repo.countAvailableQuestions(categorie)
             if (available == 0) { _state.value = QuizUiState.NoQuestions; return@launch }
-            val raw = repo.getQuizQuestionsWithCategory(minOf(available, 5), categorie)
+            val raw = repo.getQuizQuestionsWithCategory(minOf(available, 10), categorie)
             questions = raw.map { q ->
                 QuizUiModel(
                     questionId    = q.id,
