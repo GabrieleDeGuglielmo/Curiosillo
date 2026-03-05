@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui
+package com.example.curiosillo.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -18,7 +18,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
@@ -32,8 +31,8 @@ import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.data.Curiosity
 import com.example.curiosillo.ui.components.NotaBottomSheet
+import com.example.curiosillo.ui.screens.coloreCategoria
 import com.example.curiosillo.ui.theme.Error
-import com.example.curiosillo.ui.theme.Primary
 import com.example.curiosillo.viewmodel.BookmarkViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,29 +42,20 @@ fun BookmarkScreen(nav: NavController) {
     val repo = (ctx.applicationContext as CuriosityApplication).repository
     val vm: BookmarkViewModel = viewModel(factory = BookmarkViewModel.Factory(repo))
     val state by vm.state.collectAsState()
-
     var pillolaPerNota by remember { mutableStateOf<Curiosity?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // Bottom sheet nota
     pillolaPerNota?.let { pillola ->
         NotaBottomSheet(
             notaAttuale = pillola.nota,
-            onSalva     = { testo ->
-                vm.salvaNota(pillola, testo)
-            },
-            onChiudi = { pillolaPerNota = null }
+            onSalva     = { testo -> vm.salvaNota(pillola, testo) },
+            onChiudi    = { pillolaPerNota = null }
         )
     }
 
-    // Bottom sheet dettaglio pillola
     state.dettaglio?.let { pillola ->
-        ModalBottomSheet(
-            onDismissRequest = { vm.chiudiDettaglio() },
-            sheetState       = sheetState
-        ) {
-            DettaglioSheet(
-                pillola   = pillola,
+        ModalBottomSheet(onDismissRequest = { vm.chiudiDettaglio() }, sheetState = sheetState) {
+            DettaglioSheet(pillola,
                 onRimuovi = { vm.rimuoviBookmark(pillola) },
                 onNota    = { pillolaPerNota = pillola },
                 onChiudi  = { vm.chiudiDettaglio() }
@@ -73,24 +63,23 @@ fun BookmarkScreen(nav: NavController) {
         }
     }
 
-    Scaffold(topBar = {
-        TopAppBar(
-            title = { Text("I miei preferiti", fontWeight = FontWeight.SemiBold) },
-            navigationIcon = {
-                IconButton(onClick = { nav.popBackStack() }) {
-                    Icon(Icons.Default.ArrowBack, "Indietro")
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-        )
-    }) { pad ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(Color(0xFFFFF3E0), Color.White)))
-                .padding(pad)
-        ) {
-            // Barra ricerca
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("I miei preferiti", fontWeight = FontWeight.SemiBold) },
+                navigationIcon = {
+                    IconButton(onClick = { nav.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, "Indietro")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad)) {
             OutlinedTextField(
                 value         = state.query,
                 onValueChange = { vm.onQueryChange(it) },
@@ -101,18 +90,13 @@ fun BookmarkScreen(nav: NavController) {
                 modifier      = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
-            // Filtri categoria
             if (state.categorie.isNotEmpty()) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FilterChip(selected = state.categorieSelezionate.isEmpty(),
-                        onClick = { vm.resetCategorie() },
-                        label   = { Text("Tutte") })
+                        onClick = { vm.resetCategorie() }, label = { Text("Tutte") })
                     state.categorie.forEach { cat ->
                         FilterChip(
                             selected = state.categorieSelezionate.contains(cat),
@@ -130,25 +114,28 @@ fun BookmarkScreen(nav: NavController) {
             Spacer(Modifier.height(4.dp))
 
             when {
-                state.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+                state.isLoading ->
+                    CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
                 state.risultati.isEmpty() -> {
                     Column(Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center) {
                         Text("🔖", fontSize = 56.sp)
                         Spacer(Modifier.height(16.dp))
-                        Text(
-                            if (state.query.isNotEmpty() || state.categorieSelezionate.isNotEmpty())
-                                "Nessun risultato trovato.\nProva a cambiare i filtri."
+                        Text(if (state.query.isNotEmpty() || state.categorieSelezionate.isNotEmpty())
+                            "Nessun risultato trovato.\nProva a cambiare i filtri."
                             else "Non hai ancora salvato nessuna pillola.\nPremi il segnalibro durante la lettura!",
-                            style = MaterialTheme.typography.bodyLarge, color = Color.Gray,
-                            textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 32.dp))
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
+                            textAlign = TextAlign.Center,
+                            modifier  = Modifier.padding(horizontal = 32.dp))
                     }
                 }
                 else -> {
                     Text("${state.risultati.size} pillol${if (state.risultati.size == 1) "a" else "e"} " +
                         "salvat${if (state.risultati.size == 1) "a" else "e"}",
-                        style = MaterialTheme.typography.bodySmall, color = Color.Gray,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
                     LazyColumn(
                         contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -168,7 +155,7 @@ fun BookmarkScreen(nav: NavController) {
 private fun BookmarkCard(pillola: Curiosity, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth(),
         shape     = RoundedCornerShape(16.dp),
-        colors    = CardDefaults.cardColors(containerColor = Color.White),
+        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(3.dp)
     ) {
         Row(Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -180,29 +167,26 @@ private fun BookmarkCard(pillola: Curiosity, onClick: () -> Unit) {
                 Spacer(Modifier.height(2.dp))
                 Text(pillola.category, style = MaterialTheme.typography.bodySmall,
                     color = coloreCategoria(pillola.category))
-                // Mostra anteprima nota se presente
                 if (pillola.nota.isNotBlank()) {
                     Spacer(Modifier.height(4.dp))
                     Text("📝 " + pillola.nota,
-                        style    = MaterialTheme.typography.bodySmall,
-                        color    = Color(0xFF5D4037),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis)
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             Spacer(Modifier.width(8.dp))
-            Icon(Icons.Default.Bookmark, null, tint = Primary, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.Bookmark, null,
+                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
         }
     }
 }
 
 @Composable
-private fun DettaglioSheet(
-    pillola:  Curiosity,
-    onRimuovi: () -> Unit,
-    onNota:   () -> Unit,
-    onChiudi: () -> Unit
-) {
+private fun DettaglioSheet(pillola: Curiosity, onRimuovi: () -> Unit, onNota: () -> Unit, onChiudi: () -> Unit) {
+    val noteCardBg    = MaterialTheme.colorScheme.surfaceVariant
+    val noteTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+
     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(10.dp).background(coloreCategoria(pillola.category), CircleShape))
@@ -212,51 +196,40 @@ private fun DettaglioSheet(
         }
         Spacer(Modifier.height(10.dp))
         Text(pillola.title, style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold, color = Color(0xFF1C1B1F))
+            fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(14.dp))
         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
-            colors    = CardDefaults.cardColors(containerColor = Color(0xFFFFF8F0)),
+            colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             elevation = CardDefaults.cardElevation(0.dp)
         ) {
             Text(pillola.body, Modifier.padding(16.dp),
                 style = MaterialTheme.typography.bodyLarge, lineHeight = 26.sp,
-                color = Color(0xFF3C3C3C))
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-
-        // Nota se presente
         if (pillola.nota.isNotBlank()) {
             Spacer(Modifier.height(12.dp))
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
-                colors    = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
+                colors    = CardDefaults.cardColors(containerColor = noteCardBg),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
                     Text("📝 ", fontSize = 14.sp)
-                    Text(pillola.nota, style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF5D4037))
+                    Text(pillola.nota, style = MaterialTheme.typography.bodySmall, color = noteTextColor)
                 }
             }
         }
-
         Spacer(Modifier.height(20.dp))
-
-        // Pulsante nota
-        OutlinedButton(onClick = onNota,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape    = RoundedCornerShape(14.dp)
-        ) {
+        OutlinedButton(onClick = onNota, modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(14.dp)) {
             Icon(Icons.Default.EditNote, null, Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
             Text(if (pillola.nota.isNotBlank()) "Modifica nota" else "Aggiungi nota")
         }
         Spacer(Modifier.height(10.dp))
-
-        // Pulsante rimuovi bookmark
-        OutlinedButton(onClick = onRimuovi,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape    = RoundedCornerShape(14.dp),
-            colors   = ButtonDefaults.outlinedButtonColors(contentColor = Error),
-            border   = ButtonDefaults.outlinedButtonBorder.copy(brush = SolidColor(Error))
+        OutlinedButton(onClick = onRimuovi, modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape  = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Error),
+            border = ButtonDefaults.outlinedButtonBorder.copy(brush = SolidColor(Error))
         ) {
             Icon(Icons.Default.BookmarkRemove, null, Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
@@ -264,7 +237,7 @@ private fun DettaglioSheet(
         }
         Spacer(Modifier.height(8.dp))
         TextButton(onClick = onChiudi, modifier = Modifier.fillMaxWidth()) {
-            Text("Chiudi", color = Color.Gray)
+            Text("Chiudi", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
         }
     }
 }

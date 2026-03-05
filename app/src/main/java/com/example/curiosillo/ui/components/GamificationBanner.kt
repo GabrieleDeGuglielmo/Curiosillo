@@ -11,9 +11,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.curiosillo.domain.LivelloHelper
-import com.example.curiosillo.ui.theme.Primary
-import com.example.curiosillo.ui.theme.Secondary
-import com.example.curiosillo.ui.theme.Tertiary
 
 @Composable
 fun GamificationBanner(
@@ -25,6 +22,7 @@ fun GamificationBanner(
     val progressione = LivelloHelper.progressione(xpTotali)
     val xpMancanti   = LivelloHelper.xpAlProssimo(xpTotali)
 
+    // Usa sempre sfondo scuro per il banner — funziona bene in entrambi i temi
     Card(
         modifier  = modifier.fillMaxWidth(),
         shape     = RoundedCornerShape(20.dp),
@@ -41,7 +39,7 @@ fun GamificationBanner(
                     Text(
                         "Livello ${livello.numero}",
                         fontSize   = 13.sp,
-                        color      = Secondary,
+                        color      = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
@@ -56,33 +54,24 @@ fun GamificationBanner(
                     Text(
                         "$streakCorrente ${if (streakCorrente == 1) "giorno" else "giorni"}",
                         fontSize   = 11.sp,
-                        color      = Tertiary,
+                        color      = MaterialTheme.colorScheme.tertiary,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
             }
-
             Spacer(Modifier.height(12.dp))
-
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("$xpTotali XP", fontSize = 11.sp, color = Color(0xFFAAAAAA))
                 if (xpMancanti > 0)
-                    Text(
-                        "$xpMancanti XP al prossimo livello",
-                        fontSize = 11.sp,
-                        color    = Color(0xFFAAAAAA)
-                    )
+                    Text("$xpMancanti XP al prossimo livello", fontSize = 11.sp, color = Color(0xFFAAAAAA))
                 else
-                    Text("Livello massimo!", fontSize = 11.sp, color = Tertiary)
+                    Text("Livello massimo!", fontSize = 11.sp, color = MaterialTheme.colorScheme.tertiary)
             }
             Spacer(Modifier.height(6.dp))
             LinearProgressIndicator(
                 progress   = { progressione },
                 modifier   = Modifier.fillMaxWidth().height(8.dp),
-                color      = Primary,
+                color      = MaterialTheme.colorScheme.primary,
                 trackColor = Color(0xFF333355)
             )
         }

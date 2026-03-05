@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui
+package com.example.curiosillo.ui.screens
 
 import android.content.Intent
 import androidx.compose.foundation.Image
@@ -19,7 +19,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -32,9 +31,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.data.BadgeSbloccato
-import com.example.curiosillo.data.Curiosity
+import com.example.curiosillo.ui.categoryImage
 import com.example.curiosillo.ui.components.NotaBottomSheet
-import com.example.curiosillo.ui.theme.Primary
 import com.example.curiosillo.ui.theme.Success
 import com.example.curiosillo.viewmodel.CuriosityUiState
 import com.example.curiosillo.viewmodel.CuriosityViewModel
@@ -42,8 +40,8 @@ import com.example.curiosillo.viewmodel.CuriosityViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CuriosityScreen(nav: NavController) {
-    val ctx = LocalContext.current
-    val app = ctx.applicationContext as CuriosityApplication
+    val ctx   = LocalContext.current
+    val app   = ctx.applicationContext as CuriosityApplication
     val vm: CuriosityViewModel = viewModel(
         factory = CuriosityViewModel.Factory(app.repository, app.categoryPrefs, app.gamificationEngine)
     )
@@ -63,12 +61,10 @@ fun CuriosityScreen(nav: NavController) {
         }
     }
 
-    // Dialog badge sbloccato
     badgeDaMostrare?.let { badge ->
         AlertDialog(
             onDismissRequest = {
-                val resto = badgeQueue.drop(1)
-                badgeQueue = resto; badgeDaMostrare = resto.firstOrNull()
+                val r = badgeQueue.drop(1); badgeQueue = r; badgeDaMostrare = r.firstOrNull()
             },
             icon  = { Text(badge.icona, fontSize = 48.sp) },
             title = {
@@ -81,72 +77,71 @@ fun CuriosityScreen(nav: NavController) {
                     Text(badge.nome, style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(6.dp))
-                    Text(badge.descrizione, textAlign = TextAlign.Center, color = Color.Gray)
+                    Text(badge.descrizione, textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
             },
             confirmButton = {
                 Button(onClick = {
-                    val resto = badgeQueue.drop(1)
-                    badgeQueue = resto; badgeDaMostrare = resto.firstOrNull()
+                    val r = badgeQueue.drop(1); badgeQueue = r; badgeDaMostrare = r.firstOrNull()
                 }) { Text("Ottimo!", fontWeight = FontWeight.Bold) }
             }
         )
     }
 
-    Scaffold(topBar = {
-        TopAppBar(
-            title = { Text("Pillola", fontWeight = FontWeight.SemiBold) },
-            navigationIcon = {
-                IconButton({ nav.popBackStack() }) {
-                    Icon(Icons.Default.ArrowBack, "Indietro")
-                }
-            },
-            actions = {
-                // Pulsante condivisione — visibile solo quando c'è una pillola
-                if (state is CuriosityUiState.Success) {
-                    val pillola = (state as CuriosityUiState.Success).curiosity
-                    IconButton(onClick = {
-                        val testo = buildString {
-                            append("📚 ${pillola.title}\n\n")
-                            append(pillola.body)
-                            append("\n\n— Categoria: ${pillola.category}")
-                            append("\nScoperto con Curiosillo 🎓")
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Pillola", fontWeight = FontWeight.SemiBold) },
+                navigationIcon = {
+                    IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Indietro") }
+                },
+                actions = {
+                    if (state is CuriosityUiState.Success) {
+                        val pillola = (state as CuriosityUiState.Success).curiosity
+                        IconButton(onClick = {
+                            val testo = buildString {
+                                append("📚 ${pillola.title}\n\n")
+                                append(pillola.body)
+                                append("\n\n— Categoria: ${pillola.category}")
+                                append("\nScoperto con Curiosillo 🎓")
+                            }
+                            ctx.startActivity(Intent.createChooser(
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, testo)
+                                }, "Condividi pillola"))
+                        }) {
+                            Icon(Icons.Default.Share, "Condividi",
+                                tint = MaterialTheme.colorScheme.primary)
                         }
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, testo)
-                        }
-                        ctx.startActivity(Intent.createChooser(intent, "Condividi pillola"))
-                    }) {
-                        Icon(Icons.Default.Share, "Condividi", tint = Primary)
                     }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { pad ->
+        when (val s = state) {
+            is CuriosityUiState.Loading ->
+                Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) {
+                    CircularProgressIndicator()
                 }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-        )
-    }) { pad ->
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(Color(0xFFFFF3E0), Color.White)))
-                .padding(pad)
-        ) {
-            when (val s = state) {
-                is CuriosityUiState.Loading ->
-                    CircularProgressIndicator(Modifier.align(Alignment.Center))
-                is CuriosityUiState.Empty ->
+            is CuriosityUiState.Empty ->
+                Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) {
                     Text("Nessuna curiosità disponibile!\nTorna presto.",
-                        Modifier.align(Alignment.Center).padding(24.dp),
-                        textAlign = TextAlign.Center,
+                        Modifier.padding(24.dp), textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyLarge)
-                is CuriosityUiState.Success ->
-                    CuriosityContent(s,
-                        onLearn    = { vm.markLearned() },
-                        onBookmark = { vm.toggleBookmark() },
-                        onSalvaNota = { vm.salvaNota(it) }
-                    )
-                is CuriosityUiState.Learned -> LearnedContent { vm.load() }
-            }
+                }
+            is CuriosityUiState.Success ->
+                CuriosityContent(s, pad,
+                    onLearn     = { vm.markLearned() },
+                    onBookmark  = { vm.toggleBookmark() },
+                    onSalvaNota = { vm.salvaNota(it) }
+                )
+            is CuriosityUiState.Learned -> LearnedContent(pad) { vm.load() }
         }
     }
 }
@@ -155,11 +150,14 @@ fun CuriosityScreen(nav: NavController) {
 @Composable
 private fun CuriosityContent(
     s:           CuriosityUiState.Success,
+    pad:         androidx.compose.foundation.layout.PaddingValues,
     onLearn:     () -> Unit,
     onBookmark:  () -> Unit,
     onSalvaNota: (String) -> Unit
 ) {
     var mostraNota by remember { mutableStateOf(false) }
+    val noteCardBg = MaterialTheme.colorScheme.surfaceVariant
+    val noteTextColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     if (mostraNota) {
         NotaBottomSheet(
@@ -169,70 +167,55 @@ private fun CuriosityContent(
         )
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+    Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState())) {
         Image(
             painter            = painterResource(id = categoryImage(s.curiosity.category)),
             contentDescription = s.curiosity.category,
             modifier           = Modifier
-                .fillMaxWidth()
-                .height(220.dp)
+                .fillMaxWidth().height(220.dp)
                 .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)),
             contentScale = ContentScale.Crop
         )
-
         Column(Modifier.padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(16.dp))
-
-            // Badge categoria + nota + bookmark
             Row(
                 verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier              = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
             ) {
-                SuggestionChip(
-                    onClick = {},
-                    label   = { Text(emojiCategoria(s.curiosity.category) + " " + s.curiosity.category) }
-                )
+                SuggestionChip(onClick = {},
+                    label = { Text(emojiCategoria(s.curiosity.category) + " " + s.curiosity.category) })
                 Row {
-                    // Icona nota
                     IconButton(onClick = { mostraNota = true }) {
-                        Icon(
-                            Icons.Default.EditNote,
-                            contentDescription = "Nota",
-                            tint = if (s.curiosity.nota.isNotBlank()) Primary else Color.Gray
-                        )
+                        Icon(Icons.Default.EditNote, "Nota",
+                            tint = if (s.curiosity.nota.isNotBlank())
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
                     }
-                    // Icona bookmark
-                    IconToggleButton(
-                        checked         = s.curiosity.isBookmarked,
-                        onCheckedChange = { onBookmark() }
-                    ) {
+                    IconToggleButton(checked = s.curiosity.isBookmarked,
+                        onCheckedChange = { onBookmark() }) {
                         Icon(
-                            imageVector        = if (s.curiosity.isBookmarked)
+                            imageVector = if (s.curiosity.isBookmarked)
                                 Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                             contentDescription = "Salva",
-                            tint               = if (s.curiosity.isBookmarked) Primary else Color.Gray
+                            tint = if (s.curiosity.isBookmarked)
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         )
                     }
                 }
             }
 
-            // Nota esistente — mostrata sotto il chip se presente
             if (s.curiosity.nota.isNotBlank()) {
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    shape    = RoundedCornerShape(12.dp),
-                    colors   = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
+                Card(Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    shape     = RoundedCornerShape(12.dp),
+                    colors    = CardDefaults.cardColors(containerColor = noteCardBg),
                     elevation = CardDefaults.cardElevation(0.dp)
                 ) {
-                    Row(
-                        Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
                         Text("📝 ", fontSize = 14.sp)
-                        Text(s.curiosity.nota,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF5D4037))
+                        Text(s.curiosity.nota, style = MaterialTheme.typography.bodySmall,
+                            color = noteTextColor)
                     }
                 }
             }
@@ -242,40 +225,34 @@ private fun CuriosityContent(
                 style      = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 textAlign  = TextAlign.Center,
-                color      = Color(0xFF1C1B1F))
+                color      = MaterialTheme.colorScheme.onBackground)
             Spacer(Modifier.height(20.dp))
 
             Card(Modifier.fillMaxWidth(),
                 shape     = RoundedCornerShape(18.dp),
-                colors    = CardDefaults.cardColors(containerColor = Color.White),
+                colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(4.dp)
             ) {
                 Text(s.curiosity.body, Modifier.padding(20.dp),
                     style      = MaterialTheme.typography.bodyLarge,
                     lineHeight = 27.sp,
-                    color      = Color(0xFF3C3C3C))
+                    color      = MaterialTheme.colorScheme.onSurface)
             }
             Spacer(Modifier.height(16.dp))
             Text("Curiosità imparate: ${s.readCount}",
-                style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
             Spacer(Modifier.height(24.dp))
 
             if (!s.curiosity.isRead) {
-                Button(onLearn,
-                    Modifier.fillMaxWidth().height(58.dp),
-                    shape  = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Primary)
-                ) {
-                    Text("Ho imparato!", style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold)
-                }
-            } else {
-                OutlinedButton(onLearn,
-                    Modifier.fillMaxWidth().height(58.dp),
+                Button(onLearn, Modifier.fillMaxWidth().height(58.dp),
                     shape = RoundedCornerShape(16.dp)
-                ) {
-                    Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium)
-                }
+                ) { Text("Ho imparato!", style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold) }
+            } else {
+                OutlinedButton(onLearn, Modifier.fillMaxWidth().height(58.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) { Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium) }
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -283,25 +260,21 @@ private fun CuriosityContent(
 }
 
 @Composable
-private fun LearnedContent(onNext: () -> Unit) {
+private fun LearnedContent(pad: androidx.compose.foundation.layout.PaddingValues, onNext: () -> Unit) {
     Column(
-        Modifier.fillMaxSize().padding(32.dp),
+        Modifier.fillMaxSize().padding(pad).padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Icon(Icons.Default.CheckCircle, null, Modifier.size(90.dp), tint = Success)
         Spacer(Modifier.height(20.dp))
-        Text("Fantastico!", style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold)
+        Text("Fantastico!", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(10.dp))
         Text("Hai imparato qualcosa di nuovo!\nOra puoi fare il quiz su questa curiosità.",
-            style     = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-            color     = Color.Gray)
+            style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
         Spacer(Modifier.height(32.dp))
-        Button(onNext, Modifier.fillMaxWidth().height(58.dp),
-            shape = RoundedCornerShape(16.dp)
-        ) {
+        Button(onNext, Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(16.dp)) {
             Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium)
         }
     }

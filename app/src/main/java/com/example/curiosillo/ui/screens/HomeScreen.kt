@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui
+package com.example.curiosillo.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -33,9 +32,6 @@ import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.R
 import com.example.curiosillo.ui.components.GamificationBanner
-import com.example.curiosillo.ui.theme.Primary
-import com.example.curiosillo.ui.theme.Secondary
-import com.example.curiosillo.ui.theme.Tertiary
 import kotlinx.coroutines.launch
 
 @Composable
@@ -52,49 +48,45 @@ fun HomeScreen(nav: NavController) {
     val streakCorrente  by gamifPrefs.streakCorrente.collectAsState(initial = 0)
     val isDarkMode      by themePrefs.isDarkMode.collectAsState(initial = false)
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFFFFF3E0), Color.White)))
-    ) {
-        // ── Pulsante profilo (in alto a destra) ───────────────────────────────
+    val bg = MaterialTheme.colorScheme.background
+
+    Box(modifier = Modifier.fillMaxSize().background(bg)) {
+
+        // ── Toggle dark mode ──────────────────────────────────────────────────
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(top = 30.dp, start = 12.dp)
+                .size(42.dp)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape)
+                .clickable { scope.launch { themePrefs.setDarkMode(!isDarkMode) } },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector        = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                contentDescription = "Tema",
+                modifier           = Modifier.size(22.dp),
+                tint               = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        // ── Pulsante profilo ──────────────────────────────────────────────────
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(12.dp)
+                .padding(top = 30.dp, end = 12.dp)
                 .size(42.dp)
-                .background(Primary.copy(alpha = 0.12f), CircleShape)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape)
                 .clickable { nav.navigate("profile") },
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Default.Person, "Profilo",
-                modifier = Modifier.size(26.dp), tint = Primary)
-        }
-
-        // ── Toggle dark mode (in alto a sinistra) ─────────────────────────────
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(12.dp)
-                .size(42.dp)
-                .background(Primary.copy(alpha = 0.12f), CircleShape)
-                .clickable {
-                    scope.launch { themePrefs.setDarkMode(!isDarkMode) }
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
-                contentDescription = "Tema",
-                modifier = Modifier.size(22.dp),
-                tint     = Primary
-            )
+                modifier = Modifier.size(26.dp),
+                tint     = MaterialTheme.colorScheme.primary)
         }
 
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(28.dp),
+            modifier = Modifier.fillMaxSize().padding(28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -111,41 +103,31 @@ fun HomeScreen(nav: NavController) {
             Text("Curiosillo",
                 style      = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.ExtraBold,
-                color      = Primary)
+                color      = MaterialTheme.colorScheme.primary)
             Text("Impara qualcosa di nuovo ogni giorno",
                 style     = MaterialTheme.typography.bodyLarge,
-                color     = Color(0xFF888888),
+                color     = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
                 textAlign = TextAlign.Center,
                 modifier  = Modifier.padding(top = 6.dp, bottom = 20.dp))
 
-            // ── Banner gamification ───────────────────────────────────────────
             GamificationBanner(
                 xpTotali       = xpTotali,
                 streakCorrente = streakCorrente,
                 modifier       = Modifier.padding(bottom = 20.dp)
             )
 
-            // ── Menu card ─────────────────────────────────────────────────────
             MenuCard(Icons.Default.EmojiObjects,
-                "Scopri una Curiosità",
-                "Leggi e impara qualcosa di sorprendente",
-                Primary) { nav.navigate("category_picker/curiosity") }
-
+                "Scopri una Curiosità", "Leggi e impara qualcosa di sorprendente",
+                MaterialTheme.colorScheme.primary) { nav.navigate("category_picker/curiosity") }
             Spacer(Modifier.height(12.dp))
-
             MenuCard(Icons.Default.Quiz,
-                "Fai un Quiz",
-                "Metti alla prova le tue conoscenze",
-                Secondary) { nav.navigate("category_picker/quiz") }
-
+                "Fai un Quiz", "Metti alla prova le tue conoscenze",
+                MaterialTheme.colorScheme.secondary) { nav.navigate("category_picker/quiz") }
             Spacer(Modifier.height(12.dp))
-
             MenuCard(Icons.Default.Refresh,
-                "Ripasso",
-                "Rileggi le pillole già imparate",
-                Tertiary) { nav.navigate("ripasso") }
+                "Ripasso", "Rileggi le pillole già imparate",
+                MaterialTheme.colorScheme.tertiary) { nav.navigate("ripasso") }
 
-            // ── Chip categoria attiva ─────────────────────────────────────────
             if (categorieAttive.isNotEmpty()) {
                 Spacer(Modifier.height(16.dp))
                 Row(
@@ -154,18 +136,16 @@ fun HomeScreen(nav: NavController) {
                 ) {
                     Text("Filtro attivo: ",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray)
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f))
                     AssistChip(
                         onClick = { nav.navigate("category_picker/curiosity") },
                         label   = {
-                            val testo = if (categorieAttive.size == 1)
-                                categorieAttive.first()
+                            val testo = if (categorieAttive.size == 1) categorieAttive.first()
                             else "${categorieAttive.size} categorie"
                             Text(testo, fontWeight = FontWeight.SemiBold)
                         },
                         trailingIcon = {
-                            Icon(Icons.Default.Close, "Rimuovi filtro",
-                                modifier = Modifier.size(14.dp))
+                            Icon(Icons.Default.Close, "Rimuovi filtro", Modifier.size(14.dp))
                         }
                     )
                 }
@@ -175,13 +155,7 @@ fun HomeScreen(nav: NavController) {
 }
 
 @Composable
-private fun MenuCard(
-    icon:     ImageVector,
-    title:    String,
-    subtitle: String,
-    color:    Color,
-    onClick:  () -> Unit
-) {
+private fun MenuCard(icon: ImageVector, title: String, subtitle: String, color: Color, onClick: () -> Unit) {
     Card(
         onClick   = onClick,
         modifier  = Modifier.fillMaxWidth().height(100.dp),
