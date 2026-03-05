@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -118,30 +119,34 @@ fun CuriosityScreen(nav: NavController) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = Color.Transparent
                 )
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent
     ) { pad ->
+        val gradientBg = Brush.verticalGradient(listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.background
+        ))
         when (val s = state) {
             is CuriosityUiState.Loading ->
-                Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) {
+                Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
                     CircularProgressIndicator()
                 }
             is CuriosityUiState.Empty ->
-                Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) {
+                Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
                     Text("Nessuna curiosità disponibile!\nTorna presto.",
                         Modifier.padding(24.dp), textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyLarge)
                 }
             is CuriosityUiState.Success ->
-                CuriosityContent(s, pad,
+                CuriosityContent(s, pad, gradientBg,
                     onLearn     = { vm.markLearned() },
                     onBookmark  = { vm.toggleBookmark() },
                     onSalvaNota = { vm.salvaNota(it) }
                 )
-            is CuriosityUiState.Learned -> LearnedContent(pad) { vm.load() }
+            is CuriosityUiState.Learned -> LearnedContent(pad, gradientBg) { vm.load() }
         }
     }
 }
@@ -151,6 +156,7 @@ fun CuriosityScreen(nav: NavController) {
 private fun CuriosityContent(
     s:           CuriosityUiState.Success,
     pad:         androidx.compose.foundation.layout.PaddingValues,
+    gradientBg:  androidx.compose.ui.graphics.Brush,
     onLearn:     () -> Unit,
     onBookmark:  () -> Unit,
     onSalvaNota: (String) -> Unit
@@ -167,7 +173,7 @@ private fun CuriosityContent(
         )
     }
 
-    Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState())) {
+    Column(Modifier.fillMaxSize().background(gradientBg).padding(pad).verticalScroll(rememberScrollState())) {
         Image(
             painter            = painterResource(id = categoryImage(s.curiosity.category)),
             contentDescription = s.curiosity.category,
@@ -260,9 +266,13 @@ private fun CuriosityContent(
 }
 
 @Composable
-private fun LearnedContent(pad: androidx.compose.foundation.layout.PaddingValues, onNext: () -> Unit) {
+private fun LearnedContent(
+    pad:        androidx.compose.foundation.layout.PaddingValues,
+    gradientBg: androidx.compose.ui.graphics.Brush,
+    onNext:     () -> Unit
+) {
     Column(
-        Modifier.fillMaxSize().padding(pad).padding(32.dp),
+        Modifier.fillMaxSize().background(gradientBg).padding(pad).padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {

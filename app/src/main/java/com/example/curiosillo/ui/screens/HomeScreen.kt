@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -48,11 +49,14 @@ fun HomeScreen(nav: NavController) {
     val streakCorrente  by gamifPrefs.streakCorrente.collectAsState(initial = 0)
     val isDarkMode      by themePrefs.isDarkMode.collectAsState(initial = false)
 
-    val bg = MaterialTheme.colorScheme.background
+    val gradientBg = Brush.verticalGradient(listOf(
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+        MaterialTheme.colorScheme.background
+    ))
 
-    Box(modifier = Modifier.fillMaxSize().background(bg)) {
+    Box(modifier = Modifier.fillMaxSize().background(gradientBg)) {
 
-        // ── Toggle dark mode ──────────────────────────────────────────────────
+        /* ── Toggle dark mode ──────────────────────────────────────────────────
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -69,6 +73,7 @@ fun HomeScreen(nav: NavController) {
                 tint               = MaterialTheme.colorScheme.primary
             )
         }
+        */
 
         // ── Pulsante profilo ──────────────────────────────────────────────────
         Box(

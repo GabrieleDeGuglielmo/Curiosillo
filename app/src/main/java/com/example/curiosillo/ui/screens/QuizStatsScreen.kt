@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -37,17 +38,21 @@ fun QuizStatsScreen(nav: NavController) {
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Indietro") }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent
     ) { pad ->
+        val gradientBg = Brush.verticalGradient(listOf(
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.background
+        ))
         when {
             state.isLoading ->
-                Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator() }
+                Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) { CircularProgressIndicator() }
 
             state.ultime20Sessioni.isEmpty() && state.statPerCategoria.isEmpty() ->
-                Column(Modifier.fillMaxSize().padding(pad),
+                Column(Modifier.fillMaxSize().background(gradientBg).padding(pad),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center) {
                     Text("🧠", fontSize = 56.sp)
@@ -60,7 +65,7 @@ fun QuizStatsScreen(nav: NavController) {
                 }
 
             else ->
-                Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()).padding(24.dp)) {
+                Column(Modifier.fillMaxSize().background(gradientBg).padding(pad).verticalScroll(rememberScrollState()).padding(24.dp)) {
 
                     // ── Andamento sessioni ─────────────────────────────────────
                     if (state.ultime20Sessioni.isNotEmpty()) {

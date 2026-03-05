@@ -1,6 +1,7 @@
 package com.example.curiosillo.ui.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -85,17 +87,21 @@ fun RipassoScreen(nav: NavController) {
                         Text(label, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent
     ) { pad ->
+        val gradientBg = Brush.verticalGradient(listOf(
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.background
+        ))
         when {
             state.isLoading ->
-                Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator() }
+                Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) { CircularProgressIndicator() }
 
             state.pillole.isEmpty() ->
-                Column(Modifier.fillMaxSize().padding(pad),
+                Column(Modifier.fillMaxSize().background(gradientBg).padding(pad),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center) {
                     Text("📚", fontSize = 56.sp)
@@ -115,7 +121,7 @@ fun RipassoScreen(nav: NavController) {
                 val noteCardBg    = MaterialTheme.colorScheme.surfaceVariant
                 val noteTextColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-                Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState())) {
+                Column(Modifier.fillMaxSize().background(gradientBg).padding(pad).verticalScroll(rememberScrollState())) {
                     Image(painter = painterResource(id = categoryImage(cur.category)),
                         contentDescription = cur.category,
                         modifier = Modifier.fillMaxWidth().height(180.dp)

@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -138,20 +139,23 @@ fun ProfileScreen(nav: NavController) {
                         Icon(Icons.Default.ArrowBack, "Indietro")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent
     ) { pad ->
+        val gradientBg = Brush.verticalGradient(listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.background
+        ))
         if (state.isLoading) {
-            Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) {
+            Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else {
             Column(
-                Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()).padding(24.dp),
+                Modifier.fillMaxSize().background(gradientBg).padding(pad)
+                    .verticalScroll(rememberScrollState()).padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(Modifier.height(12.dp))
@@ -186,8 +190,15 @@ fun ProfileScreen(nav: NavController) {
                             onDismissRequest = { showStreakInfo = false },
                             icon  = { Text("🔥", fontSize = 32.sp) },
                             title = {
-                                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    Text("Come funziona la streak?", fontWeight = FontWeight.Bold)
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "Come funziona la streak?",
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign  = TextAlign.Center
+                                    )
                                 }
                             },
                             text  = {

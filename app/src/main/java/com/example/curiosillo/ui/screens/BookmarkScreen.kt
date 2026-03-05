@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
@@ -73,13 +74,17 @@ fun BookmarkScreen(nav: NavController) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = Color.Transparent
                 )
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent
     ) { pad ->
-        Column(Modifier.fillMaxSize().padding(pad)) {
+        val gradientBg = Brush.verticalGradient(listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.background
+        ))
+        Column(Modifier.fillMaxSize().background(gradientBg).padding(pad)) {
             OutlinedTextField(
                 value         = state.query,
                 onValueChange = { vm.onQueryChange(it) },

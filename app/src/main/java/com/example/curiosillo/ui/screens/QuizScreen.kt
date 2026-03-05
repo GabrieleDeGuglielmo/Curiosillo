@@ -3,6 +3,7 @@ package com.example.curiosillo.ui.screens
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -91,13 +93,16 @@ fun QuizScreen(nav: NavController) {
                 navigationIcon = {
                     IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Indietro") }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent
     ) { pad ->
+        val gradientBg = Brush.verticalGradient(listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.background
+        ))
+        Box(Modifier.fillMaxSize().background(gradientBg)) {
         when (val s = state) {
             is QuizUiState.Loading ->
                 Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator() }
@@ -105,6 +110,7 @@ fun QuizScreen(nav: NavController) {
             is QuizUiState.Question    -> QuestionContent(s, pad, vm::answer)
             is QuizUiState.Answered    -> AnsweredContent(s, pad, vm::next)
             is QuizUiState.Summary     -> SummaryContent(s, pad, vm::startQuiz) { nav.popBackStack() }
+        }
         }
     }
 }

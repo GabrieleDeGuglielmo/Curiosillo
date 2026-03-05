@@ -1,5 +1,6 @@
 package com.example.curiosillo.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -12,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -39,13 +41,17 @@ fun CategoryPickerScreen(nav: NavController, destinazione: String) {
                 navigationIcon = {
                     IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Indietro") }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent
     ) { pad ->
+        val gradientBg = Brush.verticalGradient(listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.background
+        ))
         Column(
-            Modifier.fillMaxSize().padding(pad).padding(horizontal = 16.dp)
+            Modifier.fillMaxSize().background(gradientBg).padding(pad).padding(horizontal = 16.dp)
         ) {
             Spacer(Modifier.height(8.dp))
             Text("La selezione viene ricordata per le sessioni future.",
