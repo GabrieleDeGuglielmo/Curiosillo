@@ -40,7 +40,7 @@ class ProfileViewModel(
             _state.value = ProfileUiState(
                 totalCuriosità    = repo.totaleCuriosità(),
                 curiositàImparate = repo.curiositàImparate(),
-                quizDisponibili   = repo.quizNonRisposte(),
+                quizDisponibili   = repo.quizNonRisposti(),
                 totaleBookmark    = repo.totaleBookmark(),
                 xpTotali          = gamifPrefs.xpTotali.first(),
                 streakCorrente    = gamifPrefs.streakCorrente.first(),

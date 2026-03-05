@@ -66,9 +66,15 @@ class CuriosityViewModel(
         }
     }
 
-    fun consumaRisultato() {
-        _risultatoAzione.value = null
+    fun salvaNota(testo: String) {
+        val s = _state.value as? CuriosityUiState.Success ?: return
+        viewModelScope.launch {
+            repo.salvaNota(s.curiosity, testo)
+            _state.value = s.copy(curiosity = s.curiosity.copy(nota = testo))
+        }
     }
+
+    fun consumaRisultato() { _risultatoAzione.value = null }
 
     class Factory(
         private val repo:   CuriosityRepository,

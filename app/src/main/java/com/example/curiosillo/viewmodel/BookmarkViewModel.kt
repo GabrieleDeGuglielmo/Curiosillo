@@ -41,6 +41,13 @@ class BookmarkViewModel(private val repo: CuriosityRepository) : ViewModel() {
         }
     }
 
+    fun salvaNota(pillola: Curiosity, testo: String) {
+        viewModelScope.launch {
+            repo.salvaNota(pillola, testo)
+            carica()
+        }
+    }
+
     fun onQueryChange(nuova: String) {
         _state.value = _state.value.copy(query = nuova)
         cerca()

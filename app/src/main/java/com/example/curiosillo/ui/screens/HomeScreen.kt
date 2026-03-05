@@ -8,9 +8,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.EmojiObjects
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Quiz
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +35,8 @@ import com.example.curiosillo.R
 import com.example.curiosillo.ui.components.GamificationBanner
 import com.example.curiosillo.ui.theme.Primary
 import com.example.curiosillo.ui.theme.Secondary
+import com.example.curiosillo.ui.theme.Tertiary
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(nav: NavController) {
@@ -39,16 +44,20 @@ fun HomeScreen(nav: NavController) {
     val app        = ctx.applicationContext as CuriosityApplication
     val prefs      = app.categoryPrefs
     val gamifPrefs = app.gamificationPrefs
+    val themePrefs = app.themePrefs
+    val scope      = rememberCoroutineScope()
 
     val categorieAttive by prefs.categorieAttive.collectAsState(initial = emptySet())
     val xpTotali        by gamifPrefs.xpTotali.collectAsState(initial = 0)
     val streakCorrente  by gamifPrefs.streakCorrente.collectAsState(initial = 0)
+    val isDarkMode      by themePrefs.isDarkMode.collectAsState(initial = false)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(Color(0xFFFFF3E0), Color.White)))
     ) {
+        // ── Pulsante profilo (in alto a destra) ───────────────────────────────
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -62,6 +71,26 @@ fun HomeScreen(nav: NavController) {
                 modifier = Modifier.size(26.dp), tint = Primary)
         }
 
+        // ── Toggle dark mode (in alto a sinistra) ─────────────────────────────
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(12.dp)
+                .size(42.dp)
+                .background(Primary.copy(alpha = 0.12f), CircleShape)
+                .clickable {
+                    scope.launch { themePrefs.setDarkMode(!isDarkMode) }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                contentDescription = "Tema",
+                modifier = Modifier.size(22.dp),
+                tint     = Primary
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -70,9 +99,9 @@ fun HomeScreen(nav: NavController) {
             verticalArrangement = Arrangement.Center
         ) {
             Image(
-                painter = painterResource(id = R.drawable.ic_logo),
+                painter            = painterResource(id = R.drawable.ic_logo),
                 contentDescription = "Logo Curiosillo",
-                modifier = Modifier
+                modifier           = Modifier
                     .size(110.dp)
                     .clip(CircleShape)
                     .shadow(8.dp, CircleShape),
@@ -80,33 +109,41 @@ fun HomeScreen(nav: NavController) {
             )
             Spacer(Modifier.height(16.dp))
             Text("Curiosillo",
-                style = MaterialTheme.typography.displayMedium,
+                style      = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.ExtraBold,
-                color = Primary)
+                color      = Primary)
             Text("Impara qualcosa di nuovo ogni giorno",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color(0xFF888888),
+                style     = MaterialTheme.typography.bodyLarge,
+                color     = Color(0xFF888888),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
+                modifier  = Modifier.padding(top = 6.dp, bottom = 20.dp))
 
             // ── Banner gamification ───────────────────────────────────────────
             GamificationBanner(
                 xpTotali       = xpTotali,
                 streakCorrente = streakCorrente,
-                modifier       = Modifier.padding(bottom = 24.dp)
+                modifier       = Modifier.padding(bottom = 20.dp)
             )
 
+            // ── Menu card ─────────────────────────────────────────────────────
             MenuCard(Icons.Default.EmojiObjects,
                 "Scopri una Curiosità",
                 "Leggi e impara qualcosa di sorprendente",
                 Primary) { nav.navigate("category_picker/curiosity") }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
             MenuCard(Icons.Default.Quiz,
                 "Fai un Quiz",
                 "Metti alla prova le tue conoscenze",
                 Secondary) { nav.navigate("category_picker/quiz") }
+
+            Spacer(Modifier.height(12.dp))
+
+            MenuCard(Icons.Default.Refresh,
+                "Ripasso",
+                "Rileggi le pillole già imparate",
+                Tertiary) { nav.navigate("ripasso") }
 
             // ── Chip categoria attiva ─────────────────────────────────────────
             if (categorieAttive.isNotEmpty()) {
@@ -139,22 +176,25 @@ fun HomeScreen(nav: NavController) {
 
 @Composable
 private fun MenuCard(
-    icon: ImageVector, title: String, subtitle: String,
-    color: Color, onClick: () -> Unit
+    icon:     ImageVector,
+    title:    String,
+    subtitle: String,
+    color:    Color,
+    onClick:  () -> Unit
 ) {
     Card(
         onClick   = onClick,
-        modifier  = Modifier.fillMaxWidth().height(110.dp),
+        modifier  = Modifier.fillMaxWidth().height(100.dp),
         shape     = RoundedCornerShape(22.dp),
         colors    = CardDefaults.cardColors(containerColor = color),
         elevation = CardDefaults.cardElevation(8.dp)
     ) {
         Row(
-            Modifier.fillMaxSize().padding(horizontal = 26.dp),
+            Modifier.fillMaxSize().padding(horizontal = 22.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, null, Modifier.size(52.dp), Color.White.copy(alpha = 0.9f))
-            Spacer(Modifier.width(20.dp))
+            Icon(icon, null, Modifier.size(46.dp), Color.White.copy(alpha = 0.9f))
+            Spacer(Modifier.width(18.dp))
             Column {
                 Text(title, style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold, color = Color.White)
