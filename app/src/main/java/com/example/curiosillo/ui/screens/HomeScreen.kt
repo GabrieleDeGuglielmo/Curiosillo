@@ -65,14 +65,18 @@ fun HomeScreen(nav: NavController) {
             onDismissRequest = { homeVm.dismissAggiornamento() },
             icon  = { Icon(Icons.Default.SystemUpdate, null, tint = MaterialTheme.colorScheme.primary) },
             title = {
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("Aggiornamento disponibile", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                }
+                Text(
+                    "Aggiornamento disponibile",
+                    fontWeight = FontWeight.Bold,
+                    textAlign  = TextAlign.Center,
+                    modifier   = Modifier.fillMaxWidth()
+                )
             },
-            text  = {
+            text = {
                 Text(
                     "È disponibile la versione ${info.versione} di Curiosillo.\nVuoi scaricarla adesso?",
                     textAlign = TextAlign.Center,
+                    modifier  = Modifier.fillMaxWidth(),
                     color     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             },
