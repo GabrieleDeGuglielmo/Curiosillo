@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "235758737875-u884q1ni5dah17jgnq9obb5ml6pub0iq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.curiosillo",
+            "certificate_hash": "a5def23a929f14ed6b442b719ca210a4c81d6c27"
+          }
+        },
+        {
           "client_id": "235758737875-50kaqom32soh8n4ih7lo49nd1pn9s69u.apps.googleusercontent.com",
           "client_type": 3
         }

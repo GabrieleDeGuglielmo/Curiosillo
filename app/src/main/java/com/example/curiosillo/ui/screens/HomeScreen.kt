@@ -11,9 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.EmojiObjects
-import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.Refresh
@@ -37,15 +35,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.R
+import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.ui.components.GamificationBanner
 import com.example.curiosillo.viewmodel.HomeViewModel
-import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(nav: NavController) {
     val ctx        = LocalContext.current
     val app        = ctx.applicationContext as CuriosityApplication
-    val scope      = rememberCoroutineScope()
+    //val scope      = rememberCoroutineScope()
 
     // ViewModel sync/update
     val homeVm: HomeViewModel = viewModel(
@@ -57,40 +55,40 @@ fun HomeScreen(nav: NavController) {
     val categorieAttive by app.categoryPrefs.categorieAttive.collectAsState(initial = emptySet())
     val xpTotali        by app.gamificationPrefs.xpTotali.collectAsState(initial = 0)
     val streakCorrente  by app.gamificationPrefs.streakCorrente.collectAsState(initial = 0)
-    val isDarkMode      by app.themePrefs.isDarkMode.collectAsState(initial = false)
+    //val isDarkMode      by app.themePrefs.isDarkMode.collectAsState(initial = false)
 
-    // Dialog aggiornamento app
-    homeState.aggiornamentoApp?.let { info ->
-        AlertDialog(
-            onDismissRequest = { homeVm.dismissAggiornamento() },
-            icon  = { Icon(Icons.Default.SystemUpdate, null, tint = MaterialTheme.colorScheme.primary) },
-            title = {
-                Text(
-                    "Aggiornamento disponibile",
-                    fontWeight = FontWeight.Bold,
-                    textAlign  = TextAlign.Center,
-                    modifier   = Modifier.fillMaxWidth()
-                )
-            },
-            text = {
-                Text(
-                    "È disponibile la versione ${info.versione} di Curiosillo.\nVuoi scaricarla adesso?",
-                    textAlign = TextAlign.Center,
-                    modifier  = Modifier.fillMaxWidth(),
-                    color     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-            },
-            confirmButton = {
-                Button(onClick = {
-                    val url = if (info.downloadUrl.isNotEmpty()) info.downloadUrl else info.releaseUrl
-                    ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                    homeVm.dismissAggiornamento()
-                }) { Text("Scarica", fontWeight = FontWeight.Bold) }
-            },
-            dismissButton = {
-                TextButton(onClick = { homeVm.dismissAggiornamento() }) { Text("Dopo") }
-            }
-        )
+    // Dialog aggiornamento — solo se l'utente è loggato
+    // (se non è loggato, il check lo fa LoginScreen)
+    val isLoggato = FirebaseManager.utenteCorrente != null
+    if (isLoggato) {
+        homeState.aggiornamentoApp?.let { info ->
+            AlertDialog(
+                onDismissRequest = { homeVm.dismissAggiornamento() },
+                icon  = { Icon(Icons.Default.SystemUpdate, null,
+                    tint = MaterialTheme.colorScheme.primary) },
+                title = {
+                    Text("Aggiornamento disponibile", fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                },
+                text = {
+                    Text(
+                        "È disponibile la versione ${info.versione} di Curiosillo.\nVuoi scaricarla adesso?",
+                        textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        val url = if (info.downloadUrl.isNotEmpty()) info.downloadUrl else info.releaseUrl
+                        ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        homeVm.dismissAggiornamento()
+                    }) { Text("Scarica", fontWeight = FontWeight.Bold) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { homeVm.dismissAggiornamento() }) { Text("Dopo") }
+                }
+            )
+        }
     }
 
     val gradientBg = Brush.verticalGradient(listOf(
@@ -168,11 +166,13 @@ fun HomeScreen(nav: NavController) {
                     Card(
                         modifier = Modifier.padding(top = 6.dp),
                         shape    = RoundedCornerShape(12.dp),
-                        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+                        colors   = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Text(msg, Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White, fontWeight = FontWeight.SemiBold)
+                            style      = MaterialTheme.typography.bodySmall,
+                            color      = Color.White,
+                            fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -228,7 +228,10 @@ fun HomeScreen(nav: NavController) {
 }
 
 @Composable
-private fun MenuCard(icon: ImageVector, title: String, subtitle: String, color: Color, onClick: () -> Unit) {
+private fun MenuCard(
+    icon: ImageVector, title: String, subtitle: String,
+    color: Color, onClick: () -> Unit
+) {
     Card(
         onClick   = onClick,
         modifier  = Modifier.fillMaxWidth().height(100.dp),
@@ -236,7 +239,8 @@ private fun MenuCard(icon: ImageVector, title: String, subtitle: String, color: 
         colors    = CardDefaults.cardColors(containerColor = color),
         elevation = CardDefaults.cardElevation(8.dp)
     ) {
-        Row(Modifier.fillMaxSize().padding(horizontal = 22.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 22.dp),
+            verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, Modifier.size(46.dp), Color.White.copy(alpha = 0.9f))
             Spacer(Modifier.width(18.dp))
             Column {
