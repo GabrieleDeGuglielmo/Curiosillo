@@ -65,7 +65,7 @@ fun BookmarkScreen(nav: NavController) {
                 onRimuovi   = { vm.rimuoviBookmark(pillola) },
                 onNota      = { pillolaPerNota = pillola },
                 onCondividi = {
-                    val testo = "🧠 ${pillola.title}\n\n${pillola.body}\n\n— Curiosillo"
+                    val testo = "📚 ${pillola.title}\n\n${pillola.body}\n\n— Categoria: ${pillola.category}\nScoperto con Curiosillo 🎓"
                     val intent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
                         putExtra(Intent.EXTRA_TEXT, testo)

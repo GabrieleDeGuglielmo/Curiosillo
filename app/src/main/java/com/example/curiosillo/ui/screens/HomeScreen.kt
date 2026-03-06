@@ -200,29 +200,6 @@ fun HomeScreen(nav: NavController) {
             MenuCard(Icons.Default.Refresh,
                 "Ripasso", "Rileggi le pillole già imparate",
                 MaterialTheme.colorScheme.tertiary) { nav.navigate("ripasso") }
-
-            if (categorieAttive.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment     = Alignment.CenterVertically
-                ) {
-                    Text("Filtro attivo: ",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f))
-                    AssistChip(
-                        onClick = { nav.navigate("category_picker/curiosity") },
-                        label   = {
-                            val testo = if (categorieAttive.size == 1) categorieAttive.first()
-                            else "${categorieAttive.size} categorie"
-                            Text(testo, fontWeight = FontWeight.SemiBold)
-                        },
-                        trailingIcon = {
-                            Icon(Icons.Default.Close, "Rimuovi filtro", Modifier.size(14.dp))
-                        }
-                    )
-                }
-            }
         }
     }
 }
@@ -234,20 +211,25 @@ private fun MenuCard(
 ) {
     Card(
         onClick   = onClick,
-        modifier  = Modifier.fillMaxWidth().height(100.dp),
+        modifier  = Modifier.fillMaxWidth(),
         shape     = RoundedCornerShape(22.dp),
         colors    = CardDefaults.cardColors(containerColor = color),
         elevation = CardDefaults.cardElevation(8.dp)
     ) {
-        Row(Modifier.fillMaxSize().padding(horizontal = 22.dp),
-            verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp, vertical = 18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Icon(icon, null, Modifier.size(46.dp), Color.White.copy(alpha = 0.9f))
             Spacer(Modifier.width(18.dp))
             Column {
                 Text(title, style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold, color = Color.White)
                 Text(subtitle, style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.85f))
+                    color = Color.White.copy(alpha = 0.85f),
+                    maxLines = 2)
             }
         }
     }

@@ -13,5 +13,6 @@ fun categoryImage(category: String): Int = when (category.lowercase()) {
     "tecnologia" -> R.drawable.curiosity_tecnologia
     "natura"   -> R.drawable.curiosity_natura
     "cibo"     -> R.drawable.curiosity_cibo
-    else       -> R.drawable.curiosity_cibo //TODO CAMBIARE CON DEFAULT
+    "geografia" -> R.drawable.curiosity_geografia
+    else       -> R.drawable.curiosity
 }

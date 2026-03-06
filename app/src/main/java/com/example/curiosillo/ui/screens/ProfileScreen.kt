@@ -156,13 +156,16 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     if (sbloccato) {
                         Text(def.descrizione, textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                         Spacer(Modifier.height(8.dp))
                         Text("✅ Badge sbloccato!", fontWeight = FontWeight.SemiBold, color = Success)
                     } else {
                         Text("Per sbloccare questo badge:", fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(bottom = 6.dp))
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                            textAlign = TextAlign.Center)
                         Text(condizioneBadge(def.id), textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
                 }
@@ -185,9 +188,12 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(badge.nome, style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold)
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(6.dp))
                     Text(badge.descrizione, textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
             },
@@ -537,7 +543,8 @@ private fun BadgeCard(def: BadgeDefinizione, sbloccato: Boolean,
             Spacer(Modifier.height(4.dp))
             Text(def.nome, style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
-                color = textColor, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                color = textColor, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth())
         }
     }
 }
