@@ -14,18 +14,19 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class ProfileUiState(
-    val totalCuriosità:    Int                  = 0,
-    val curiositàImparate: Int                  = 0,
-    val quizDisponibili:   Int                  = 0,
-    val totaleBookmark:    Int                  = 0,
-    val xpTotali:          Int                  = 0,
-    val streakCorrente:    Int                  = 0,
-    val streakMassima:     Int                  = 0,
-    val badgeSbloccati:    List<BadgeSbloccato> = emptyList(),
-    val username:          String               = "",
-    val email:             String               = "",
-    val isLoggato:         Boolean              = false,
-    val isLoading:         Boolean              = true
+    val totalCuriosità:      Int                  = 0,
+    val curiositàImparate:   Int                  = 0,
+    val quizDisponibili:     Int                  = 0,
+    val totaleBookmark:      Int                  = 0,
+    val xpTotali:            Int                  = 0,
+    val streakCorrente:      Int                  = 0,
+    val streakMassima:       Int                  = 0,
+    val badgeSbloccati:      List<BadgeSbloccato> = emptyList(),
+    val username:            String               = "",
+    val email:               String               = "",
+    val isLoggato:           Boolean              = false,
+    val isEliminazioneInCorso: Boolean            = false,
+    val isLoading:           Boolean              = true
 )
 
 class ProfileViewModel(
@@ -44,10 +45,9 @@ class ProfileViewModel(
 
             val user     = FirebaseManager.utenteCorrente
             val username = when {
-                user == null         -> ""
+                user == null             -> ""
                 user.displayName != null -> user.displayName!!
                 else -> {
-                    // prova a caricare username da Firestore
                     val profilo = FirebaseManager.caricaProfilo(user.uid)
                     (profilo?.get("username") as? String) ?: ""
                 }
@@ -81,6 +81,31 @@ class ProfileViewModel(
     fun logout(onLogout: () -> Unit) {
         FirebaseManager.logout()
         onLogout()
+    }
+
+    /**
+     * Elimina tutti i dati Firestore dell'utente, poi cancella l'account Firebase Auth.
+     * Infine resetta i dati locali e chiama onEliminato per navigare al login.
+     */
+    fun eliminaAccount(onEliminato: () -> Unit) {
+        val uid = FirebaseManager.uid ?: return
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isEliminazioneInCorso = true)
+            try {
+                // 1. Cancella dati Firestore
+                FirebaseManager.eliminaDatiUtente(uid)
+                // 2. Resetta dati locali
+                repo.resetProgressi()
+                gamifPrefs.reset()
+                // 3. Cancella account Firebase Auth
+                FirebaseManager.eliminaAccount()
+            } catch (_: Exception) {
+                // Se fallisce l'eliminazione dell'account Auth, logout comunque
+                FirebaseManager.logout()
+            }
+            _state.value = _state.value.copy(isEliminazioneInCorso = false)
+            onEliminato()
+        }
     }
 
     class Factory(

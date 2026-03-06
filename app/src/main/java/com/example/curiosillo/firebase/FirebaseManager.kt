@@ -79,6 +79,19 @@ object FirebaseManager {
         } catch (_: Exception) {}
     }
 
+    // Elimina tutti i documenti Firestore dell'utente
+    suspend fun eliminaDatiUtente(uid: String) {
+        val ref = db.collection("users").document(uid).collection("data")
+        val docs = ref.get().await()
+        docs.forEach { ref.document(it.id).delete().await() }
+        db.collection("users").document(uid).delete().await()
+    }
+
+    // Cancella l'account Firebase Auth
+    suspend fun eliminaAccount() {
+        auth.currentUser?.delete()?.await()
+    }
+
     // ── Badge ─────────────────────────────────────────────────────────────────
 
     suspend fun caricaBadge(uid: String): List<String> = try {

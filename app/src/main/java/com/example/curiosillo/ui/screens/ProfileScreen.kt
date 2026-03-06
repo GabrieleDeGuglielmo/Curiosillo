@@ -11,16 +11,18 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,22 +39,110 @@ import com.example.curiosillo.ui.components.GamificationBanner
 import com.example.curiosillo.ui.theme.Error
 import com.example.curiosillo.ui.theme.Success
 import com.example.curiosillo.viewmodel.ProfileViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
-    val ctx = LocalContext.current
-    val app = ctx.applicationContext as CuriosityApplication
+    val ctx   = LocalContext.current
+    val app   = ctx.applicationContext as CuriosityApplication
+    val scope = rememberCoroutineScope()
+
     val vm: ProfileViewModel = viewModel(
         factory = ProfileViewModel.Factory(app.repository, app.gamificationPrefs)
     )
     val state by vm.state.collectAsState()
+
     var showResetDialog      by remember { mutableStateOf(false) }
     var showLogoutDialog     by remember { mutableStateOf(false) }
+    var showEliminaDialog    by remember { mutableStateOf(false) }
     var badgeDettaglio       by remember { mutableStateOf<BadgeDefinizione?>(null) }
     var badgeSbloccatoAppena by remember { mutableStateOf<BadgeSbloccato?>(null) }
 
-    // Dialog dettaglio badge
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showSheet  by remember { mutableStateOf(false) }
+
+    // ── BottomSheet azioni profilo ────────────────────────────────────────────
+    if (showSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showSheet = false },
+            sheetState       = sheetState
+        ) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                Text("Azioni profilo",
+                    style      = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier   = Modifier.padding(bottom = 20.dp))
+
+                // Preferiti
+                AzioneItem(
+                    icon  = Icons.Default.Bookmark,
+                    tint  = MaterialTheme.colorScheme.primary,
+                    label = "I miei preferiti (${state.totaleBookmark})",
+                    sub   = "Curiosità salvate con il segnalibro"
+                ) {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                        showSheet = false
+                        nav.navigate("preferiti")
+                    }
+                }
+
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
+                // Statistiche Quiz
+                AzioneItem(
+                    icon  = Icons.Default.BarChart,
+                    tint  = MaterialTheme.colorScheme.secondary,
+                    label = "Statistiche Quiz",
+                    sub   = "Cronologia e risultati dei tuoi quiz"
+                ) {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                        showSheet = false
+                        nav.navigate("quiz_stats")
+                    }
+                }
+
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
+                // Resetta progressi
+                AzioneItem(
+                    icon  = Icons.Default.RestartAlt,
+                    tint  = Error,
+                    label = "Resetta progressi",
+                    sub   = "Azzera XP, streak, badge e pillole lette"
+                ) {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                        showSheet = false
+                        showResetDialog = true
+                    }
+                }
+
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
+                // Elimina account
+                AzioneItem(
+                    icon  = Icons.Default.DeleteForever,
+                    tint  = Error,
+                    label = "Elimina account",
+                    sub   = "Cancella account e tutti i dati in modo permanente"
+                ) {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                        showSheet = false
+                        showEliminaDialog = true
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+
+    // ── Dialog dettaglio badge ────────────────────────────────────────────────
     badgeDettaglio?.let { def ->
         val sbloccato = def.id in state.badgeSbloccati.map { it.id }
         AlertDialog(
@@ -62,7 +152,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                 Text(def.nome, fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             },
-            text  = {
+            text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     if (sbloccato) {
                         Text(def.descrizione, textAlign = TextAlign.Center,
@@ -83,7 +173,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
         )
     }
 
-    // Dialog badge appena sbloccato
+    // ── Dialog badge appena sbloccato ─────────────────────────────────────────
     badgeSbloccatoAppena?.let { badge ->
         AlertDialog(
             onDismissRequest = { badgeSbloccatoAppena = null },
@@ -92,7 +182,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                 Text("Badge sbloccato!", fontWeight = FontWeight.Bold,
                     modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             },
-            text  = {
+            text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(badge.nome, style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold)
@@ -109,14 +199,16 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
         )
     }
 
-    // Dialog reset progressi
+    // ── Dialog reset progressi ────────────────────────────────────────────────
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
             icon  = { Icon(Icons.Default.Delete, null, tint = Error) },
-            title = { Text("Resetta i progressi?", fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
-            text  = {
+            title = {
+                Text("Resetta i progressi?", fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            },
+            text = {
                 Text("Tutte le curiosità torneranno a \"non lette\", il quiz verrà bloccato " +
                         "e XP, streak e badge verranno azzerati. Questa azione non può essere annullata.",
                     textAlign = TextAlign.Center)
@@ -132,27 +224,65 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
         )
     }
 
-    // Dialog logout
+    // ── Dialog logout ─────────────────────────────────────────────────────────
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             icon  = { Icon(Icons.Default.Logout, null, tint = Error) },
-            title = { Text("Esci dall'account?", fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
-            text  = {
+            title = {
+                Text("Esci dall'account?", fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            },
+            text = {
                 Text("I tuoi progressi sono salvati su cloud e saranno disponibili al prossimo accesso.",
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
             },
             confirmButton = {
-                Button(onClick = {
-                    showLogoutDialog = false
-                    vm.logout(onLogout)
-                }, colors = ButtonDefaults.buttonColors(containerColor = Error)
+                Button(onClick = { showLogoutDialog = false; vm.logout(onLogout) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Error)
                 ) { Text("Esci", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 OutlinedButton(onClick = { showLogoutDialog = false }) { Text("Annulla") }
+            }
+        )
+    }
+
+    // ── Dialog elimina account ────────────────────────────────────────────────
+    if (showEliminaDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!state.isEliminazioneInCorso) showEliminaDialog = false },
+            icon  = { Icon(Icons.Default.DeleteForever, null, tint = Error) },
+            title = {
+                Text("Elimina account?", fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            },
+            text = {
+                Text("Verranno eliminati permanentemente il tuo account e tutti i dati associati: " +
+                        "XP, streak, badge, pillole lette e preferiti.\n\nQuesta azione è irreversibile.",
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
+            },
+            confirmButton = {
+                Button(
+                    onClick = { vm.eliminaAccount(onLogout) },
+                    enabled = !state.isEliminazioneInCorso,
+                    colors  = ButtonDefaults.buttonColors(containerColor = Error)
+                ) {
+                    if (state.isEliminazioneInCorso) {
+                        CircularProgressIndicator(Modifier.size(18.dp),
+                            color = Color.White, strokeWidth = 2.dp)
+                    } else {
+                        Text("Sì, elimina tutto", fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick  = { showEliminaDialog = false },
+                    enabled  = !state.isEliminazioneInCorso
+                ) { Text("Annulla") }
             }
         )
     }
@@ -164,6 +294,12 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, "Indietro")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showSheet = true }) {
+                        Icon(Icons.Default.MoreVert, "Azioni profilo",
+                            tint = MaterialTheme.colorScheme.onBackground)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -193,8 +329,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                         modifier  = Modifier.fillMaxWidth().padding(bottom = 20.dp),
                         shape     = RoundedCornerShape(18.dp),
                         colors    = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        ),
+                            containerColor = MaterialTheme.colorScheme.primaryContainer),
                         elevation = CardDefaults.cardElevation(0.dp)
                     ) {
                         Row(
@@ -202,7 +337,8 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                             verticalAlignment     = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)) {
                                 Box(
                                     Modifier.size(44.dp)
                                         .background(MaterialTheme.colorScheme.primary, CircleShape),
@@ -217,20 +353,15 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                                 }
                                 Spacer(Modifier.width(12.dp))
                                 Column {
-                                    Text(
-                                        state.username.ifBlank { "Utente" },
+                                    Text(state.username.ifBlank { "Utente" },
                                         style      = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color      = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
+                                        color      = MaterialTheme.colorScheme.onPrimaryContainer)
                                     if (state.email.isNotBlank()) {
-                                        Text(
-                                            state.email,
+                                        Text(state.email,
                                             style    = MaterialTheme.typography.bodySmall,
                                             color    = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
+                                            maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     }
                                 }
                             }
@@ -256,12 +387,13 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(20.dp))
 
-                // Banner
+                // Banner XP
                 GamificationBanner(xpTotali = state.xpTotali, streakCorrente = state.streakCorrente)
                 Spacer(Modifier.height(8.dp))
 
                 // Streak massima + info
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()) {
                     Text("Streak massima: ${state.streakMassima} ${if (state.streakMassima == 1) "giorno" else "giorni"}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f))
@@ -279,13 +411,13 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                                 Text("Come funziona la streak?", fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                             },
-                            text  = {
+                            text = {
                                 Text("La streak conta i giorni consecutivi in cui hai letto almeno " +
                                         "una pillola e premuto \"Ho imparato!\"\n\nSe salti un giorno, " +
                                         "la streak riparte da 1.\n\nPiù alta è la streak, più XP bonus " +
                                         "guadagni ogni giorno!",
                                     textAlign = TextAlign.Center,
-                                    color     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                             },
                             confirmButton = {
                                 TextButton(onClick = { showStreakInfo = false }) { Text("Capito!") }
@@ -295,22 +427,20 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                 }
                 Spacer(Modifier.height(24.dp))
 
-                // Statistiche
+                // ── Statistiche ───────────────────────────────────────────────
                 Text("Le mie statistiche", style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                     modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
-
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StatCard(Modifier.weight(1f), "${state.curiositàImparate}", "Curiosità\nimparate",
-                        MaterialTheme.colorScheme.primary)
-                    StatCard(Modifier.weight(1f), "${state.totalCuriosità}", "Curiosità\ntotali",
-                        MaterialTheme.colorScheme.secondary)
-                    StatCard(Modifier.weight(1f), "${state.quizDisponibili}", "Quiz non\nrisposti",
-                        MaterialTheme.colorScheme.tertiary)
+                    StatCard(Modifier.weight(1f), "${state.curiositàImparate}",
+                        "Curiosità\nimparate", MaterialTheme.colorScheme.primary)
+                    StatCard(Modifier.weight(1f), "${state.totalCuriosità}",
+                        "Curiosità\ntotali", MaterialTheme.colorScheme.secondary)
+                    StatCard(Modifier.weight(1f), "${state.quizDisponibili}",
+                        "Quiz non\nrisposti", MaterialTheme.colorScheme.tertiary)
                 }
-
                 if (state.totalCuriosità > 0) {
                     Spacer(Modifier.height(20.dp))
                     val pct = state.curiositàImparate.toFloat() / state.totalCuriosità
@@ -327,14 +457,13 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     )
                 }
 
-                // Badge
+                // ── Badge ─────────────────────────────────────────────────────
                 Spacer(Modifier.height(28.dp))
                 Text("Badge (${state.badgeSbloccati.size}/${BadgeCatalogo.tutti.size})",
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                     modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
-
                 val idSbloccati = state.badgeSbloccati.map { it.id }.toSet()
                 BadgeCatalogo.tutti.chunked(3).forEach { riga ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -348,48 +477,51 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     Spacer(Modifier.height(10.dp))
                 }
 
-                // Pulsanti azione
-                Spacer(Modifier.height(28.dp))
-                Button(onClick = { nav.navigate("preferiti") },
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
-                    shape    = RoundedCornerShape(14.dp)
-                ) {
-                    Icon(Icons.Default.Bookmark, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Text("I miei preferiti (${state.totaleBookmark})",
-                        style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                }
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = { nav.navigate("quiz_stats") },
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
-                    shape    = RoundedCornerShape(14.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) {
-                    Icon(Icons.Default.BarChart, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Text("Statistiche Quiz",
-                        style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                }
-                Spacer(Modifier.height(16.dp))
-                OutlinedButton(onClick = { showResetDialog = true },
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
-                    shape    = RoundedCornerShape(14.dp),
-                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = Error),
-                    border   = ButtonDefaults.outlinedButtonBorder.copy(brush = SolidColor(Error))
-                ) {
-                    Icon(Icons.Default.Delete, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Resetta progressi", style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold)
-                }
                 Spacer(Modifier.height(16.dp))
             }
         }
     }
 }
 
+// ── Componente riga azione nel BottomSheet ────────────────────────────────────
 @Composable
-private fun BadgeCard(def: BadgeDefinizione, sbloccato: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun AzioneItem(
+    icon:    androidx.compose.ui.graphics.vector.ImageVector,
+    tint:    Color,
+    label:   String,
+    sub:     String,
+    onClick: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(42.dp)
+                .background(tint.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.bodyLarge, color = tint)
+            Text(sub, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
+        }
+        TextButton(onClick = onClick) {
+            Text("Vai", fontWeight = FontWeight.Bold, color = tint)
+        }
+    }
+}
+
+@Composable
+private fun BadgeCard(def: BadgeDefinizione, sbloccato: Boolean,
+                      modifier: Modifier, onClick: () -> Unit) {
     val cardBg    = if (sbloccato) Color(0xFF1A1A2E) else MaterialTheme.colorScheme.surfaceVariant
     val textColor = if (sbloccato) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
     Card(onClick = onClick, modifier = modifier.height(110.dp),
