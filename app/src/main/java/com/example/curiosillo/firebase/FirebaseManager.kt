@@ -79,6 +79,13 @@ object FirebaseManager {
         } catch (_: Exception) {}
     }
 
+    suspend fun recuperaPassword(email: String): Result<Unit> = try {
+        auth.sendPasswordResetEmail(email).await()
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
     // Elimina tutti i documenti Firestore dell'utente
     suspend fun eliminaDatiUtente(uid: String) {
         val ref = db.collection("users").document(uid).collection("data")

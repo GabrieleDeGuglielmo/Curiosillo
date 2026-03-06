@@ -18,8 +18,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 sealed class AuthUiState {
-    object Idle        : AuthUiState()
-    object Loading     : AuthUiState()
+    object Idle                              : AuthUiState()
+    object Loading                           : AuthUiState()
+    object EmailRecuperoInviata              : AuthUiState()
     data class Successo(val user: FirebaseUser, val isNuovoUtente: Boolean) : AuthUiState()
     data class Errore(val messaggio: String) : AuthUiState()
 }
@@ -58,6 +59,17 @@ class AuthViewModel(
                 onFailure = {
                     _state.value = AuthUiState.Errore(messaggioErrore(it.message))
                 }
+            )
+        }
+    }
+
+    fun recuperaPassword(email: String) {
+        viewModelScope.launch {
+            _state.value = AuthUiState.Loading
+            val result = FirebaseManager.recuperaPassword(email)
+            _state.value = result.fold(
+                onSuccess = { AuthUiState.EmailRecuperoInviata },
+                onFailure = { AuthUiState.Errore(messaggioErrore(it.message)) }
             )
         }
     }

@@ -79,11 +79,91 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
         }
     }
 
-    var isRegistrazione by remember { mutableStateOf(false) }
-    var email           by remember { mutableStateOf("") }
-    var password        by remember { mutableStateOf("") }
-    var username        by remember { mutableStateOf("") }
-    var mostraPassword  by remember { mutableStateOf(false) }
+    var isRegistrazione   by remember { mutableStateOf(false) }
+    var email             by remember { mutableStateOf("") }
+    var password          by remember { mutableStateOf("") }
+    var username          by remember { mutableStateOf("") }
+    var mostraPassword    by remember { mutableStateOf(false) }
+    var showRecuperoDialog by remember { mutableStateOf(false) }
+    var emailRecupero     by remember { mutableStateOf("") }
+
+    // ── Dialog recupero password ──────────────────────────────────────────────
+    if (showRecuperoDialog) {
+        val emailInviata = state is AuthUiState.EmailRecuperoInviata
+        AlertDialog(
+            onDismissRequest = {
+                showRecuperoDialog = false
+                emailRecupero = ""
+                if (emailInviata) vm.resetStato()
+            },
+            icon  = { Text("🔑", fontSize = 32.sp) },
+            title = {
+                Text(
+                    if (emailInviata) "Email inviata!" else "Recupera password",
+                    fontWeight = FontWeight.Bold,
+                    textAlign  = TextAlign.Center,
+                    modifier   = Modifier.fillMaxWidth()
+                )
+            },
+            text = {
+                if (emailInviata) {
+                    Text(
+                        "Controlla la tua casella email — ti abbiamo inviato un link per reimpostare la password.",
+                        textAlign = TextAlign.Center,
+                        color     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                } else {
+                    Column {
+                        Text(
+                            "Inserisci la tua email e ti invieremo un link per reimpostare la password.",
+                            style    = MaterialTheme.typography.bodyMedium,
+                            color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        OutlinedTextField(
+                            value           = emailRecupero,
+                            onValueChange   = { emailRecupero = it },
+                            label           = { Text("Email") },
+                            leadingIcon     = { Icon(Icons.Default.Email, null) },
+                            singleLine      = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                            shape           = RoundedCornerShape(14.dp),
+                            modifier        = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (emailInviata) {
+                    Button(onClick = {
+                        showRecuperoDialog = false
+                        emailRecupero = ""
+                        vm.resetStato()
+                    }) { Text("OK", fontWeight = FontWeight.Bold) }
+                } else {
+                    Button(
+                        onClick  = { vm.recuperaPassword(emailRecupero) },
+                        enabled  = emailRecupero.isNotBlank() && state !is AuthUiState.Loading
+                    ) {
+                        if (state is AuthUiState.Loading) {
+                            CircularProgressIndicator(Modifier.size(18.dp),
+                                color = Color.White, strokeWidth = 2.dp)
+                        } else {
+                            Text("Invia", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            },
+            dismissButton = {
+                if (!emailInviata) {
+                    TextButton(onClick = {
+                        showRecuperoDialog = false
+                        emailRecupero = ""
+                    }) { Text("Annulla") }
+                }
+            }
+        )
+    }
 
     // ── Dialog aggiornamento app ──────────────────────────────────────────────
     homeState.aggiornamentoApp?.let { info ->
@@ -201,6 +281,25 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                 shape                = RoundedCornerShape(14.dp),
                 modifier             = Modifier.fillMaxWidth()
             )
+            Spacer(Modifier.height(8.dp))
+
+            // Link "Password dimenticata?" — solo in modalità login
+            AnimatedVisibility(visible = !isRegistrazione) {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                    Text(
+                        "Password dimenticata?",
+                        color      = MaterialTheme.colorScheme.primary,
+                        style      = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier   = Modifier.clickable {
+                            emailRecupero = email // precompila con email già inserita
+                            showRecuperoDialog = true
+                            vm.resetStato()
+                        }
+                    )
+                }
+            }
+
             Spacer(Modifier.height(24.dp))
 
             // Pulsante principale
