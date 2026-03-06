@@ -109,16 +109,12 @@ class AuthViewModel(
 
     private suspend fun sincronizzaDopoLogin(user: FirebaseUser, isNuovo: Boolean) {
         try {
-            if (isNuovo) {
-                // Nuovo utente — carica i progressi locali sul cloud
-                syncManager.migraLocaleVersoCloud(user.uid)
-            } else {
-                // Utente esistente — ripristina dal cloud se necessario
-                syncManager.ripristinaCloudVersoLocale(user.uid)
-            }
+            if (isNuovo) syncManager.migraLocaleVersoCloud(user.uid)
+            else syncManager.ripristinaCloudVersoLocale(user.uid)
         } catch (_: Exception) {
-            // Sync fallita — l'utente è comunque loggato
+            // sync fallita — l'utente è loggato ugualmente, si ignora
         }
+        // Questo viene eseguito sempre, anche se il sync ha fallito
         _state.value = AuthUiState.Successo(user, isNuovo)
     }
 

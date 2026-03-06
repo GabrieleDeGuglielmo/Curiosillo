@@ -12,7 +12,20 @@
           "package_name": "com.example.curiosillo"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "235758737875-7379bsq1as6p46klo045ltav8a6h9pdm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.curiosillo",
+            "certificate_hash": "a80335572c3c8a8fccce56af78e8c03ad75bec81"
+          }
+        },
+        {
+          "client_id": "235758737875-50kaqom32soh8n4ih7lo49nd1pn9s69u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDzcVFD5-mc1m-mW2pMFKfMQQJgo9TNE-Q"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "235758737875-50kaqom32soh8n4ih7lo49nd1pn9s69u.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

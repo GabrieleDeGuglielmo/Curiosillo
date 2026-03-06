@@ -54,20 +54,17 @@ object FirebaseManager {
     // ── Profilo ───────────────────────────────────────────────────────────────
 
     private suspend fun creaProfiloSeNonEsiste(uid: String, username: String, email: String) {
-        val ref = db.collection("users").document(uid).collection("data").document("profile")
-        val doc = ref.get().await()
-        if (!doc.exists()) {
-            ref.set(mapOf(
-                "username"      to username,
-                "email"         to email,
-                "xp"            to 0,
+        db.collection("users").document(uid)
+            .collection("data").document("profile")
+            .set(mapOf(
+                "username"       to username,
+                "email"          to email,
+                "xp"             to 0,
                 "streakCorrente" to 0,
-                "streakMassima" to 0,
-                "ultimoAccesso" to -1L
-            )).await()
-        }
+                "streakMassima"  to 0,
+                "ultimoAccesso"  to -1L
+            ), SetOptions.merge()).await()
     }
-
     suspend fun caricaProfilo(uid: String): Map<String, Any>? = try {
         val doc = db.collection("users").document(uid)
             .collection("data").document("profile").get().await()
