@@ -34,12 +34,12 @@ class ContentSyncService(
             // 2. Parsing
             val remoteContent = parseRemoteContent(json)
 
-            // 3. Controlla versione
+            // 3. Controlla versione — forza sync se il DB è vuoto (es. dopo Clear Data)
             val versioneLocale = contentPrefs.getContentVersion()
-            if (remoteContent.version <= versioneLocale) {
+            val dbVuoto = repo.totaleCuriosità() == 0
+            if (remoteContent.version <= versioneLocale && !dbVuoto) {
                 return SyncResult.NessunaModifica
             }
-
             // 4. Merge
             var nuove = 0
             var aggiornate = 0

@@ -69,17 +69,19 @@ fun CuriosityScreen(nav: NavController) {
             },
             icon  = { Text(badge.icona, fontSize = 48.sp) },
             title = {
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("Badge sbloccato!", fontWeight = FontWeight.Bold)
-                }
+                Text("Badge sbloccato!", fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             },
             text  = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(badge.nome, style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold)
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign  = TextAlign.Center,
+                        modifier   = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(6.dp))
                     Text(badge.descrizione, textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        modifier = Modifier.fillMaxWidth(),
+                        color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
             },
             confirmButton = {
