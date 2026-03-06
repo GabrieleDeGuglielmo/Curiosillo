@@ -7,14 +7,18 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.EmojiObjects
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,34 +35,51 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.R
 import com.example.curiosillo.firebase.FirebaseManager
+import com.example.curiosillo.network.VersioneChangelog
 import com.example.curiosillo.ui.components.GamificationBanner
 import com.example.curiosillo.viewmodel.HomeViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(nav: NavController) {
-    val ctx        = LocalContext.current
-    val app        = ctx.applicationContext as CuriosityApplication
-    //val scope      = rememberCoroutineScope()
+    val ctx = LocalContext.current
+    val app = ctx.applicationContext as CuriosityApplication
 
-    // ViewModel sync/update
     val homeVm: HomeViewModel = viewModel(
         factory = HomeViewModel.Factory(app.repository, app.contentPrefs, ctx)
     )
     val homeState by homeVm.state.collectAsState()
 
-    // Prefs esistenti
-    val categorieAttive by app.categoryPrefs.categorieAttive.collectAsState(initial = emptySet())
-    val xpTotali        by app.gamificationPrefs.xpTotali.collectAsState(initial = 0)
-    val streakCorrente  by app.gamificationPrefs.streakCorrente.collectAsState(initial = 0)
-    //val isDarkMode      by app.themePrefs.isDarkMode.collectAsState(initial = false)
+    val xpTotali       by app.gamificationPrefs.xpTotali.collectAsState(initial = 0)
+    val streakCorrente by app.gamificationPrefs.streakCorrente.collectAsState(initial = 0)
 
-    // Dialog aggiornamento — solo se l'utente è loggato
-    // (se non è loggato, il check lo fa LoginScreen)
+    var showChangelogCompleto by remember { mutableStateOf(false) }
+
+    // ── Popup changelog automatico ────────────────────────────────────────────
+    homeState.changelogDaMostrare?.let { versioni ->
+        ChangelogDialog(
+            versioni  = versioni,
+            titolo    = "🎉 Cosa c'è di nuovo",
+            onDismiss = { homeVm.dismissChangelog() }
+        )
+    }
+
+    // ── Dialog changelog completo ─────────────────────────────────────────────
+    if (showChangelogCompleto && homeState.changelogCompleto.isNotEmpty()) {
+        ChangelogDialog(
+            versioni  = homeState.changelogCompleto,
+            titolo    = "📋 Storico aggiornamenti",
+            onDismiss = { showChangelogCompleto = false }
+        )
+    }
+
+    // ── Dialog aggiornamento app ──────────────────────────────────────────────
     val isLoggato = FirebaseManager.utenteCorrente != null
     if (isLoggato) {
         homeState.aggiornamentoApp?.let { info ->
@@ -98,26 +119,7 @@ fun HomeScreen(nav: NavController) {
 
     Box(modifier = Modifier.fillMaxSize().background(gradientBg)) {
 
-        /* ── Toggle dark mode ──────────────────────────────────────────────────
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(top = 24.dp, start = 12.dp)
-                .size(42.dp)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape)
-                .clickable { scope.launch { app.themePrefs.setDarkMode(!isDarkMode) } },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector        = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
-                contentDescription = "Tema",
-                modifier           = Modifier.size(22.dp),
-                tint               = MaterialTheme.colorScheme.primary
-            )
-        }
-        */
-
-        // ── Pulsante profilo ──────────────────────────────────────────────────
+        // ── Pulsante profilo (alto destra) ────────────────────────────────────
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -132,6 +134,32 @@ fun HomeScreen(nav: NavController) {
                 tint     = MaterialTheme.colorScheme.primary)
         }
 
+        // ── Pulsante Novità (basso destra) ────────────────────────────────────
+        if (homeState.changelogCompleto.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 24.dp, end = 16.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        RoundedCornerShape(20.dp)
+                    )
+                    .clickable { showChangelogCompleto = true }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.AutoAwesome, "Novità",
+                    modifier = Modifier.size(16.dp),
+                    tint     = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(5.dp))
+                Text("Novità",
+                    style      = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color      = MaterialTheme.colorScheme.primary)
+            }
+        }
+
+        // ── Contenuto principale ──────────────────────────────────────────────
         Column(
             modifier = Modifier.fillMaxSize().padding(28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -152,7 +180,6 @@ fun HomeScreen(nav: NavController) {
                 fontWeight = FontWeight.ExtraBold,
                 color      = MaterialTheme.colorScheme.primary)
 
-            // Messaggio sync (sparisce dopo 3 secondi)
             AnimatedVisibility(
                 visible = homeState.syncMessaggio != null,
                 enter   = fadeIn() + expandVertically(),
@@ -170,9 +197,8 @@ fun HomeScreen(nav: NavController) {
                             containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Text(msg, Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            style      = MaterialTheme.typography.bodySmall,
-                            color      = Color.White,
-                            fontWeight = FontWeight.SemiBold)
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -204,6 +230,147 @@ fun HomeScreen(nav: NavController) {
     }
 }
 
+// ── Dialog changelog ──────────────────────────────────────────────────────────
+@Composable
+private fun ChangelogDialog(
+    versioni:  List<VersioneChangelog>,
+    titolo:    String,
+    onDismiss: () -> Unit
+) {
+    val colorNovita = Color(0xFF4CAF50)   // verde
+    val colorFix    = Color(0xFFFF9800)   // arancione
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(titolo, fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        },
+        text = {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                versioni.forEachIndexed { index, versione ->
+                    if (index > 0) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 16.dp),
+                            color    = MaterialTheme.colorScheme.outlineVariant
+                        )
+                    }
+
+                    // ── Intestazione versione ─────────────────────────────────
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        ) {
+                            Text(
+                                "v${versione.versione}",
+                                modifier   = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                style      = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color      = Color.White
+                            )
+                        }
+                        if (versione.data.isNotBlank()) {
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                versione.data,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                            )
+                        }
+                    }
+
+                    // ── Nuove funzionalità ────────────────────────────────────
+                    if (versione.novita.isNotEmpty()) {
+                        SezioneChangelog(
+                            etichetta = "Novità",
+                            icona     = Icons.Default.Star,
+                            colore    = colorNovita,
+                            voci      = versione.novita
+                        )
+                    }
+
+                    // ── Bug fix ───────────────────────────────────────────────
+                    if (versione.fix.isNotEmpty()) {
+                        if (versione.novita.isNotEmpty()) Spacer(Modifier.height(12.dp))
+                        SezioneChangelog(
+                            etichetta = "Correzioni",
+                            icona     = Icons.Default.BugReport,
+                            colore    = colorFix,
+                            voci      = versione.fix
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Ottimo!", fontWeight = FontWeight.Bold)
+            }
+        }
+    )
+}
+
+@Composable
+private fun SezioneChangelog(
+    etichetta: String,
+    icona:     ImageVector,
+    colore:    Color,
+    voci:      List<String>
+) {
+    // Intestazione sezione (es. "✨ Novità" o "🐛 Correzioni")
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(bottom = 6.dp)
+    ) {
+        Box(
+            Modifier
+                .size(24.dp)
+                .background(colore.copy(alpha = 0.15f), RoundedCornerShape(6.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icona, null, tint = colore, modifier = Modifier.size(14.dp))
+        }
+        Spacer(Modifier.width(7.dp))
+        Text(
+            etichetta,
+            style      = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color      = colore
+        )
+    }
+
+    // Voci
+    voci.forEach { voce ->
+        Row(
+            modifier          = Modifier.padding(start = 4.dp, bottom = 5.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Text(
+                "·  ",
+                color      = colore,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize   = 18.sp,
+                lineHeight = 22.sp
+            )
+            Text(
+                voce,
+                style     = MaterialTheme.typography.bodyMedium,
+                color     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                modifier  = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
 @Composable
 private fun MenuCard(
     icon: ImageVector, title: String, subtitle: String,
@@ -228,8 +395,7 @@ private fun MenuCard(
                 Text(title, style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold, color = Color.White)
                 Text(subtitle, style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.85f),
-                    maxLines = 2)
+                    color = Color.White.copy(alpha = 0.85f), maxLines = 2)
             }
         }
     }

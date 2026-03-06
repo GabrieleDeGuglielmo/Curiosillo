@@ -6,7 +6,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.network.AppUpdateService
+import com.example.curiosillo.network.ChangelogService
 import com.example.curiosillo.network.ContentSyncService
+import com.example.curiosillo.network.VersioneChangelog
 import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,9 +22,11 @@ data class UpdateInfo(
 )
 
 data class HomeUiState(
-    val syncInCorso:      Boolean     = false,
-    val syncMessaggio:    String?     = null,
-    val aggiornamentoApp: UpdateInfo? = null
+    val syncInCorso:         Boolean                    = false,
+    val syncMessaggio:       String?                    = null,
+    val aggiornamentoApp:    UpdateInfo?                = null,
+    val changelogDaMostrare: List<VersioneChangelog>?   = null,
+    val changelogCompleto:   List<VersioneChangelog>    = emptyList()
 )
 
 class HomeViewModel(
@@ -34,12 +38,14 @@ class HomeViewModel(
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
 
-    private val syncService   = ContentSyncService(repo, contentPrefs)
-    private val updateService = AppUpdateService()
+    private val syncService      = ContentSyncService(repo, contentPrefs)
+    private val updateService    = AppUpdateService()
+    private val changelogService = ChangelogService()
 
     init {
         syncContenuti()
         checkAggiornamentoApp()
+        caricaChangelog()
     }
 
     fun syncContenuti() {
@@ -58,11 +64,9 @@ class HomeViewModel(
     private fun checkAggiornamentoApp() {
         viewModelScope.launch {
             try {
-                // Legge la versionName dal PackageManager — non serve BuildConfig
                 val versioneCorrente = context.packageManager
                     .getPackageInfo(context.packageName, 0)
                     .versionName ?: "1.0"
-
                 val result = updateService.checkUpdate(versioneCorrente)
                 if (result is AppUpdateService.UpdateResult.AggiornamentoDisponibile) {
                     _state.value = _state.value.copy(
@@ -73,9 +77,44 @@ class HomeViewModel(
                         )
                     )
                 }
-            } catch (_: Exception) {
-                // silenzioso — il check aggiornamento non è critico
-            }
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun caricaChangelog() {
+        viewModelScope.launch {
+            try {
+                val lista = changelogService.scaricaChangelog()
+                if (lista.isEmpty()) return@launch
+
+                val versioneCorrente = context.packageManager
+                    .getPackageInfo(context.packageName, 0)
+                    .versionName ?: "1.0"
+                val ultimaVista = contentPrefs.getUltimaVersioneVista()
+
+                _state.value = _state.value.copy(changelogCompleto = lista)
+
+                if (ultimaVista != versioneCorrente) {
+                    val novita = if (ultimaVista.isBlank()) {
+                        listOf(lista.first())
+                    } else {
+                        lista.takeWhile { it.versione != ultimaVista }
+                    }
+                    if (novita.isNotEmpty()) {
+                        _state.value = _state.value.copy(changelogDaMostrare = novita)
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun dismissChangelog() {
+        viewModelScope.launch {
+            val versioneCorrente = context.packageManager
+                .getPackageInfo(context.packageName, 0)
+                .versionName ?: "1.0"
+            contentPrefs.setUltimaVersioneVista(versioneCorrente)
+            _state.value = _state.value.copy(changelogDaMostrare = null)
         }
     }
 
