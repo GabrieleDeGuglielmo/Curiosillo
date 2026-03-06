@@ -17,7 +17,7 @@ class ChangelogService {
 
     suspend fun scaricaChangelog(): List<VersioneChangelog> = withContext(Dispatchers.IO) {
         try {
-            val json  = java.net.URL(url).readText()
+            val json = java.net.URL("$url?t=${System.currentTimeMillis()}").readText()
             val array = JSONArray(json)
             (0 until array.length()).map { i ->
                 val obj    = array.getJSONObject(i)
