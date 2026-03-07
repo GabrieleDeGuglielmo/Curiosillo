@@ -120,6 +120,8 @@ class CuriosityRepository(private val db: AppDatabase) {
 
     suspend fun getPilloleIgnorate(): List<Curiosity> = curDao.getPilloleIgnorate()
 
+    suspend fun getTutteLeCuriosita(): List<Curiosity> = curDao.getTutte()
+
     suspend fun ripristinaIgnorata(c: Curiosity) =
         curDao.update(c.copy(isIgnorata = false))
 

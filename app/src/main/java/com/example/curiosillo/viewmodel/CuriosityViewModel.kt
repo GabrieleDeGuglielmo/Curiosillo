@@ -90,8 +90,12 @@ class CuriosityViewModel(
         viewModelScope.launch {
             // toggle: se lo stesso voto è già impostato, rimuovilo
             val nuovoVoto = if (s.curiosity.voto == voto) null else voto
+            val vecchioVoto = s.curiosity.voto
             repo.setVoto(s.curiosity, nuovoVoto)
             _state.value = s.copy(curiosity = s.curiosity.copy(voto = nuovoVoto))
+            // Sync su Firestore (solo se la curiosità ha un externalId)
+            val externalId = s.curiosity.externalId ?: return@launch
+            FirebaseManager.sincronizzaVoto(externalId, vecchioVoto, nuovoVoto)
         }
     }
 

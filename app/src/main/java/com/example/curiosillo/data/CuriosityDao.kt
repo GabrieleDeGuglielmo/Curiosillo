@@ -49,6 +49,9 @@ interface CuriosityDao {
     @Query("SELECT * FROM curiosity WHERE isIgnorata = 1 ORDER BY id DESC")
     suspend fun getPilloleIgnorate(): List<Curiosity>
 
+    @Query("SELECT * FROM curiosity")
+    suspend fun getTutte(): List<Curiosity>
+
     @Query("SELECT * FROM curiosity WHERE isRead = 1 AND isIgnorata = 0 AND (:cat = '' OR category = :cat) ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END, readAt ASC")
     suspend fun getTutteImparate(cat: String = ""): List<Curiosity>
 

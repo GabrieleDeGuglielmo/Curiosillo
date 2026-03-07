@@ -108,6 +108,21 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     }
                 }
 
+                if (state.isAdmin) {
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                    AzioneItem(
+                        icon  = Icons.Default.BarChart,
+                        tint  = Color(0xFF7B2D8B),
+                        label = "Admin — Voti curiosità",
+                        sub   = "Visualizza like/dislike di tutte le curiosità"
+                    ) {
+                        scope.launch { sheetState.hide() }.invokeOnCompletion {
+                            showSheet = false
+                            nav.navigate("admin")
+                        }
+                    }
+                }
+
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
                 // Statistiche Quiz

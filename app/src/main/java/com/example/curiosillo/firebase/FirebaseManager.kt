@@ -230,4 +230,97 @@ object FirebaseManager {
     } catch (e: Exception) {
         Result.failure(e)
     }
+
+    // ── Voti (like/dislike) ───────────────────────────────────────────────────
+
+    /**
+     * Sincronizza il voto di un utente su una curiosità.
+     * Path: voti/{externalId}
+     *   → campi "likes" e "dislikes": contatori aggregati
+     *   → subcollection "utenti/{uid}": voto individuale per-utente
+     */
+    suspend fun sincronizzaVoto(externalId: String, vecchioVoto: Int?, nuovoVoto: Int?) {
+        if (vecchioVoto == nuovoVoto) return
+        try {
+            val docRef = db.collection("voti").document(externalId)
+            val uidRef = docRef.collection("utenti").document(uid ?: "anonimo")
+
+            db.runTransaction { tx ->
+                val snap     = tx.get(docRef)
+                var likes    = snap.getLong("likes")    ?: 0L
+                var dislikes = snap.getLong("dislikes") ?: 0L
+
+                // Rimuovi vecchio voto dal contatore
+                when (vecchioVoto) {
+                    1  -> likes    = maxOf(0, likes - 1)
+                    -1 -> dislikes = maxOf(0, dislikes - 1)
+                }
+                // Aggiungi nuovo voto al contatore
+                when (nuovoVoto) {
+                    1  -> likes++
+                    -1 -> dislikes++
+                }
+
+                tx.set(docRef, mapOf("likes" to likes, "dislikes" to dislikes), SetOptions.merge())
+
+                if (nuovoVoto != null) {
+                    tx.set(uidRef, mapOf(
+                        "uid"       to (uid ?: ""),
+                        "voto"      to nuovoVoto,
+                        "timestamp" to System.currentTimeMillis()
+                    ))
+                } else {
+                    tx.delete(uidRef)
+                }
+            }.await()
+        } catch (_: Exception) {}
+    }
+
+    /** Carica tutti i documenti voti — usato dalla schermata admin */
+    suspend fun caricaTuttiVoti(): List<VotoCuriosita> = try {
+        val docs = db.collection("voti").get().await()
+        docs.map { doc ->
+            VotoCuriosita(
+                externalId = doc.id,
+                likes      = doc.getLong("likes")    ?: 0L,
+                dislikes   = doc.getLong("dislikes") ?: 0L
+            )
+        }.sortedByDescending { it.likes + it.dislikes }
+    } catch (_: Exception) { emptyList() }
+
+    /** Carica i voti per-utente di una singola curiosità — usato dalla schermata admin */
+    suspend fun caricaVotiPerUtente(externalId: String): List<VotoUtente> = try {
+        val docs = db.collection("voti").document(externalId)
+            .collection("utenti").get().await()
+        docs.map { doc ->
+            VotoUtente(
+                uid       = doc.getString("uid") ?: "",
+                voto      = (doc.getLong("voto") ?: 0L).toInt(),
+                timestamp = doc.getLong("timestamp") ?: 0L
+            )
+        }
+    } catch (_: Exception) { emptyList() }
+
+    data class VotoCuriosita(
+        val externalId: String,
+        val likes:      Long,
+        val dislikes:   Long
+    )
+
+    data class VotoUtente(
+        val uid:       String,
+        val voto:      Int,
+        val timestamp: Long
+    )
+
+    // ── Admin ─────────────────────────────────────────────────────────────────
+
+    /** Controlla se l'utente corrente ha il campo isAdmin: true su Firestore */
+    suspend fun isAdmin(): Boolean {
+        val currentUid = uid ?: return false
+        return try {
+            val doc = db.collection("users").document(currentUid).get().await()
+            doc.getBoolean("isAdmin") == true
+        } catch (_: Exception) { false }
+    }
 }
