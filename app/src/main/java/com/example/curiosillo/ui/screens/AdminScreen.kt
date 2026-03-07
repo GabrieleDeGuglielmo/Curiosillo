@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.*
@@ -16,9 +18,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
@@ -42,6 +48,8 @@ data class VotoConTitolo(
     val likes:      Long,
     val dislikes:   Long
 )
+
+enum class FiltroVoti { TUTTI, SOLO_NEGATIVI }
 
 data class AdminVotiUiState(
     val isLoading: Boolean             = true,
@@ -99,6 +107,9 @@ fun AdminVotiScreen(nav: NavController) {
     val vm: AdminVotiViewModel = viewModel(factory = AdminVotiViewModel.Factory(app.repository))
     val state by vm.state.collectAsState()
 
+    var query   by remember { mutableStateOf("") }
+    var filtro  by remember { mutableStateOf(FiltroVoti.TUTTI) }
+
     val gradientBg = Brush.verticalGradient(listOf(
         MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
         MaterialTheme.colorScheme.background
@@ -134,12 +145,29 @@ fun AdminVotiScreen(nav: NavController) {
                     }
                 }
                 else -> {
+                    // Applica filtri in memoria
+                    val filtrati = remember(state.voti, query, filtro) {
+                        var lista = state.voti
+                        if (filtro == FiltroVoti.SOLO_NEGATIVI)
+                            lista = lista.filter { it.dislikes > 0 }
+                        if (query.isNotBlank()) {
+                            val q = query.trim().lowercase()
+                            lista = lista.filter {
+                                it.titolo.lowercase().contains(q) ||
+                                        it.externalId.lowercase().contains(q)
+                            }
+                        }
+                        lista
+                    }
+
                     val totLikes    = state.voti.sumOf { it.likes }
                     val totDislikes = state.voti.sumOf { it.dislikes }
+
                     LazyColumn(
-                        contentPadding      = PaddingValues(16.dp),
+                        contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        // ── Card riepilogo globale ────────────────────────────
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -156,10 +184,77 @@ fun AdminVotiScreen(nav: NavController) {
                                     TotaleChip("📊 ${state.voti.size}", "Curiosità votate", MaterialTheme.colorScheme.primary)
                                 }
                             }
-                            Spacer(Modifier.height(4.dp))
+                            Spacer(Modifier.height(8.dp))
                         }
-                        items(state.voti, key = { it.externalId }) { voto ->
-                            VotoCard(voto)
+
+                        // ── Barra ricerca ─────────────────────────────────────
+                        item {
+                            OutlinedTextField(
+                                value         = query,
+                                onValueChange = { query = it },
+                                modifier      = Modifier.fillMaxWidth(),
+                                placeholder   = { Text("Cerca per ID o titolo…") },
+                                leadingIcon   = { Icon(Icons.Default.Search, null) },
+                                trailingIcon  = {
+                                    if (query.isNotBlank()) {
+                                        IconButton(onClick = { query = "" }) {
+                                            Icon(Icons.Default.Close, "Cancella")
+                                        }
+                                    }
+                                },
+                                singleLine = true,
+                                shape      = RoundedCornerShape(14.dp)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+
+                        // ── Chip filtro ───────────────────────────────────────
+                        item {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilterChip(
+                                    selected = filtro == FiltroVoti.TUTTI,
+                                    onClick  = { filtro = FiltroVoti.TUTTI },
+                                    label    = { Text("Tutte") }
+                                )
+                                FilterChip(
+                                    selected = filtro == FiltroVoti.SOLO_NEGATIVI,
+                                    onClick  = { filtro = FiltroVoti.SOLO_NEGATIVI },
+                                    label    = { Text("👎 Con almeno un dislike") }
+                                )
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                if (query.isBlank() && filtro == FiltroVoti.TUTTI)
+                                    "${state.voti.size} curiosità votate"
+                                else "${filtrati.size} risultati",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                            )
+                        }
+
+                        // ── Lista filtrata ────────────────────────────────────
+                        if (filtrati.isEmpty()) {
+                            item {
+                                Box(
+                                    Modifier.fillMaxWidth().padding(top = 48.dp),
+                                    Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("🔍", fontSize = 40.sp)
+                                        Spacer(Modifier.height(12.dp))
+                                        Text(
+                                            "Nessun risultato",
+                                            style     = MaterialTheme.typography.bodyMedium,
+                                            color     = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            items(filtrati, key = { it.externalId }) { voto ->
+                                VotoCard(voto, query)
+                            }
                         }
                     }
                 }
@@ -168,31 +263,54 @@ fun AdminVotiScreen(nav: NavController) {
     }
 }
 
+// ── Highlight helper ──────────────────────────────────────────────────────────
+
+private fun highlight(text: String, query: String): AnnotatedString {
+    if (query.isBlank()) return AnnotatedString(text)
+    return buildAnnotatedString {
+        val lower  = text.lowercase()
+        val q      = query.trim().lowercase()
+        var cursor = 0
+        while (cursor < text.length) {
+            val idx = lower.indexOf(q, cursor)
+            if (idx < 0) { append(text.substring(cursor)); break }
+            append(text.substring(cursor, idx))
+            withStyle(SpanStyle(
+                background = Color(0xFFFFEB3B).copy(alpha = 0.5f),
+                fontWeight = FontWeight.Bold
+            )) { append(text.substring(idx, idx + q.length)) }
+            cursor = idx + q.length
+        }
+    }
+}
+
+// ── VotoCard ──────────────────────────────────────────────────────────────────
+
 @Composable
-private fun VotoCard(voto: VotoConTitolo) {
+private fun VotoCard(voto: VotoConTitolo, query: String = "") {
     val totale   = voto.likes + voto.dislikes
     val likesPct = if (totale > 0) voto.likes.toFloat() / totale else 0f
+    val isNegativo = voto.dislikes > voto.likes
 
     Card(
         modifier  = Modifier.fillMaxWidth(),
         shape     = RoundedCornerShape(16.dp),
-        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors    = CardDefaults.cardColors(
+            containerColor = if (isNegativo)
+                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+            else MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(Modifier.padding(16.dp)) {
-
-            // ── Titolo + contatori ────────────────────────────────────────────
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(voto.titolo,
+                    Text(highlight(voto.titolo, query),
                         style      = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         maxLines   = 2,
                         overflow   = TextOverflow.Ellipsis)
-                    Text(voto.externalId,
+                    Text(highlight(voto.externalId, query),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
                 }
@@ -210,8 +328,6 @@ private fun VotoCard(voto: VotoConTitolo) {
                     }
                 }
             }
-
-            // ── Barra percentuale like ────────────────────────────────────────
             if (totale > 0) {
                 Spacer(Modifier.height(10.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

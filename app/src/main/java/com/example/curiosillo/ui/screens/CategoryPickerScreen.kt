@@ -34,6 +34,9 @@ fun CategoryPickerScreen(nav: NavController, destinazione: String) {
     val categorie       by vm.categorie.collectAsState()
     val categorieAttive by vm.categorieAttive.collectAsState()
 
+    // Reset ad ogni apertura: nessuna preselezione
+    LaunchedEffect(Unit) { vm.resetCategorie() }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -54,7 +57,7 @@ fun CategoryPickerScreen(nav: NavController, destinazione: String) {
             Modifier.fillMaxSize().background(gradientBg).padding(pad).padding(horizontal = 16.dp)
         ) {
             Spacer(Modifier.height(8.dp))
-            Text("La selezione viene ricordata per le sessioni future.",
+            Text("Seleziona una o più categorie, oppure vai avanti per scegliere da tutte.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
                 modifier = Modifier.padding(horizontal = 4.dp))
