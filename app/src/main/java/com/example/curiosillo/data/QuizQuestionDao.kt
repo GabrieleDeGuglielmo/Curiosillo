@@ -11,6 +11,7 @@ interface QuizQuestionDao {
     LEFT JOIN quiz_answer qa ON qa.questionId = qq.id
     WHERE qa.id IS NULL
       AND c.isRead = 1
+      AND c.isIgnorata = 0
       AND (:cat = '' OR qq.category = :cat)
     ORDER BY RANDOM()
     LIMIT :n
@@ -23,6 +24,7 @@ interface QuizQuestionDao {
     LEFT JOIN quiz_answer qa ON qa.questionId = qq.id
     WHERE qa.id IS NULL
       AND c.isRead = 1
+      AND c.isIgnorata = 0
       AND (qq.category IN (:cats))
     ORDER BY RANDOM()
     LIMIT :n
@@ -35,6 +37,7 @@ interface QuizQuestionDao {
     LEFT JOIN quiz_answer qa ON qa.questionId = qq.id
     WHERE qa.id IS NULL
       AND c.isRead = 1
+      AND c.isIgnorata = 0
       AND (:cat = '' OR qq.category = :cat)
 """)
     suspend fun countAvailable(cat: String = ""): Int
@@ -45,6 +48,7 @@ interface QuizQuestionDao {
     LEFT JOIN quiz_answer qa ON qa.questionId = qq.id
     WHERE qa.id IS NULL
       AND c.isRead = 1
+      AND c.isIgnorata = 0
 """)
     suspend fun quizNonRisposti(): Int
 

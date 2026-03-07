@@ -99,6 +99,25 @@ object FirebaseManager {
         auth.currentUser?.delete()?.await()
     }
 
+    /**
+     * Cerca tutti i commenti dell'utente su Firestore e li anonimizza:
+     * rimuove uid e sostituisce autore con "Utente eliminato".
+     * Usa una collection group query su "lista".
+     */
+    suspend fun anonimizzaCommentiUtente(uid: String) {
+        try {
+            val snapshot = db.collectionGroup("lista")
+                .whereEqualTo("uid", uid)
+                .get().await()
+            snapshot.forEach { doc ->
+                doc.reference.update(mapOf(
+                    "autore" to "Utente eliminato",
+                    "uid"    to ""
+                )).await()
+            }
+        } catch (_: Exception) {}
+    }
+
     // ── Badge ─────────────────────────────────────────────────────────────────
 
     suspend fun caricaBadge(uid: String): List<String> = try {

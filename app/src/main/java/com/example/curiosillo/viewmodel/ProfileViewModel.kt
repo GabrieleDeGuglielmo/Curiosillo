@@ -92,7 +92,9 @@ class ProfileViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(isEliminazioneInCorso = true)
             try {
-                // 1. Cancella dati Firestore
+                // 1. Anonimizza commenti pubblici
+                FirebaseManager.anonimizzaCommentiUtente(uid)
+                // 2. Cancella dati Firestore
                 FirebaseManager.eliminaDatiUtente(uid)
                 // 2. Resetta dati locali
                 repo.resetProgressi()

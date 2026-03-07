@@ -24,8 +24,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.*import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -33,12 +32,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
@@ -163,64 +164,79 @@ fun HomeScreen(nav: NavController) {
             }
         }
 
-        // ── Pulsante profilo (alto destra) ────────────────────────────────────
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 35.dp, end = 12.dp)
-                .size(42.dp)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape)
-                .clickable { nav.navigate("profile") },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Default.Person, "Profilo",
-                modifier = Modifier.size(26.dp),
-                tint     = MaterialTheme.colorScheme.primary)
-        }
-
-        // ── Pulsante Novità (basso destra) ────────────────────────────────────
-        if (homeState.changelogCompleto.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(bottom = 24.dp, end = 16.dp)
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                        RoundedCornerShape(20.dp)
-                    )
-                    .clickable { showChangelogCompleto = true }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.AutoAwesome, "Novità",
-                    modifier = Modifier.size(16.dp),
-                    tint     = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(5.dp))
-                Text("Novità",
-                    style      = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color      = MaterialTheme.colorScheme.primary)
-            }
-        }
-
         // ── Contenuto principale ──────────────────────────────────────────────
+        val screenHeight = LocalConfiguration.current.screenHeightDp
+        val isSmallScreen = screenHeight < 700
+
         Column(
-            modifier = Modifier.fillMaxSize().padding(28.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 28.dp)
+                .padding(top = 16.dp, bottom = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
+            // ── Riga profilo + novità in cima ─────────────────────────────────
+            Row(
+                Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                // Spazio vuoto a sinistra per bilanciare
+                Spacer(Modifier.size(42.dp))
+
+                // Pulsante Novità — visibile solo se changelog disponibile
+                if (homeState.changelogCompleto.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .background(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                RoundedCornerShape(20.dp)
+                            )
+                            .clickable { showChangelogCompleto = true }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, "Novità",
+                            modifier = Modifier.size(16.dp),
+                            tint     = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(5.dp))
+                        Text("Novità",
+                            style      = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color      = MaterialTheme.colorScheme.primary)
+                    }
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
+
+                // Pulsante Profilo
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape)
+                        .clickable { nav.navigate("profile") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Person, "Profilo",
+                        modifier = Modifier.size(26.dp),
+                        tint     = MaterialTheme.colorScheme.primary)
+                }
+            }
             Image(
                 painter            = painterResource(id = R.drawable.ic_logo),
                 contentDescription = "Logo Curiosillo",
                 modifier           = Modifier
-                    .size(110.dp)
+                    .size(if (isSmallScreen) 72.dp else 110.dp)
                     .clip(CircleShape)
                     .shadow(8.dp, CircleShape),
                 contentScale = ContentScale.Crop
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(if (isSmallScreen) 8.dp else 16.dp))
             Text("Curiosillo",
-                style      = MaterialTheme.typography.displayMedium,
+                style      = if (isSmallScreen) MaterialTheme.typography.headlineLarge
+                else MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color      = MaterialTheme.colorScheme.primary)
 
@@ -251,12 +267,12 @@ fun HomeScreen(nav: NavController) {
                 style     = MaterialTheme.typography.bodyLarge,
                 color     = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
                 textAlign = TextAlign.Center,
-                modifier  = Modifier.padding(top = 6.dp, bottom = 20.dp))
+                modifier  = Modifier.padding(top = 6.dp, bottom = if (isSmallScreen) 12.dp else 20.dp))
 
             GamificationBanner(
                 xpTotali       = xpTotali,
                 streakCorrente = streakCorrente,
-                modifier       = Modifier.padding(bottom = 20.dp)
+                modifier       = Modifier.padding(bottom = if (isSmallScreen) 12.dp else 20.dp)
             )
 
             MenuCard(Icons.Default.EmojiObjects,
@@ -270,6 +286,8 @@ fun HomeScreen(nav: NavController) {
             MenuCard(Icons.Default.Refresh,
                 "Ripasso", "Rileggi le pillole già imparate",
                 MaterialTheme.colorScheme.tertiary) { nav.navigate("ripasso") }
+
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
@@ -291,67 +309,116 @@ private fun ChangelogDialog(
                 textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         },
         text = {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 420.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                versioni.forEachIndexed { index, versione ->
-                    if (index > 0) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 16.dp),
-                            color    = MaterialTheme.colorScheme.outlineVariant
-                        )
-                    }
+            val scrollState = rememberScrollState()
+            val showScrollHint by remember {
+                derivedStateOf { scrollState.maxValue > 0 && scrollState.value < scrollState.maxValue }
+            }
 
-                    // ── Intestazione versione ─────────────────────────────────
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.primary
+            Box(Modifier.fillMaxWidth()) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(scrollState)
+                        .padding(end = 10.dp) // spazio per la barra
+                ) {
+                    versioni.forEachIndexed { index, versione ->
+                        if (index > 0) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 16.dp),
+                                color    = MaterialTheme.colorScheme.outlineVariant
+                            )
+                        }
+
+                        // ── Intestazione versione ─────────────────────────────────
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 12.dp)
                         ) {
-                            Text(
-                                "v${versione.versione}",
-                                modifier   = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                style      = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.ExtraBold,
-                                color      = Color.White
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            ) {
+                                Text(
+                                    "v${versione.versione}",
+                                    modifier   = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    style      = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color      = Color.White
+                                )
+                            }
+                            if (versione.data.isNotBlank()) {
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    versione.data,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                                )
+                            }
+                        }
+
+                        // ── Nuove funzionalità ────────────────────────────────────
+                        if (versione.novita.isNotEmpty()) {
+                            SezioneChangelog(
+                                etichetta = "Novità",
+                                icona     = Icons.Default.Star,
+                                colore    = colorNovita,
+                                voci      = versione.novita
                             )
                         }
-                        if (versione.data.isNotBlank()) {
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                versione.data,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+
+                        // ── Bug fix ───────────────────────────────────────────────
+                        if (versione.fix.isNotEmpty()) {
+                            if (versione.novita.isNotEmpty()) Spacer(Modifier.height(12.dp))
+                            SezioneChangelog(
+                                etichetta = "Correzioni",
+                                icona     = Icons.Default.BugReport,
+                                colore    = colorFix,
+                                voci      = versione.fix
                             )
                         }
                     }
+                }
 
-                    // ── Nuove funzionalità ────────────────────────────────────
-                    if (versione.novita.isNotEmpty()) {
-                        SezioneChangelog(
-                            etichetta = "Novità",
-                            icona     = Icons.Default.Star,
-                            colore    = colorNovita,
-                            voci      = versione.novita
+                // ── Barra scroll laterale ─────────────────────────────────────
+                if (scrollState.maxValue > 0) {
+                    val fraction = scrollState.value.toFloat() / scrollState.maxValue.toFloat()
+                    Box(
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .width(4.dp)
+                            .heightIn(max = 420.dp)
+                            .fillMaxHeight()
+                            .background(
+                                MaterialTheme.colorScheme.outlineVariant,
+                                RoundedCornerShape(2.dp)
+                            )
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(0.25f)
+                                .align(Alignment.TopStart)
+                                .offset(y = androidx.compose.ui.unit.Dp(fraction * 315))
+                                .background(
+                                    MaterialTheme.colorScheme.primary,
+                                    RoundedCornerShape(2.dp)
+                                )
                         )
                     }
+                }
 
-                    // ── Bug fix ───────────────────────────────────────────────
-                    if (versione.fix.isNotEmpty()) {
-                        if (versione.novita.isNotEmpty()) Spacer(Modifier.height(12.dp))
-                        SezioneChangelog(
-                            etichetta = "Correzioni",
-                            icona     = Icons.Default.BugReport,
-                            colore    = colorFix,
-                            voci      = versione.fix
-                        )
-                    }
+                // ── Freccia "scorri" che scompare quando sei in fondo ─────────
+                androidx.compose.animation.AnimatedVisibility(
+                    visible  = showScrollHint,
+                    enter    = fadeIn(),
+                    exit     = fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
+                    Text("▾",
+                        color    = MaterialTheme.colorScheme.primary,
+                        fontSize = 18.sp,
+                        modifier = Modifier.padding(bottom = 2.dp))
                 }
             }
         },
