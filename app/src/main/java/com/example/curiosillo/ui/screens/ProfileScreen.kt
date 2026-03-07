@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material3.*
@@ -89,6 +90,21 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     scope.launch { sheetState.hide() }.invokeOnCompletion {
                         showSheet = false
                         nav.navigate("preferiti")
+                    }
+                }
+
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
+                // Pillole nascoste
+                AzioneItem(
+                    icon  = Icons.Default.VisibilityOff,
+                    tint  = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    label = "Pillole nascoste (${state.totaleIgnorate})",
+                    sub   = "Curiosità contrassegnate come \"non mi interessa\""
+                ) {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                        showSheet = false
+                        nav.navigate("pillole_nascoste")
                     }
                 }
 
