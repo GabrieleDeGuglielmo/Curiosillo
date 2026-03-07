@@ -37,6 +37,10 @@ import com.example.curiosillo.ui.theme.Error
 import com.example.curiosillo.viewmodel.BookmarkViewModel
 import android.content.Intent
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.ThumbDown
+import androidx.compose.material.icons.outlined.ThumbUp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +68,8 @@ fun BookmarkScreen(nav: NavController) {
                 pillola     = pillola,
                 onRimuovi   = { vm.rimuoviBookmark(pillola) },
                 onNota      = { pillolaPerNota = pillola },
+                onLike      = { vm.setVoto(pillola, 1) },
+                onDislike   = { vm.setVoto(pillola, -1) },
                 onCondividi = {
                     val testo = "📚 ${pillola.title}\n\n${pillola.body}\n\n— Categoria: ${pillola.category}\nScoperto con Curiosillo 🎓"
                     val intent = Intent(Intent.ACTION_SEND).apply {
@@ -241,6 +247,8 @@ private fun DettaglioSheet(
     pillola: Curiosity,
     onRimuovi: () -> Unit,
     onNota: () -> Unit,
+    onLike: () -> Unit,
+    onDislike: () -> Unit,
     onCondividi: () -> Unit,
     onChiudi: () -> Unit
 ) {
@@ -296,6 +304,45 @@ private fun DettaglioSheet(
             }
         }
         Spacer(Modifier.height(20.dp))
+
+        // ── Like / Dislike ────────────────────────────────────────────────────
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick  = onLike,
+                modifier = Modifier.weight(1f).height(48.dp),
+                shape    = RoundedCornerShape(12.dp),
+                colors   = if (pillola.voto == 1)
+                    ButtonDefaults.outlinedButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor   = Color.White)
+                else ButtonDefaults.outlinedButtonColors()
+            ) {
+                Icon(if (pillola.voto == 1) Icons.Default.ThumbUp else Icons.Outlined.ThumbUp,
+                    null, Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Mi piace")
+            }
+            OutlinedButton(
+                onClick  = onDislike,
+                modifier = Modifier.weight(1f).height(48.dp),
+                shape    = RoundedCornerShape(12.dp),
+                colors   = if (pillola.voto == -1)
+                    ButtonDefaults.outlinedButtonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor   = Color.White)
+                else ButtonDefaults.outlinedButtonColors()
+            ) {
+                Icon(if (pillola.voto == -1) Icons.Default.ThumbDown else Icons.Outlined.ThumbDown,
+                    null, Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Non mi piace")
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
         OutlinedButton(
             onClick = onNota, modifier = Modifier
                 .fillMaxWidth()

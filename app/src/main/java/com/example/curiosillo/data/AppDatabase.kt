@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BadgeSbloccato::class,
         QuizSession::class
     ],
-    version      = 6,
+    version      = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -42,7 +42,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_2_3,
                         MIGRATION_3_4,
                         MIGRATION_4_5,
-                        MIGRATION_5_6
+                        MIGRATION_5_6,
+                        MIGRATION_6_7
                     )
                     .build().also { INSTANCE = it }
             }
@@ -151,6 +152,18 @@ abstract class AppDatabase : RoomDatabase() {
                 // category su quiz_question
                 database.execSQL(
                     "ALTER TABLE quiz_question ADD COLUMN category TEXT NOT NULL DEFAULT ''"
+                )
+            }
+        }
+        // ── Aggiunge voto (like/dislike) e isIgnorata ────────────────────────
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE curiosity ADD COLUMN voto INTEGER"
+                )
+                database.execSQL(
+                    "ALTER TABLE curiosity ADD COLUMN isIgnorata INTEGER NOT NULL DEFAULT 0"
                 )
             }
         }

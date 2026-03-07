@@ -231,7 +231,7 @@ fun HomeScreen(nav: NavController) {
             ) {
                 homeState.syncMessaggio?.let { msg ->
                     LaunchedEffect(msg) {
-                        kotlinx.coroutines.delay(3000)
+                        kotlinx.coroutines.delay(7000)
                         homeVm.dismissSyncMessaggio()
                     }
                     Card(

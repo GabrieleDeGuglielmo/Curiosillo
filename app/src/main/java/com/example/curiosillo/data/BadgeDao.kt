@@ -11,6 +11,9 @@ interface BadgeDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun inserisci(badge: BadgeSbloccato)
 
-    @Query("SELECT COUNT(*) > 0 FROM badge_sbloccato WHERE id = :id")
+    @Query("SELECT EXISTS(SELECT 1 FROM badge_sbloccato WHERE id = :id)")
     suspend fun esiste(id: String): Boolean
+
+    @Query("DELETE FROM badge_sbloccato")
+    suspend fun resetTutti()
 }

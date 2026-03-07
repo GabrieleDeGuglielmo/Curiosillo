@@ -72,6 +72,17 @@ class RipassoViewModel(
         }
     }
 
+    fun setVoto(voto: Int?) {
+        val pillola = pilloleCorrente() ?: return
+        viewModelScope.launch {
+            val nuovoVoto = if (pillola.voto == voto) null else voto
+            repo.setVoto(pillola, nuovoVoto)
+            val pilloleAggiornate = _state.value.pillole.toMutableList()
+            pilloleAggiornate[_state.value.indiceCorrente] = pillola.copy(voto = nuovoVoto)
+            _state.value = _state.value.copy(pillole = pilloleAggiornate)
+        }
+    }
+
     fun pilloleCorrente(): Curiosity? =
         _state.value.pillole.getOrNull(_state.value.indiceCorrente)
 

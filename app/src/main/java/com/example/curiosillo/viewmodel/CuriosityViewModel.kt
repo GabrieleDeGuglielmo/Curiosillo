@@ -7,6 +7,7 @@ import com.example.curiosillo.data.CategoryPreferences
 import com.example.curiosillo.data.Curiosity
 import com.example.curiosillo.domain.GamificationEngine
 import com.example.curiosillo.domain.RisultatoAzione
+import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +22,13 @@ sealed class CuriosityUiState {
     object Learned : CuriosityUiState()
 }
 
+data class CommentiUiState(
+    val commenti:      List<FirebaseManager.Commento> = emptyList(),
+    val isLoading:     Boolean = false,
+    val erroreInvio:   String? = null,
+    val invioInCorso:  Boolean = false
+)
+
 class CuriosityViewModel(
     private val repo:   CuriosityRepository,
     private val prefs:  CategoryPreferences,
@@ -32,6 +40,9 @@ class CuriosityViewModel(
 
     private val _risultatoAzione = MutableStateFlow<RisultatoAzione?>(null)
     val risultatoAzione: StateFlow<RisultatoAzione?> = _risultatoAzione.asStateFlow()
+
+    private val _commentiState = MutableStateFlow(CommentiUiState())
+    val commentiState: StateFlow<CommentiUiState> = _commentiState.asStateFlow()
 
     init { load() }
 
@@ -72,6 +83,73 @@ class CuriosityViewModel(
             repo.salvaNota(s.curiosity, testo)
             _state.value = s.copy(curiosity = s.curiosity.copy(nota = testo))
         }
+    }
+
+    fun setVoto(voto: Int?) {
+        val s = _state.value as? CuriosityUiState.Success ?: return
+        viewModelScope.launch {
+            // toggle: se lo stesso voto è già impostato, rimuovilo
+            val nuovoVoto = if (s.curiosity.voto == voto) null else voto
+            repo.setVoto(s.curiosity, nuovoVoto)
+            _state.value = s.copy(curiosity = s.curiosity.copy(voto = nuovoVoto))
+        }
+    }
+
+    fun toggleIgnora() {
+        val s = _state.value as? CuriosityUiState.Success ?: return
+        viewModelScope.launch {
+            repo.toggleIgnora(s.curiosity)
+            // dopo aver ignorato, carica la prossima pillola
+            load()
+        }
+    }
+
+    fun caricaCommenti() {
+        val s = _state.value as? CuriosityUiState.Success ?: return
+        val externalId = s.curiosity.externalId ?: return
+        viewModelScope.launch {
+            _commentiState.value = _commentiState.value.copy(isLoading = true)
+            val commenti = FirebaseManager.caricaCommenti(externalId)
+            _commentiState.value = _commentiState.value.copy(commenti = commenti, isLoading = false)
+        }
+    }
+
+    fun inviaCommento(testo: String) {
+        val s = _state.value as? CuriosityUiState.Success ?: return
+        val externalId = s.curiosity.externalId ?: return
+        if (FirebaseManager.contienePaloroleVietate(testo)) {
+            _commentiState.value = _commentiState.value.copy(
+                erroreInvio = "Il commento contiene parole non consentite."
+            )
+            return
+        }
+        viewModelScope.launch {
+            _commentiState.value = _commentiState.value.copy(invioInCorso = true, erroreInvio = null)
+            val result = FirebaseManager.aggiungiCommento(externalId, testo)
+            if (result.isSuccess) {
+                val commenti = FirebaseManager.caricaCommenti(externalId)
+                _commentiState.value = _commentiState.value.copy(commenti = commenti, invioInCorso = false)
+            } else {
+                _commentiState.value = _commentiState.value.copy(
+                    invioInCorso = false,
+                    erroreInvio  = "Errore durante l'invio. Riprova."
+                )
+            }
+        }
+    }
+
+    fun eliminaCommento(commentoId: String) {
+        val s = _state.value as? CuriosityUiState.Success ?: return
+        val externalId = s.curiosity.externalId ?: return
+        viewModelScope.launch {
+            FirebaseManager.eliminaCommento(externalId, commentoId)
+            val commenti = FirebaseManager.caricaCommenti(externalId)
+            _commentiState.value = _commentiState.value.copy(commenti = commenti)
+        }
+    }
+
+    fun dismissErroreCommento() {
+        _commentiState.value = _commentiState.value.copy(erroreInvio = null)
     }
 
     fun consumaRisultato() { _risultatoAzione.value = null }

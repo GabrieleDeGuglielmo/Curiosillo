@@ -4,6 +4,9 @@ import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -12,8 +15,14 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.ThumbDown
+import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.data.BadgeSbloccato
+import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.ui.categoryImage
 import com.example.curiosillo.ui.components.NotaBottomSheet
 import com.example.curiosillo.ui.theme.Success
@@ -48,9 +58,12 @@ fun CuriosityScreen(nav: NavController) {
     )
     val state    by vm.state.collectAsState()
     val risultato by vm.risultatoAzione.collectAsState()
+    val commentiState by vm.commentiState.collectAsState()
 
-    var badgeDaMostrare by remember { mutableStateOf<BadgeSbloccato?>(null) }
-    var badgeQueue      by remember { mutableStateOf<List<BadgeSbloccato>>(emptyList()) }
+    var badgeDaMostrare  by remember { mutableStateOf<BadgeSbloccato?>(null) }
+    var badgeQueue       by remember { mutableStateOf<List<BadgeSbloccato>>(emptyList()) }
+    var mostraCommenti   by remember { mutableStateOf(false) }
+    var mostraDialogIgnora by remember { mutableStateOf(false) }
 
     LaunchedEffect(risultato) {
         risultato?.let {
@@ -90,6 +103,45 @@ fun CuriosityScreen(nav: NavController) {
                 }) { Text("Ottimo!", fontWeight = FontWeight.Bold) }
             }
         )
+    }
+
+    // Dialog conferma "Non mi interessa"
+    if (mostraDialogIgnora) {
+        AlertDialog(
+            onDismissRequest = { mostraDialogIgnora = false },
+            icon  = { Text("🙈", fontSize = 36.sp) },
+            title = { Text("Non mi interessa", fontWeight = FontWeight.Bold) },
+            text  = { Text("Questa curiosità verrà nascosta da tutti i conteggi e quiz. Potrai ripristinarla in seguito.", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            confirmButton = {
+                Button(onClick = { mostraDialogIgnora = false; vm.toggleIgnora() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error)) {
+                    Text("Nascondi")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostraDialogIgnora = false }) { Text("Annulla") }
+            }
+        )
+    }
+
+    // Bottom sheet commenti
+    if (mostraCommenti) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        ModalBottomSheet(
+            onDismissRequest = { mostraCommenti = false },
+            sheetState = sheetState
+        ) {
+            val s = state as? CuriosityUiState.Success
+            CommentiSheet(
+                commentiState  = commentiState,
+                currentUid     = FirebaseManager.uid,
+                isLoggato      = FirebaseManager.isLoggato,
+                onInvia        = { vm.inviaCommento(it) },
+                onElimina      = { vm.eliminaCommento(it) },
+                onDismissError = { vm.dismissErroreCommento() }
+            )
+        }
     }
 
     Scaffold(
@@ -144,9 +196,13 @@ fun CuriosityScreen(nav: NavController) {
                 }
             is CuriosityUiState.Success ->
                 CuriosityContent(s, pad, gradientBg,
-                    onLearn     = { vm.markLearned() },
-                    onBookmark  = { vm.toggleBookmark() },
-                    onSalvaNota = { vm.salvaNota(it) }
+                    onLearn      = { vm.markLearned() },
+                    onBookmark   = { vm.toggleBookmark() },
+                    onSalvaNota  = { vm.salvaNota(it) },
+                    onLike       = { vm.setVoto(1) },
+                    onDislike    = { vm.setVoto(-1) },
+                    onIgnora     = { mostraDialogIgnora = true },
+                    onCommenti   = { vm.caricaCommenti(); mostraCommenti = true }
                 )
             is CuriosityUiState.Learned -> LearnedContent(pad, gradientBg) { vm.load() }
         }
@@ -161,7 +217,11 @@ private fun CuriosityContent(
     gradientBg:  Brush,
     onLearn:     () -> Unit,
     onBookmark:  () -> Unit,
-    onSalvaNota: (String) -> Unit
+    onSalvaNota: (String) -> Unit,
+    onLike:      () -> Unit,
+    onDislike:   () -> Unit,
+    onIgnora:    () -> Unit,
+    onCommenti:  () -> Unit
 ) {
     var mostraNota by remember { mutableStateOf(false) }
     val noteCardBg = MaterialTheme.colorScheme.surfaceVariant
@@ -250,7 +310,63 @@ private fun CuriosityContent(
             Text("Curiosità imparate: ${s.readCount}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
-            Spacer(Modifier.height(24.dp))
+
+            // ── Like / Dislike / Non mi interessa / Commenti ──────────────────
+            Spacer(Modifier.height(16.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                // Like
+                FilledTonalIconButton(
+                    onClick = onLike,
+                    colors  = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = if (s.curiosity.voto == 1)
+                            MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Icon(
+                        if (s.curiosity.voto == 1) Icons.Default.ThumbUp else Icons.Outlined.ThumbUp,
+                        contentDescription = "Mi piace",
+                        tint = if (s.curiosity.voto == 1) Color.White
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                // Dislike
+                FilledTonalIconButton(
+                    onClick = onDislike,
+                    colors  = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = if (s.curiosity.voto == -1)
+                            MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Icon(
+                        if (s.curiosity.voto == -1) Icons.Default.ThumbDown else Icons.Outlined.ThumbDown,
+                        contentDescription = "Non mi piace",
+                        tint = if (s.curiosity.voto == -1) Color.White
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                // Commenti
+                OutlinedButton(onClick = onCommenti, shape = RoundedCornerShape(12.dp)) {
+                    Text("💬 Commenti")
+                }
+                // Non mi interessa
+                FilledTonalIconButton(onClick = onIgnora,
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Icon(Icons.Outlined.VisibilityOff, "Non mi interessa",
+                        tint = MaterialTheme.colorScheme.onErrorContainer)
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
 
             if (!s.curiosity.isRead) {
                 Button(onLearn, Modifier.fillMaxWidth().height(58.dp),
@@ -302,4 +418,136 @@ fun emojiCategoria(category: String): String = when (category) {
     "Natura"     -> "🌿"
     "Cibo"       -> "🍽️"
     else         -> "✨"
+}
+
+@Composable
+fun CommentiSheet(
+    commentiState:  com.example.curiosillo.viewmodel.CommentiUiState,
+    currentUid:     String?,
+    isLoggato:      Boolean,
+    onInvia:        (String) -> Unit,
+    onElimina:      (String) -> Unit,
+    onDismissError: () -> Unit
+) {
+    var testo by remember { mutableStateOf("") }
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 32.dp)
+    ) {
+        Text("Commenti", style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(12.dp))
+
+        // Errore invio
+        commentiState.erroreInvio?.let { err ->
+            Card(
+                Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            ) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(err, color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    TextButton(onClick = onDismissError) { Text("OK") }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+
+        // Lista commenti
+        if (commentiState.isLoading) {
+            CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+        } else if (commentiState.commenti.isEmpty()) {
+            Text("Nessun commento ancora. Sii il primo!",
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(vertical = 8.dp))
+        } else {
+            val listState = rememberLazyListState()
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.heightIn(max = 300.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(commentiState.commenti, key = { it.id }) { commento ->
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        shape  = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+                            Column(Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(commento.autore,
+                                        style      = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color      = MaterialTheme.colorScheme.primary)
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text(commento.testo, style = MaterialTheme.typography.bodyMedium)
+                            }
+                            // Elimina solo il proprio commento
+                            if (currentUid != null && currentUid == commento.uid) {
+                                IconButton(
+                                    onClick  = { onElimina(commento.id) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(Icons.Default.Delete, "Elimina",
+                                        modifier = Modifier.size(16.dp),
+                                        tint     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(12.dp))
+
+        // Campo inserimento
+        if (isLoggato) {
+            OutlinedTextField(
+                value         = testo,
+                onValueChange = { if (it.length <= 300) testo = it },
+                placeholder   = { Text("Scrivi un commento...") },
+                modifier      = Modifier.fillMaxWidth(),
+                shape         = RoundedCornerShape(12.dp),
+                maxLines      = 4,
+                trailingIcon  = {
+                    Text("${testo.length}/300",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        modifier = Modifier.padding(end = 8.dp))
+                }
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick  = { if (testo.isNotBlank()) { onInvia(testo.trim()); testo = "" } },
+                enabled  = testo.isNotBlank() && !commentiState.invioInCorso,
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape    = RoundedCornerShape(12.dp)
+            ) {
+                if (commentiState.invioInCorso)
+                    CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                else
+                    Text("Pubblica commento", fontWeight = FontWeight.SemiBold)
+            }
+        } else {
+            Card(
+                Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Text("Accedi per lasciare un commento.",
+                    Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
 }

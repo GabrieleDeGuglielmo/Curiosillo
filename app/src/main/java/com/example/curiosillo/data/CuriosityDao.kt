@@ -7,13 +7,13 @@ interface CuriosityDao {
 
     // ── Lettura ───────────────────────────────────────────────────────────────
 
-    @Query("SELECT * FROM curiosity WHERE isRead = 1 AND externalId IS NOT NULL")
+    @Query("SELECT * FROM curiosity WHERE isRead = 1 AND externalId IS NOT NULL AND isIgnorata = 0")
     suspend fun getPilloleLette(): List<Curiosity>
 
-    @Query("SELECT * FROM curiosity WHERE isRead = 0 AND externalId IS NOT NULL AND (:cat = '' OR category = :cat) ORDER BY RANDOM() LIMIT 1")
+    @Query("SELECT * FROM curiosity WHERE isRead = 0 AND isIgnorata = 0 AND externalId IS NOT NULL AND (:cat = '' OR category = :cat) ORDER BY RANDOM() LIMIT 1")
     suspend fun getNext(cat: String = ""): Curiosity?
 
-    @Query("SELECT * FROM curiosity WHERE isRead = 0 AND externalId IS NOT NULL AND (category IN (:cats)) ORDER BY RANDOM() LIMIT 1")
+    @Query("SELECT * FROM curiosity WHERE isRead = 0 AND isIgnorata = 0 AND externalId IS NOT NULL AND (category IN (:cats)) ORDER BY RANDOM() LIMIT 1")
     suspend fun getNextFiltered(cats: List<String>): Curiosity?
 
     @Query("SELECT * FROM curiosity WHERE isBookmarked = 1 ORDER BY id DESC")
@@ -34,22 +34,22 @@ interface CuriosityDao {
     @Query("SELECT COUNT(*) FROM curiosity")
     suspend fun count(): Int
 
-    @Query("SELECT COUNT(*) FROM curiosity WHERE isRead = 1 AND externalId IS NOT NULL")
+    @Query("SELECT COUNT(*) FROM curiosity WHERE isRead = 1 AND externalId IS NOT NULL AND isIgnorata = 0")
     suspend fun curiositàImparate(): Int
 
-    @Query("SELECT COUNT(*) FROM curiosity WHERE externalId IS NOT NULL")
+    @Query("SELECT COUNT(*) FROM curiosity WHERE externalId IS NOT NULL AND isIgnorata = 0")
     suspend fun totaleCuriosità(): Int
 
     @Query("SELECT COUNT(*) FROM curiosity WHERE isBookmarked = 1 AND externalId IS NOT NULL")
     suspend fun totaleBookmark(): Int
 
-    @Query("SELECT * FROM curiosity WHERE isRead = 1 AND (:cat = '' OR category = :cat) ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END, readAt ASC")
+    @Query("SELECT * FROM curiosity WHERE isRead = 1 AND isIgnorata = 0 AND (:cat = '' OR category = :cat) ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END, readAt ASC")
     suspend fun getTutteImparate(cat: String = ""): List<Curiosity>
 
-    @Query("SELECT * FROM curiosity WHERE isRead = 1 AND (:cat = '' OR category = :cat) AND (readAt IS NULL OR readAt <= :soglia) ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END, readAt ASC")
+    @Query("SELECT * FROM curiosity WHERE isRead = 1 AND isIgnorata = 0 AND (:cat = '' OR category = :cat) AND (readAt IS NULL OR readAt <= :soglia) ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END, readAt ASC")
     suspend fun getPerRipasso(soglia: Long, cat: String = ""): List<Curiosity>
 
-    @Query("SELECT * FROM curiosity WHERE isRead = 1 AND (category IN (:cats)) AND (readAt IS NULL OR readAt <= :soglia) ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END, readAt ASC")
+    @Query("SELECT * FROM curiosity WHERE isRead = 1 AND isIgnorata = 0 AND (category IN (:cats)) AND (readAt IS NULL OR readAt <= :soglia) ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END, readAt ASC")
     suspend fun getPerRipassoFiltered(soglia: Long, cats: List<String>): List<Curiosity>
 
     // ── Sync remoto ───────────────────────────────────────────────────────────
@@ -68,6 +68,6 @@ interface CuriosityDao {
     @Update
     suspend fun update(item: Curiosity)
 
-    @Query("UPDATE curiosity SET isRead = 0, isBookmarked = 0, nota = '', readAt = NULL WHERE 1=1")
+    @Query("UPDATE curiosity SET isRead = 0, isBookmarked = 0, nota = '', readAt = NULL, voto = NULL, isIgnorata = 0 WHERE 1=1")
     suspend fun resetProgressi()
 }

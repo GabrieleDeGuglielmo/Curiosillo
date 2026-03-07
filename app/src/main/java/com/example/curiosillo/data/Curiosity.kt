@@ -22,5 +22,9 @@ data class Curiosity(
     val isRead:      Boolean = false,
     val isBookmarked:Boolean = false,
     val nota:        String  = "",
-    val readAt:      Long?   = null
+    val readAt:      Long?   = null,
+    // 1 = like, -1 = dislike, null = nessun voto
+    val voto:        Int?    = null,
+    // se true: esclusa da conteggi, quiz e ripasso
+    val isIgnorata:  Boolean = false
 )

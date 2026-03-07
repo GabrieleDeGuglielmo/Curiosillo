@@ -11,6 +11,10 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.ThumbDown
+import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -175,6 +179,42 @@ fun RipassoScreen(nav: NavController) {
                             Spacer(Modifier.width(8.dp))
                             Text(if (cur.nota.isNotBlank()) "Modifica nota" else "Aggiungi nota")
                         }
+
+                        // ── Like / Dislike ────────────────────────────────────
+                        Spacer(Modifier.height(12.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedButton(
+                                onClick  = { vm.setVoto(1) },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape    = RoundedCornerShape(12.dp),
+                                colors   = if (cur.voto == 1)
+                                    ButtonDefaults.outlinedButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor   = Color.White)
+                                else ButtonDefaults.outlinedButtonColors()
+                            ) {
+                                Icon(if (cur.voto == 1) Icons.Default.ThumbUp else Icons.Outlined.ThumbUp,
+                                    null, Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Mi piace")
+                            }
+                            OutlinedButton(
+                                onClick  = { vm.setVoto(-1) },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape    = RoundedCornerShape(12.dp),
+                                colors   = if (cur.voto == -1)
+                                    ButtonDefaults.outlinedButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.error,
+                                        contentColor   = Color.White)
+                                else ButtonDefaults.outlinedButtonColors()
+                            ) {
+                                Icon(if (cur.voto == -1) Icons.Default.ThumbDown else Icons.Outlined.ThumbDown,
+                                    null, Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Non mi piace")
+                            }
+                        }
+
                         Spacer(Modifier.height(12.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             OutlinedButton(onClick = { vm.precedente() },

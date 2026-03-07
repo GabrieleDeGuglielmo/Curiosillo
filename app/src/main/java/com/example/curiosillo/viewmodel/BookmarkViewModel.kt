@@ -81,6 +81,19 @@ class BookmarkViewModel(private val repo: CuriosityRepository) : ViewModel() {
         }
     }
 
+    fun setVoto(pillola: Curiosity, voto: Int?) {
+        viewModelScope.launch {
+            val nuovoVoto = if (pillola.voto == voto) null else voto
+            repo.setVoto(pillola, nuovoVoto)
+            // aggiorna la pillola nel dettaglio se aperta
+            val aggiornata = pillola.copy(voto = nuovoVoto)
+            _state.value = _state.value.copy(
+                dettaglio = if (_state.value.dettaglio?.id == pillola.id) aggiornata else _state.value.dettaglio,
+                risultati = _state.value.risultati.map { if (it.id == pillola.id) aggiornata else it }
+            )
+        }
+    }
+
     private fun cerca() {
         viewModelScope.launch {
             val risultati = repo.cercaBookmark(

@@ -144,4 +144,71 @@ object FirebaseManager {
             }
         } catch (_: Exception) {}
     }
+
+    // ── Commenti ──────────────────────────────────────────────────────────────
+
+    data class Commento(
+        val id:        String = "",
+        val testo:     String = "",
+        val autore:    String = "Anonimo",
+        val uid:       String = "",
+        val timestamp: Long   = 0L
+    )
+
+    private val PAROLE_VIETATE = setOf(
+        "gdg", "cazzo", "vaffanculo", "stronzo", "stronza", "puttana", "coglione",
+        "cogliona", "merda", "fanculo", "minchia", "figlio di puttana", "bastardo",
+        "bastarda", "idiota", "imbecille", "deficiente", "ritardato", "ritardata",
+        "frocio", "ricchione", "negro"
+    )
+
+    fun contienePaloroleVietate(testo: String): Boolean {
+        val lower = testo.lowercase()
+        return PAROLE_VIETATE.any { lower.contains(it) }
+    }
+
+    suspend fun caricaCommenti(externalId: String): List<Commento> = try {
+        val docs = db.collection("commenti")
+            .document(externalId)
+            .collection("lista")
+            .orderBy("timestamp")
+            .get().await()
+        docs.map { doc ->
+            Commento(
+                id        = doc.id,
+                testo     = doc.getString("testo") ?: "",
+                autore    = doc.getString("autore") ?: "Anonimo",
+                uid       = doc.getString("uid") ?: "",
+                timestamp = doc.getLong("timestamp") ?: 0L
+            )
+        }
+    } catch (e: Exception) { emptyList() }
+
+    suspend fun aggiungiCommento(externalId: String, testo: String): Result<Unit> = try {
+        val autore = auth.currentUser?.displayName?.takeIf { it.isNotBlank() } ?: "Anonimo"
+        val uid    = auth.currentUser?.uid ?: ""
+        db.collection("commenti")
+            .document(externalId)
+            .collection("lista")
+            .add(mapOf(
+                "testo"     to testo,
+                "autore"    to autore,
+                "uid"       to uid,
+                "timestamp" to System.currentTimeMillis()
+            )).await()
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    suspend fun eliminaCommento(externalId: String, commentoId: String): Result<Unit> = try {
+        db.collection("commenti")
+            .document(externalId)
+            .collection("lista")
+            .document(commentoId)
+            .delete().await()
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
 }

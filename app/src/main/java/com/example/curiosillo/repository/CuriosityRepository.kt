@@ -42,6 +42,12 @@ class CuriosityRepository(private val db: AppDatabase) {
     suspend fun salvaNota(curiosity: Curiosity, nota: String) =
         curDao.update(curiosity.copy(nota = nota))
 
+    suspend fun setVoto(curiosity: Curiosity, voto: Int?) =
+        curDao.update(curiosity.copy(voto = voto))
+
+    suspend fun toggleIgnora(curiosity: Curiosity) =
+        curDao.update(curiosity.copy(isIgnorata = !curiosity.isIgnorata))
+
     suspend fun getTutteImparate(categorie: Set<String>): List<Curiosity> =
         if (categorie.isEmpty()) curDao.getTutteImparate()
         else curDao.getPerRipassoFiltered(Long.MAX_VALUE, categorie.toList())
@@ -107,10 +113,13 @@ class CuriosityRepository(private val db: AppDatabase) {
     suspend fun quizNonRisposti()   = quizDao.quizNonRisposti()
     suspend fun totaleBookmark()    = curDao.totaleBookmark()
 
+    suspend fun resetBadge() = badgeDao.resetTutti()
+
     // ── Reset ─────────────────────────────────────────────────────────────────
 
     suspend fun resetProgressi() {
         curDao.resetProgressi()
         quizAnswerDao.resetTutto()
+        badgeDao.resetTutti()
     }
 }
