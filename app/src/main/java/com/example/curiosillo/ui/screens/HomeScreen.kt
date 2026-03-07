@@ -532,23 +532,36 @@ private fun MenuCard(
     Card(
         onClick   = onClick,
         modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(22.dp),
+        shape     = RoundedCornerShape(20.dp),
         colors    = CardDefaults.cardColors(containerColor = color),
         elevation = CardDefaults.cardElevation(8.dp)
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 22.dp, vertical = 18.dp),
+                .padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, null, Modifier.size(46.dp), Color.White.copy(alpha = 0.9f))
-            Spacer(Modifier.width(18.dp))
+            Icon(
+                icon,
+                null,
+                Modifier.size(38.dp),
+                Color.White.copy(alpha = 0.9f)
+            )
+            Spacer(Modifier.width(16.dp))
             Column {
-                Text(title, style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold, color = Color.White)
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.85f), maxLines = 2)
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.85f),
+                    maxLines = 1
+                )
             }
         }
     }
