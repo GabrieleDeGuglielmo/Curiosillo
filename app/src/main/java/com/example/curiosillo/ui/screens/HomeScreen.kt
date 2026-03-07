@@ -173,45 +173,15 @@ fun HomeScreen(nav: NavController) {
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 28.dp)
-                .padding(top = 16.dp, bottom = 28.dp),
+                .padding(top = 50.dp, bottom = 80.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            // ── Riga profilo + novità in cima ─────────────────────────────────
+            // ── Pulsante profilo (alto destra) ────────────────────────────────
             Row(
                 Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.End
             ) {
-                // Spazio vuoto a sinistra per bilanciare
-                Spacer(Modifier.size(42.dp))
-
-                // Pulsante Novità — visibile solo se changelog disponibile
-                if (homeState.changelogCompleto.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .background(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                RoundedCornerShape(20.dp)
-                            )
-                            .clickable { showChangelogCompleto = true }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.AutoAwesome, "Novità",
-                            modifier = Modifier.size(16.dp),
-                            tint     = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(5.dp))
-                        Text("Novità",
-                            style      = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color      = MaterialTheme.colorScheme.primary)
-                    }
-                } else {
-                    Spacer(Modifier.weight(1f))
-                }
-
-                // Pulsante Profilo
                 Box(
                     modifier = Modifier
                         .size(42.dp)
@@ -288,6 +258,32 @@ fun HomeScreen(nav: NavController) {
                 MaterialTheme.colorScheme.tertiary) { nav.navigate("ripasso") }
 
             Spacer(Modifier.height(24.dp))
+        }
+
+        // ── Pulsante Novità (basso destra, overlay) ───────────────────────────
+        if (homeState.changelogCompleto.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 40.dp, end = 16.dp)
+                    .zIndex(2f)
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        RoundedCornerShape(20.dp)
+                    )
+                    .clickable { showChangelogCompleto = true }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.AutoAwesome, "Novità",
+                    modifier = Modifier.size(16.dp),
+                    tint     = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(5.dp))
+                Text("Novità",
+                    style      = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color      = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }
