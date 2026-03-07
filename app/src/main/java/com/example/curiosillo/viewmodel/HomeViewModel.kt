@@ -1,6 +1,10 @@
 package com.example.curiosillo.viewmodel
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -26,7 +30,8 @@ data class HomeUiState(
     val syncMessaggio:       String?                    = null,
     val aggiornamentoApp:    UpdateInfo?                = null,
     val changelogDaMostrare: List<VersioneChangelog>?   = null,
-    val changelogCompleto:   List<VersioneChangelog>    = emptyList()
+    val changelogCompleto:   List<VersioneChangelog>    = emptyList(),
+    val isOffline:           Boolean                    = false
 )
 
 class HomeViewModel(
@@ -42,10 +47,47 @@ class HomeViewModel(
     private val updateService    = AppUpdateService()
     private val changelogService = ChangelogService()
 
+    private val connectivityManager =
+        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            // Tornato online — aggiorna stato e ri-sincronizza
+            _state.value = _state.value.copy(isOffline = false)
+            viewModelScope.launch {
+                syncContenuti()
+                checkAggiornamentoApp()
+                caricaChangelog()
+            }
+        }
+        override fun onLost(network: Network) {
+            _state.value = _state.value.copy(isOffline = true)
+        }
+    }
+
     init {
-        syncContenuti()
-        checkAggiornamentoApp()
-        caricaChangelog()
+        // Controlla stato iniziale connessione
+        val isConnected = connectivityManager.activeNetwork
+            ?.let { connectivityManager.getNetworkCapabilities(it) }
+            ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        _state.value = _state.value.copy(isOffline = !isConnected)
+
+        // Registra callback
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        connectivityManager.registerNetworkCallback(request, networkCallback)
+
+        if (isConnected) {
+            syncContenuti()
+            checkAggiornamentoApp()
+            caricaChangelog()
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        try { connectivityManager.unregisterNetworkCallback(networkCallback) } catch (_: Exception) {}
     }
 
     fun syncContenuti() {

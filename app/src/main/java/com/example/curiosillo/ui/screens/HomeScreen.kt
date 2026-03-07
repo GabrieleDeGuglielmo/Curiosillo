@@ -3,6 +3,8 @@ package com.example.curiosillo.ui.screens
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,6 +22,7 @@ import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -118,6 +121,47 @@ fun HomeScreen(nav: NavController) {
     ))
 
     Box(modifier = Modifier.fillMaxSize().background(gradientBg)) {
+
+        // ── Banner offline ────────────────────────────────────────────────────
+        AnimatedVisibility(
+            visible = homeState.isOffline,
+            // Animazione dall'alto verso il basso più fluida
+            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+            modifier = Modifier
+                .statusBarsPadding()          // Padding per evitare la notch/status bar
+                .padding(top = 8.dp)          // Piccolo distacco dal bordo superiore
+                .align(Alignment.TopCenter)   // Centrato orizzontalmente
+        ) {
+            Surface(
+                // Rimosso fillMaxWidth() per farlo diventare una pillola
+                shape = CircleShape,          // Forma a pillola (molto più moderna)
+                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f), // Leggera trasparenza
+                tonalElevation = 4.dp,        // Un po' di profondità
+                shadowElevation = 6.dp        // Ombra per staccarlo dallo sfondo
+            ) {
+                Row(
+                    Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp), // Padding interno bilanciato
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        Icons.Default.WifiOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp), // Icona leggermente più piccola
+                        tint = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Nessuna connessione",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+        }
 
         // ── Pulsante profilo (alto destra) ────────────────────────────────────
         Box(
