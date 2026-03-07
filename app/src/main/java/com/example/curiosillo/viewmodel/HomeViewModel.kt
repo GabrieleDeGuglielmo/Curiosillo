@@ -11,7 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.network.AppUpdateService
 import com.example.curiosillo.network.ChangelogService
-import com.example.curiosillo.network.ContentSyncService
+import com.example.curiosillo.network.FirestoreSyncService
 import com.example.curiosillo.network.VersioneChangelog
 import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,7 +43,7 @@ class HomeViewModel(
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
 
-    private val syncService      = ContentSyncService(repo, contentPrefs)
+    private val syncService      = FirestoreSyncService(repo, contentPrefs)
     private val updateService    = AppUpdateService()
     private val changelogService = ChangelogService()
 
@@ -95,7 +95,7 @@ class HomeViewModel(
             _state.value = _state.value.copy(syncInCorso = true, syncMessaggio = null)
             val result = syncService.sync()
             val msg = when (result) {
-                is ContentSyncService.SyncResult.Success ->
+                is FirestoreSyncService.SyncResult.Success ->
                     if (result.nuove > 0) "🎉 ${result.nuove} nuove pillole disponibili!" else null
                 else -> null
             }
