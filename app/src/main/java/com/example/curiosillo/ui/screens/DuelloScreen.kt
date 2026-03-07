@@ -88,6 +88,7 @@ fun DuelloScreen(nav: NavController) {
                     stato     = s,
                     onRisposta = { vm.rispondi(it) }
                 )
+                is DuelloUiState.Pausa -> PausaContent(stato = s)
                 is DuelloUiState.Risultati -> RisultatiContent(
                     stato   = s,
                     onRivai = { vm.reset() },
@@ -460,7 +461,7 @@ private fun PunteggioChip(nick: String, punteggio: Int, isMe: Boolean) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = if (isMe) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.secondaryContainer
+        else MaterialTheme.colorScheme.secondaryContainer
     ) {
         Column(
             Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -469,13 +470,113 @@ private fun PunteggioChip(nick: String, punteggio: Int, isMe: Boolean) {
             Text(nick, style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = if (isMe) MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onSecondaryContainer,
+                else MaterialTheme.colorScheme.onSecondaryContainer,
                 maxLines = 1)
             Text("$punteggio pt",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = if (isMe) MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onSecondaryContainer)
+                else MaterialTheme.colorScheme.onSecondaryContainer)
+        }
+    }
+}
+
+// ── Pausa tra domande ─────────────────────────────────────────────────────────
+
+@Composable
+private fun PausaContent(stato: DuelloUiState.Pausa) {
+    val isCorretta  = stato.eraCorretta
+    val nonHaRisposto = stato.miaRisposta == null
+
+    val bgColor = when {
+        nonHaRisposto -> MaterialTheme.colorScheme.surfaceVariant
+        isCorretta    -> Color(0xFF1B5E20)
+        else          -> Color(0xFFB71C1C)
+    }
+    val emoji = when {
+        nonHaRisposto -> "⏰"
+        isCorretta    -> "✅"
+        else          -> "❌"
+    }
+    val titolo = when {
+        nonHaRisposto -> "Tempo scaduto!"
+        isCorretta    -> "Risposta corretta!"
+        else          -> "Risposta errata"
+    }
+
+    Box(
+        Modifier.fillMaxSize().background(bgColor),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Text(emoji, fontSize = 64.sp)
+            Spacer(Modifier.height(16.dp))
+            Text(
+                titolo,
+                style      = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color      = Color.White,
+                textAlign  = TextAlign.Center
+            )
+            Spacer(Modifier.height(20.dp))
+
+            // Risposta corretta
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape    = RoundedCornerShape(16.dp),
+                colors   = CardDefaults.cardColors(
+                    containerColor = Color.White.copy(alpha = 0.15f))
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Risposta corretta:",
+                        style     = MaterialTheme.typography.labelLarge,
+                        color     = Color.White.copy(alpha = 0.7f))
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        stato.rispostaCorretta,
+                        style      = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color      = Color.White
+                    )
+                }
+            }
+
+            // Se ha risposto in modo errato, mostra anche la sua risposta
+            if (!nonHaRisposto && !isCorretta) {
+                Spacer(Modifier.height(10.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = RoundedCornerShape(16.dp),
+                    colors   = CardDefaults.cardColors(
+                        containerColor = Color.White.copy(alpha = 0.10f))
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("La tua risposta:",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White.copy(alpha = 0.7f))
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            stato.miaRisposta ?: "",
+                            style      = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color      = Color.White.copy(alpha = 0.85f)
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(28.dp))
+
+            // Countdown
+            Text(
+                "Prossima domanda tra ${stato.secondiRimasti}…",
+                style  = MaterialTheme.typography.bodyMedium,
+                color  = Color.White.copy(alpha = 0.65f),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
@@ -563,7 +664,7 @@ private fun RisultatoCard(
         shape     = RoundedCornerShape(18.dp),
         colors    = CardDefaults.cardColors(
             containerColor = if (haVinto) MaterialTheme.colorScheme.primary
-                             else MaterialTheme.colorScheme.surfaceVariant),
+            else MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(if (haVinto) 6.dp else 2.dp)
     ) {
         Column(
@@ -577,7 +678,7 @@ private fun RisultatoCard(
                 style      = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color      = if (haVinto) Color.White
-                             else MaterialTheme.colorScheme.onSurfaceVariant,
+                else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines   = 1,
                 textAlign  = TextAlign.Center
             )
@@ -587,13 +688,13 @@ private fun RisultatoCard(
                 fontSize   = 36.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color      = if (haVinto) Color.White
-                             else MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 if (isMe) "Tu" else "Avversario",
                 style = MaterialTheme.typography.bodySmall,
                 color = if (haVinto) Color.White.copy(alpha = 0.8f)
-                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
         }
     }

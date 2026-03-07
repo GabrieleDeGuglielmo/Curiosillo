@@ -33,9 +33,19 @@ sealed class DuelloUiState {
         val mioUid:          String,
         val mioNick:         String,
         val indiceCorrente:  Int,
-        val rispostaData:    String?,   // null = non ancora risposto
+        val rispostaData:    String?,
         val secondiRimasti:  Int,
-        val risposteCorrentiAvversario: Int  // quante ne ha date finora
+        val risposteCorrentiAvversario: Int
+    ) : DuelloUiState()
+    data class Pausa(
+        val duello:         DuelloStato,
+        val mioUid:         String,
+        val mioNick:        String,
+        val indiceCorrente: Int,
+        val miaRisposta:    String?,   // null = non ha risposto in tempo
+        val rispostaCorretta: String,
+        val eraCorretta:    Boolean,
+        val secondiRimasti: Int        // countdown 3..0
     ) : DuelloUiState()
     data class Risultati(
         val duello:      DuelloStato,
@@ -178,9 +188,9 @@ class DuelloViewModel(
                 duelloRepo.cercaAvversarioCasuale(mioUid, mioNick, domande).collect { result ->
                     when (result) {
                         is MatchmakingResult.InAttesa -> {
-                            duelloId = result.duelloId
+                            duelloId     = result.duelloId
                             _state.value = DuelloUiState.InAttesa(result.duelloId, "", mioNick)
-                            // Osserva per quando parte
+                            // Listener già attivo nel repository — osserva per aggiornamenti in partita
                             osservaJob?.cancel()
                             osservaJob = viewModelScope.launch {
                                 duelloRepo.osservaDuello(result.duelloId).collect { stato ->
@@ -190,10 +200,10 @@ class DuelloViewModel(
                         }
                         is MatchmakingResult.Trovato -> {
                             duelloId = result.duelloId
-                            val snap = duelloRepo.osservaDuello(result.duelloId)
+                            // Carica subito lo stato e avvia
                             osservaJob?.cancel()
                             osservaJob = viewModelScope.launch {
-                                snap.collect { stato ->
+                                duelloRepo.osservaDuello(result.duelloId).collect { stato ->
                                     if (stato == null) return@collect
                                     when {
                                         stato.isInCorso    -> avviaDuello(stato)
@@ -242,15 +252,27 @@ class DuelloViewModel(
         osservaJob?.cancel()
         osservaJob = viewModelScope.launch {
             duelloRepo.osservaDuello(id).collect { stato ->
-                if (stato == null) return@collect
-                val cur = _state.value as? DuelloUiState.InCorso ?: return@collect
-                val avvUid = stato.avversarioUid(mioUid)
-                val avvRisposte = avvUid?.let { stato.giocatori[it]?.risposte?.size } ?: 0
-                _state.value = cur.copy(
-                    duello = stato,
-                    risposteCorrentiAvversario = avvRisposte
-                )
-                if (stato.isCompletato) mostraRisultati(stato)
+                if (stato == null) {
+                    timerJob?.cancel()
+                    _state.value = DuelloUiState.Errore("L'avversario ha abbandonato il duello.")
+                    return@collect
+                }
+                if (stato.isCompletato) { mostraRisultati(stato); return@collect }
+
+                // Aggiorna duello in InCorso o Pausa senza sovrascrivere lo stato locale
+                when (val cur = _state.value) {
+                    is DuelloUiState.InCorso -> {
+                        val avvUid      = stato.avversarioUid(mioUid)
+                        val avvRisposte = avvUid?.let { stato.giocatori[it]?.risposte?.size } ?: 0
+                        _state.value = cur.copy(
+                            duello = stato,
+                            risposteCorrentiAvversario = avvRisposte
+                        )
+                    }
+                    is DuelloUiState.Pausa ->
+                        _state.value = cur.copy(duello = stato)
+                    else -> {}
+                }
             }
         }
     }
@@ -264,43 +286,73 @@ class DuelloViewModel(
                 val cur = _state.value as? DuelloUiState.InCorso ?: return@launch
                 if (cur.indiceCorrente != indice) return@launch
                 _state.value = cur.copy(secondiRimasti = s)
-                // Se entrambi hanno risposto, salta subito
-                val mioRisposte  = stato.giocatori[mioUid]?.risposte?.size ?: 0
-                val avvUid       = stato.avversarioUid(mioUid)
-                val avvRisposte  = avvUid?.let { stato.giocatori[it]?.risposte?.size } ?: 0
+                // Se entrambi hanno risposto, esci subito dal timer
+                val mioRisposte = cur.duello.giocatori[mioUid]?.risposte?.size ?: 0
+                val avvUid      = cur.duello.avversarioUid(mioUid)
+                val avvRisposte = avvUid?.let { cur.duello.giocatori[it]?.risposte?.size } ?: 0
                 if (mioRisposte > indice && avvRisposte > indice) break
                 if (s == 0) break
                 delay(1000)
             }
-            // Vai alla prossima domanda o segna completato
             val cur = _state.value as? DuelloUiState.InCorso ?: return@launch
-            prossimaOFine(cur)
+            avviaPausa(cur)
+        }
+    }
+
+    private fun avviaPausa(cur: DuelloUiState.InCorso) {
+        val domanda         = cur.duello.domande.getOrNull(cur.indiceCorrente) ?: return
+        val rispostaCorretta = domanda.correctAnswer
+        val miaRisposta     = cur.rispostaData
+        val eraCorretta     = miaRisposta == rispostaCorretta
+
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            for (s in 3 downTo 0) {
+                _state.value = DuelloUiState.Pausa(
+                    duello           = cur.duello,
+                    mioUid           = cur.mioUid,
+                    mioNick          = cur.mioNick,
+                    indiceCorrente   = cur.indiceCorrente,
+                    miaRisposta      = miaRisposta,
+                    rispostaCorretta = rispostaCorretta,
+                    eraCorretta      = eraCorretta,
+                    secondiRimasti   = s
+                )
+                if (s == 0) break
+                delay(1000)
+            }
+            // Dopo la pausa: prossima domanda o fine partita
+            val pausa = _state.value as? DuelloUiState.Pausa ?: return@launch
+            prossimaOFine(pausa)
         }
     }
 
     fun rispondi(risposta: String) {
         val cur = _state.value as? DuelloUiState.InCorso ?: return
-        if (cur.rispostaData != null) return // già risposto
+        if (cur.rispostaData != null) return
         _state.value = cur.copy(rispostaData = risposta)
         viewModelScope.launch {
             duelloRepo.inviaRisposta(duelloId, mioUid, cur.indiceCorrente, risposta)
         }
     }
 
-    private fun prossimaOFine(cur: DuelloUiState.InCorso) {
-        val prossimo = cur.indiceCorrente + 1
-        if (prossimo >= cur.duello.domande.size) {
-            // Fine partita
+    private fun prossimaOFine(pausa: DuelloUiState.Pausa) {
+        val prossimo = pausa.indiceCorrente + 1
+        if (prossimo >= pausa.duello.domande.size) {
             viewModelScope.launch {
                 duelloRepo.segnaCompletato(duelloId, mioUid)
             }
         } else {
-            _state.value = cur.copy(
-                indiceCorrente = prossimo,
-                rispostaData   = null,
-                secondiRimasti = 10
+            _state.value = DuelloUiState.InCorso(
+                duello          = pausa.duello,
+                mioUid          = pausa.mioUid,
+                mioNick         = pausa.mioNick,
+                indiceCorrente  = prossimo,
+                rispostaData    = null,
+                secondiRimasti  = 10,
+                risposteCorrentiAvversario = 0
             )
-            avviaTimer(prossimo, cur.duello)
+            avviaTimer(prossimo, pausa.duello)
         }
     }
 

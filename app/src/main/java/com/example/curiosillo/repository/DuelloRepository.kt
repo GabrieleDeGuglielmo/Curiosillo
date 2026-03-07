@@ -14,7 +14,7 @@ import kotlinx.coroutines.tasks.await
 
 class DuelloRepository {
 
-    private val db = FirebaseFirestore.getInstance()
+    private val db     = FirebaseFirestore.getInstance()
     private val duelli = db.collection("duelli")
     private val coda   = db.collection("duello_coda")
 
@@ -52,7 +52,7 @@ class DuelloRepository {
 
     @Suppress("UNCHECKED_CAST")
     private fun docToStato(id: String, data: Map<String, Any>): DuelloStato {
-        val domande = (data["domande"] as? List<Map<String, Any>>)
+        val domande   = (data["domande"] as? List<Map<String, Any>>)
             ?.map { mapToDomanda(it) } ?: emptyList()
         val giocatori = (data["giocatori"] as? Map<String, Map<String, Any>>)
             ?.mapValues { mapToGiocatore(it.value) } ?: emptyMap()
@@ -67,15 +67,23 @@ class DuelloRepository {
         )
     }
 
-    // ── Crea duello (creatore) ────────────────────────────────────────────────
+    /** Aggiorna solo se il documento esiste ancora — evita NOT_FOUND crash */
+    private suspend fun safeUpdate(duelloId: String, dati: Map<String, Any>) {
+        try {
+            val exists = duelli.document(duelloId).get().await().exists()
+            if (exists) duelli.document(duelloId).update(dati).await()
+        } catch (_: Exception) {}
+    }
+
+    // ── Crea duello ───────────────────────────────────────────────────────────
 
     suspend fun creaDuello(
         uid: String,
         nickname: String,
         domande: List<QuizQuestion>
     ): String {
-        val codice  = generaCodice()
-        val docRef  = duelli.document()
+        val codice    = generaCodice()
+        val docRef    = duelli.document()
         val giocatore = mapOf(
             "uid"        to uid,
             "nickname"   to nickname,
@@ -97,12 +105,12 @@ class DuelloRepository {
                     category      = q.category
                 ))
             },
-            "giocatori"   to mapOf(uid to giocatore)
+            "giocatori" to mapOf(uid to giocatore)
         )).await()
         return docRef.id
     }
 
-    // ── Unisciti tramite codice ───────────────────────────────────────────────
+    // ── Unisciti con codice ───────────────────────────────────────────────────
 
     suspend fun uniscitiConCodice(
         codice: String,
@@ -116,96 +124,133 @@ class DuelloRepository {
                 .limit(1)
                 .get().await()
 
-            if (query.isEmpty) return Result.failure(Exception("Stanza non trovata o già iniziata."))
-
-            val doc = query.documents.first()
-            // Non permettere di unirsi alla propria stanza
-            if (doc.getString("creatoreUid") == uid)
-                return Result.failure(Exception("Non puoi unirti alla tua stessa stanza."))
-
-            val giocatore = mapOf(
-                "uid"        to uid,
-                "nickname"   to nickname,
-                "risposte"   to emptyMap<String, String>(),
-                "completato" to false
-            )
-            doc.reference.update(mapOf(
-                "stato"                to "in_corso",
-                "giocatori.$uid"       to giocatore
-            )).await()
-            Result.success(doc.id)
+            when {
+                query.isEmpty -> Result.failure(Exception("Stanza non trovata o già iniziata."))
+                query.documents.first().getString("creatoreUid") == uid ->
+                    Result.failure(Exception("Non puoi unirti alla tua stessa stanza."))
+                else -> {
+                    val doc = query.documents.first()
+                    val giocatore = mapOf(
+                        "uid"        to uid,
+                        "nickname"   to nickname,
+                        "risposte"   to emptyMap<String, String>(),
+                        "completato" to false
+                    )
+                    doc.reference.update(mapOf(
+                        "stato"          to "in_corso",
+                        "giocatori.$uid" to giocatore
+                    )).await()
+                    Result.success(doc.id)
+                }
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
     // ── Matchmaking casuale ───────────────────────────────────────────────────
+    //
+    // FIX race condition:
+    // - Il primo utente crea il duello e avvia il listener PRIMA di scrivere in coda
+    //   così non può perdere l'evento "in_corso" per timing
+    // - Il secondo utente trova il duelloId nella coda e aggiorna QUEL documento,
+    //   non ne crea uno nuovo
 
     suspend fun cercaAvversarioCasuale(
         uid: String,
         nickname: String,
         domande: List<QuizQuestion>
     ): Flow<MatchmakingResult> = callbackFlow {
-        // Cerca se c'è qualcuno in coda
+
+        // Cerca prima se c'è già qualcuno in coda
         val codaSnap = coda.whereNotEqualTo("uid", uid).limit(1).get().await()
 
         if (!codaSnap.isEmpty) {
-            // Trovato avversario in coda
-            val avversarioDoc = codaSnap.documents.first()
-            val avversarioUid = avversarioDoc.getString("uid") ?: ""
-            val avversarioNick = avversarioDoc.getString("nickname") ?: "Anonimo"
+            // ── Secondo utente: trova avversario ──────────────────────────────
+            val avvDoc      = codaSnap.documents.first()
+            val avvUid      = avvDoc.getString("uid")      ?: ""
+            val avvNick     = avvDoc.getString("nickname") ?: "Anonimo"
+            val avvDuelloId = avvDoc.getString("duelloId") ?: ""
 
-            // Rimuovi avversario dalla coda
-            avversarioDoc.reference.delete().await()
+            try {
+                // Rimuovi avversario dalla coda
+                avvDoc.reference.delete().await()
 
-            // Crea duello
-            val duelloId = creaDuello(uid, nickname, domande)
-            val giocatore2 = mapOf(
-                "uid"        to avversarioUid,
-                "nickname"   to avversarioNick,
-                "risposte"   to emptyMap<String, String>(),
-                "completato" to false
-            )
-            duelli.document(duelloId).update(mapOf(
-                "stato"                         to "in_corso",
-                "giocatori.$avversarioUid"      to giocatore2
-            )).await()
+                // Aggiorna il duello già creato dal primo utente
+                val nostroGiocatore = mapOf(
+                    "uid"        to uid,
+                    "nickname"   to nickname,
+                    "risposte"   to emptyMap<String, String>(),
+                    "completato" to false
+                )
+                duelli.document(avvDuelloId).update(mapOf(
+                    "stato"          to "in_corso",
+                    "giocatori.$uid" to nostroGiocatore
+                )).await()
 
-            trySend(MatchmakingResult.Trovato(duelloId))
-            close()
+                trySend(MatchmakingResult.Trovato(avvDuelloId))
+                close()
+
+            } catch (_: Exception) {
+                // Gara persa con un terzo utente — vai in coda
+                val duelloId = creaDuello(uid, nickname, domande)
+                mettitiInCoda(uid, nickname, duelloId)
+                trySend(MatchmakingResult.InAttesa(duelloId))
+                osservaInCorso(duelloId) { trySend(MatchmakingResult.Trovato(it)); close() }
+            }
+
         } else {
-            // Mettiti in coda e crea una stanza di attesa
+            // ── Primo utente: crea duello, avvia listener, poi vai in coda ────
             val duelloId = creaDuello(uid, nickname, domande)
-            coda.document(uid).set(mapOf(
-                "uid"      to uid,
-                "nickname" to nickname,
-                "duelloId" to duelloId,
-                "entratAt" to System.currentTimeMillis()
-            )).await()
 
-            trySend(MatchmakingResult.InAttesa(duelloId))
-
-            // Ascolta il duello finché non parte
-            val listener = duelli.document(duelloId).addSnapshotListener { snap, _ ->
-                if (snap == null || !snap.exists()) return@addSnapshotListener
-                val stato = snap.getString("stato") ?: return@addSnapshotListener
-                if (stato == "in_corso") {
+            // IMPORTANTE: listener attivo PRIMA di scrivere in coda
+            var listenerRef: ListenerRegistration? = null
+            listenerRef = duelli.document(duelloId).addSnapshotListener { snap, _ ->
+                if (snap?.getString("stato") == "in_corso") {
                     trySend(MatchmakingResult.Trovato(duelloId))
+                    listenerRef?.remove()
                     close()
                 }
             }
 
+            mettitiInCoda(uid, nickname, duelloId)
+            trySend(MatchmakingResult.InAttesa(duelloId))
+
             awaitClose {
-                listener.remove()
-                // Se chiuso prima di trovare avversario, rimuovi dalla coda
+                listenerRef?.remove()
                 coda.document(uid).delete()
+            }
+            return@callbackFlow
+        }
+
+        awaitClose { coda.document(uid).delete() }
+    }
+
+    private fun osservaInCorso(duelloId: String, onTrovato: (String) -> Unit) {
+        var reg: ListenerRegistration? = null
+        reg = duelli.document(duelloId).addSnapshotListener { snap, _ ->
+            if (snap?.getString("stato") == "in_corso") {
+                onTrovato(duelloId)
+                reg?.remove()
             }
         }
     }
 
+    private suspend fun mettitiInCoda(uid: String, nickname: String, duelloId: String) {
+        coda.document(uid).set(mapOf(
+            "uid"      to uid,
+            "nickname" to nickname,
+            "duelloId" to duelloId,
+            "entratAt" to System.currentTimeMillis()
+        )).await()
+    }
+
     suspend fun annullaRicerca(uid: String, duelloId: String) {
-        coda.document(uid).delete().await()
-        duelli.document(duelloId).delete().await()
+        try { coda.document(uid).delete().await() } catch (_: Exception) {}
+        try {
+            if (duelli.document(duelloId).get().await().exists())
+                duelli.document(duelloId).delete().await()
+        } catch (_: Exception) {}
     }
 
     // ── Ascolta duello realtime ───────────────────────────────────────────────
@@ -214,6 +259,7 @@ class DuelloRepository {
         val listener: ListenerRegistration = duelli.document(duelloId)
             .addSnapshotListener { snap, _ ->
                 if (snap == null || !snap.exists()) {
+                    // null = documento eliminato (avversario ha abbandonato)
                     trySend(null)
                     return@addSnapshotListener
                 }
@@ -226,25 +272,20 @@ class DuelloRepository {
     // ── Invia risposta ────────────────────────────────────────────────────────
 
     suspend fun inviaRisposta(duelloId: String, uid: String, indice: Int, risposta: String) {
-        duelli.document(duelloId).update(
-            "giocatori.$uid.risposte.$indice", risposta
-        ).await()
+        safeUpdate(duelloId, mapOf("giocatori.$uid.risposte.$indice" to risposta))
     }
 
     suspend fun segnaCompletato(duelloId: String, uid: String) {
-        duelli.document(duelloId).update(
-            "giocatori.$uid.completato", true
-        ).await()
-
-        // Se entrambi completato → aggiorna stato
-        val snap = duelli.document(duelloId).get().await()
-        val data = snap.data ?: return
-        @Suppress("UNCHECKED_CAST")
-        val giocatori = data["giocatori"] as? Map<String, Map<String, Any>> ?: return
-        val tuttiCompletati = giocatori.values.all { it["completato"] as? Boolean == true }
-        if (tuttiCompletati) {
-            duelli.document(duelloId).update("stato", "completato").await()
-        }
+        safeUpdate(duelloId, mapOf("giocatori.$uid.completato" to true))
+        try {
+            val snap = duelli.document(duelloId).get().await()
+            if (!snap.exists()) return
+            @Suppress("UNCHECKED_CAST")
+            val giocatori = snap.data?.get("giocatori") as? Map<String, Map<String, Any>> ?: return
+            if (giocatori.values.all { it["completato"] as? Boolean == true }) {
+                safeUpdate(duelloId, mapOf("stato" to "completato"))
+            }
+        } catch (_: Exception) {}
     }
 }
 
