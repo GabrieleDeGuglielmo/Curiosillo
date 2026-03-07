@@ -94,6 +94,14 @@ fun HomeScreen(nav: NavController) {
 
     // ── Dialog aggiornamento app ──────────────────────────────────────────────
     val isLoggato = FirebaseManager.utenteCorrente != null
+
+    // Recupero la versione attuale dell'app
+    val versioneAttuale = try {
+        ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName
+    } catch (e: Exception) {
+        "N/D"
+    }
+
     if (isLoggato) {
         homeState.aggiornamentoApp?.let { info ->
             AlertDialog(
@@ -105,11 +113,35 @@ fun HomeScreen(nav: NavController) {
                         textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 },
                 text = {
-                    Text(
-                        "È disponibile la versione ${info.versione} di Curiosillo.\nVuoi scaricarla adesso?",
-                        textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Versione attuale dell'utente
+                        Text(
+                            "La tua versione: $versioneAttuale",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
+                        Text(
+                            "È disponibile la versione ${info.versione} di Curiosillo.\nVuoi scaricarla adesso?",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "Controlla tutte le novità se la tua versione è abbastanza datata!",
+                            style = MaterialTheme.typography.labelSmall,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 },
                 confirmButton = {
                     Button(onClick = {

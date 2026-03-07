@@ -307,7 +307,7 @@ class DuelloViewModel(
 
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
-            for (s in 3 downTo 0) {
+            for (s in 5 downTo 0) {
                 _state.value = DuelloUiState.Pausa(
                     duello           = cur.duello,
                     mioUid           = cur.mioUid,

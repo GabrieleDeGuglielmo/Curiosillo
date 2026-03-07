@@ -104,7 +104,7 @@ fun DuelloScreen(nav: NavController) {
                         Text(s.messaggio, textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyLarge)
                         Spacer(Modifier.height(24.dp))
-                        Button(onClick = { vm.reset() }) { Text("Riprova") }
+                        Button(onClick = { vm.reset() }) { Text("Torna indietro") }
                     }
                 }
             }
@@ -493,6 +493,10 @@ private fun PausaContent(stato: DuelloUiState.Pausa) {
         isCorretta    -> Color(0xFF1B5E20)
         else          -> Color(0xFFB71C1C)
     }
+
+    // Determiniamo il colore del testo in base alla risposta
+    val textColor = if (nonHaRisposto) Color.Black else Color.White
+
     val emoji = when {
         nonHaRisposto -> "⏰"
         isCorretta    -> "✅"
@@ -518,28 +522,29 @@ private fun PausaContent(stato: DuelloUiState.Pausa) {
                 titolo,
                 style      = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.ExtraBold,
-                color      = Color.White,
+                color      = textColor,
                 textAlign  = TextAlign.Center
             )
             Spacer(Modifier.height(20.dp))
 
-            // Risposta corretta
+            // Risposta corretta Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape    = RoundedCornerShape(16.dp),
                 colors   = CardDefaults.cardColors(
-                    containerColor = Color.White.copy(alpha = 0.15f))
+                    containerColor = if (nonHaRisposto) Color.Black.copy(alpha = 0.05f)
+                    else Color.White.copy(alpha = 0.15f))
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text("Risposta corretta:",
                         style     = MaterialTheme.typography.labelLarge,
-                        color     = Color.White.copy(alpha = 0.7f))
+                        color     = textColor.copy(alpha = 0.7f))
                     Spacer(Modifier.height(6.dp))
                     Text(
                         stato.rispostaCorretta,
                         style      = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
-                        color      = Color.White
+                        color      = textColor
                     )
                 }
             }
@@ -574,7 +579,7 @@ private fun PausaContent(stato: DuelloUiState.Pausa) {
             Text(
                 "Prossima domanda tra ${stato.secondiRimasti}…",
                 style  = MaterialTheme.typography.bodyMedium,
-                color  = Color.White.copy(alpha = 0.65f),
+                color  = textColor.copy(alpha = 0.65f),
                 textAlign = TextAlign.Center
             )
         }
