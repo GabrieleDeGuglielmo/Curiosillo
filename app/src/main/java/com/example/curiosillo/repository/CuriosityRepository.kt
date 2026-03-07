@@ -112,6 +112,12 @@ class CuriosityRepository(private val db: AppDatabase) {
     suspend fun curiositàImparate() = curDao.curiositàImparate()
     suspend fun quizNonRisposti()   = quizDao.quizNonRisposti()
     suspend fun totaleBookmark()    = curDao.totaleBookmark()
+    suspend fun totaleIgnorate()    = curDao.totaleIgnorate()
+
+    suspend fun getPilloleIgnorate(): List<Curiosity> = curDao.getPilloleIgnorate()
+
+    suspend fun ripristinaIgnorata(c: Curiosity) =
+        curDao.update(c.copy(isIgnorata = false))
 
     suspend fun resetBadge() = badgeDao.resetTutti()
 
