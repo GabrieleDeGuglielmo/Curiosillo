@@ -42,7 +42,7 @@ fun RipassoScreen(nav: NavController) {
     val ctx = LocalContext.current
     val app = ctx.applicationContext as CuriosityApplication
     val vm: RipassoViewModel = viewModel(
-        factory = RipassoViewModel.Factory(app.repository, app.categoryPrefs)
+        factory = RipassoViewModel.Factory(app.repository)
     )
     val state by vm.state.collectAsState()
     var mostraNota      by remember { mutableStateOf(false) }

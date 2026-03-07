@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.curiosillo.data.Curiosity
+import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -83,7 +84,8 @@ class BookmarkViewModel(private val repo: CuriosityRepository) : ViewModel() {
 
     fun setVoto(pillola: Curiosity, voto: Int?) {
         viewModelScope.launch {
-            val nuovoVoto = if (pillola.voto == voto) null else voto
+            val vecchioVoto = pillola.voto
+            val nuovoVoto   = if (vecchioVoto == voto) null else voto
             repo.setVoto(pillola, nuovoVoto)
             // aggiorna la pillola nel dettaglio se aperta
             val aggiornata = pillola.copy(voto = nuovoVoto)
@@ -91,6 +93,9 @@ class BookmarkViewModel(private val repo: CuriosityRepository) : ViewModel() {
                 dettaglio = if (_state.value.dettaglio?.id == pillola.id) aggiornata else _state.value.dettaglio,
                 risultati = _state.value.risultati.map { if (it.id == pillola.id) aggiornata else it }
             )
+            // Sync su Firestore
+            val externalId = pillola.externalId ?: return@launch
+            FirebaseManager.sincronizzaVoto(externalId, vecchioVoto, nuovoVoto)
         }
     }
 

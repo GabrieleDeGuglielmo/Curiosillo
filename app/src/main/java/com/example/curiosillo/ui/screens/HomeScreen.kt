@@ -84,6 +84,14 @@ fun HomeScreen(nav: NavController) {
         )
     }
 
+    // ── Dialog notifiche in-app ───────────────────────────────────────────────
+    if (homeState.notifiche.isNotEmpty()) {
+        NotificheDialog(
+            notifiche = homeState.notifiche,
+            onDismiss = { homeVm.dismissNotifiche() }
+        )
+    }
+
     // ── Dialog aggiornamento app ──────────────────────────────────────────────
     val isLoggato = FirebaseManager.utenteCorrente != null
     if (isLoggato) {
@@ -512,4 +520,56 @@ private fun MenuCard(
             }
         }
     }
+}
+// ── Dialog notifiche in-app ───────────────────────────────────────────────────
+
+@Composable
+private fun NotificheDialog(
+    notifiche: List<FirebaseManager.NotificaInApp>,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon  = { Text("🔔", fontSize = 32.sp) },
+        title = {
+            Text(
+                if (notifiche.size == 1) "Hai una novità" else "Hai ${notifiche.size} novità",
+                fontWeight = FontWeight.Bold,
+                textAlign  = TextAlign.Center,
+                modifier   = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                notifiche.forEach { n ->
+                    Card(
+                        shape  = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text(
+                                n.titolo,
+                                fontWeight = FontWeight.SemiBold,
+                                style      = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                n.corpo,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    .copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Ho capito", fontWeight = FontWeight.Bold)
+            }
+        }
+    )
 }

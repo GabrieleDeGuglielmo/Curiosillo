@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.curiosillo.data.ContentPreferences
+import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.network.AppUpdateService
 import com.example.curiosillo.network.ChangelogService
 import com.example.curiosillo.network.FirestoreSyncService
@@ -26,12 +27,13 @@ data class UpdateInfo(
 )
 
 data class HomeUiState(
-    val syncInCorso:         Boolean                    = false,
-    val syncMessaggio:       String?                    = null,
-    val aggiornamentoApp:    UpdateInfo?                = null,
-    val changelogDaMostrare: List<VersioneChangelog>?   = null,
-    val changelogCompleto:   List<VersioneChangelog>    = emptyList(),
-    val isOffline:           Boolean                    = false
+    val syncInCorso:         Boolean                          = false,
+    val syncMessaggio:       String?                          = null,
+    val aggiornamentoApp:    UpdateInfo?                      = null,
+    val changelogDaMostrare: List<VersioneChangelog>?         = null,
+    val changelogCompleto:   List<VersioneChangelog>          = emptyList(),
+    val isOffline:           Boolean                          = false,
+    val notifiche:           List<FirebaseManager.NotificaInApp> = emptyList()
 )
 
 class HomeViewModel(
@@ -58,6 +60,7 @@ class HomeViewModel(
                 syncContenuti()
                 checkAggiornamentoApp()
                 caricaChangelog()
+                caricaNotifiche()
             }
         }
         override fun onLost(network: Network) {
@@ -82,6 +85,7 @@ class HomeViewModel(
             syncContenuti()
             checkAggiornamentoApp()
             caricaChangelog()
+            caricaNotifiche()
         }
     }
 
@@ -166,6 +170,22 @@ class HomeViewModel(
 
     fun dismissSyncMessaggio() {
         _state.value = _state.value.copy(syncMessaggio = null)
+    }
+
+    private fun caricaNotifiche() {
+        viewModelScope.launch {
+            val notifiche = FirebaseManager.caricaNotifichePendenti()
+            if (notifiche.isNotEmpty()) {
+                _state.value = _state.value.copy(notifiche = notifiche)
+            }
+        }
+    }
+
+    fun dismissNotifiche() {
+        viewModelScope.launch {
+            FirebaseManager.segnaNotificheTutteLette(_state.value.notifiche)
+            _state.value = _state.value.copy(notifiche = emptyList())
+        }
     }
 
     class Factory(
