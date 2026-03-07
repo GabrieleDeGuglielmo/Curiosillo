@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.EmojiObjects
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SportsMartialArts
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.WifiOff
@@ -177,11 +178,37 @@ fun HomeScreen(nav: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            // ── Pulsante profilo (alto destra) ────────────────────────────────
+            // ── Pulsante profilo (alto destra) + Novità (alto sinistra) ─────────
             Row(
                 Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                // Novità (sinistra)
+                if (homeState.changelogCompleto.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .background(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                RoundedCornerShape(20.dp)
+                            )
+                            .clickable { showChangelogCompleto = true }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, "Novità",
+                            modifier = Modifier.size(16.dp),
+                            tint     = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(5.dp))
+                        Text("Novità",
+                            style      = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color      = MaterialTheme.colorScheme.primary)
+                    }
+                } else {
+                    Spacer(Modifier.size(42.dp))
+                }
+
+                // Profilo (destra)
                 Box(
                     modifier = Modifier
                         .size(42.dp)
@@ -256,35 +283,14 @@ fun HomeScreen(nav: NavController) {
             MenuCard(Icons.Default.Refresh,
                 "Ripasso", "Rileggi le pillole già imparate",
                 MaterialTheme.colorScheme.tertiary) { nav.navigate("ripasso") }
+            Spacer(Modifier.height(12.dp))
+            MenuCard(Icons.Default.SportsMartialArts,
+                "Duello", "Sfida un amico o un avversario casuale",
+                Color(0xFF7B2D8B)) { nav.navigate("duello") }
 
             Spacer(Modifier.height(24.dp))
         }
 
-        // ── Pulsante Novità (basso destra, overlay) ───────────────────────────
-        if (homeState.changelogCompleto.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(bottom = 40.dp, end = 16.dp)
-                    .zIndex(2f)
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                        RoundedCornerShape(20.dp)
-                    )
-                    .clickable { showChangelogCompleto = true }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.AutoAwesome, "Novità",
-                    modifier = Modifier.size(16.dp),
-                    tint     = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(5.dp))
-                Text("Novità",
-                    style      = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color      = MaterialTheme.colorScheme.primary)
-            }
-        }
     }
 }
 

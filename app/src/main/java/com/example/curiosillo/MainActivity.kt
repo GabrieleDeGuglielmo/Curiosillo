@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
                     composable("ripasso")    { RipassoScreen(nav) }
                     composable("quiz_stats") { QuizStatsScreen(nav) }
                     composable("pillole_nascoste") { PilloleNascosteScreen(nav) }
+                    composable("duello") { DuelloScreen(nav) }
                     composable("category_picker/{dest}") { back ->
                         val dest = back.arguments?.getString("dest") ?: "curiosity"
                         CategoryPickerScreen(nav, dest)

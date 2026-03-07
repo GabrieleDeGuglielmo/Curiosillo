@@ -84,6 +84,10 @@ class CuriosityRepository(private val db: AppDatabase) {
         if (categorie.isEmpty()) quizDao.getRandomWithCategory(n)
         else quizDao.getRandomFiltered(n, categorie.toList())
 
+    /** Per il duello: domande da tutto il DB, non solo pillole lette */
+    suspend fun getQuizQuestionsAll(n: Int): List<QuizQuestion> =
+        quizDao.getRandomAll(n)
+
     suspend fun countAvailableQuestions(categorie: Set<String>): Int =
         quizDao.countAvailable()
 

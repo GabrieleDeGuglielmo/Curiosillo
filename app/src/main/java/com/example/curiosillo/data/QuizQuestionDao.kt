@@ -56,6 +56,10 @@ interface QuizQuestionDao {
     @Query("SELECT * FROM quiz_question WHERE curiosityId = :curiosityId LIMIT 1")
     suspend fun getByCuriosityId(curiosityId: Int): QuizQuestion?
 
+    /** Per il duello: tutte le domande disponibili, senza filtri */
+    @Query("SELECT * FROM quiz_question ORDER BY RANDOM() LIMIT :n")
+    suspend fun getRandomAll(n: Int): List<QuizQuestion>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(items: List<QuizQuestion>)
 
