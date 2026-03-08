@@ -32,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.repository.DuelloRepository
+import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.viewmodel.DuelloUiState
 import com.example.curiosillo.viewmodel.DuelloViewModel
 
@@ -63,6 +64,7 @@ fun DuelloScreen(nav: NavController) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
+        bottomBar = { CuriosilloBottomBar(nav) },
         containerColor = Color.Transparent
     ) { pad ->
         Box(Modifier.fillMaxSize().background(gradientBg).padding(pad)) {
@@ -329,54 +331,47 @@ private fun PartitaContent(
         Modifier.fillMaxSize().padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // ── Header ────────────────────────────────────────────────────────────
+        // ── Progresso ─────────────────────────────────────────────────────────
+        Text("Domanda ${stato.indiceCorrente + 1} di ${stato.duello.domande.size}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
+        Spacer(Modifier.height(6.dp))
+        LinearProgressIndicator(
+            progress   = { (stato.indiceCorrente + 1f) / stato.duello.domande.size },
+            modifier   = Modifier.fillMaxWidth().height(6.dp),
+            color      = Color(0xFFFF9800),
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+        // ── Giocatori + punteggi (sotto la barra) ─────────────────────────────
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment     = Alignment.CenterVertically
         ) {
-            // Punteggio mio
-            PunteggioChip(
-                nick      = stato.mioNick,
-                punteggio = stato.duello.punteggio(stato.mioUid),
-                isMe      = true
-            )
+            PunteggioChip(nick = stato.mioNick, punteggio = stato.duello.punteggio(stato.mioUid), isMe = true)
 
             // Timer
             Box(
-                Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
+                Modifier.size(56.dp).clip(CircleShape)
                     .background(timerColor.copy(alpha = 0.15f))
                     .border(2.dp, timerColor, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text("${stato.secondiRimasti}",
-                    fontSize   = 22.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color      = timerColor)
+                Text("${stato.secondiRimasti}", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = timerColor)
             }
 
-            // Punteggio avversario
-            PunteggioChip(
-                nick      = avvNick,
-                punteggio = stato.duello.punteggio(avvUid ?: ""),
-                isMe      = false
-            )
+            PunteggioChip(nick = avvNick, punteggio = stato.duello.punteggio(avvUid ?: ""), isMe = false)
         }
 
         Spacer(Modifier.height(8.dp))
 
         // Indicatore avversario
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             AnimatedVisibility(visible = avvRisposto) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer
-                ) {
+                Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
                     Text("✓ $avvNick ha risposto",
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         style    = MaterialTheme.typography.labelSmall,
@@ -385,21 +380,7 @@ private fun PartitaContent(
             }
         }
 
-        Spacer(Modifier.height(12.dp))
-
-        // ── Progresso ─────────────────────────────────────────────────────────
-        Text("Domanda ${stato.indiceCorrente + 1} di ${stato.duello.domande.size}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
-        Spacer(Modifier.height(6.dp))
-        LinearProgressIndicator(
-            progress  = { (stato.indiceCorrente + 1f) / stato.duello.domande.size },
-            modifier  = Modifier.fillMaxWidth().height(6.dp),
-            color     = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
 
         // ── Domanda ───────────────────────────────────────────────────────────
         Card(

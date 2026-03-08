@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -65,6 +66,13 @@ class PilloleNascosteViewModel(private val repo: CuriosityRepository) : ViewMode
         }
     }
 
+    fun ripristinaTutte() {
+        viewModelScope.launch {
+            _state.value.pillole.forEach { repo.ripristinaIgnorata(it) }
+            carica()
+        }
+    }
+
     class Factory(private val repo: CuriosityRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(c: Class<T>): T =
@@ -79,10 +87,35 @@ class PilloleNascosteViewModel(private val repo: CuriosityRepository) : ViewMode
 fun PilloleNascosteScreen(nav: NavController) {
     val ctx  = LocalContext.current
     val repo = (ctx.applicationContext as CuriosityApplication).repository
-    val vm: PilloleNascosteViewModel = viewModel(
-        factory = PilloleNascosteViewModel.Factory(repo)
-    )
+    val vm: PilloleNascosteViewModel = viewModel(factory = PilloleNascosteViewModel.Factory(repo))
     val state by vm.state.collectAsState()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope             = rememberCoroutineScope()
+
+    var showConfirmRipristinaTutte by remember { mutableStateOf(false) }
+
+    if (showConfirmRipristinaTutte) {
+        AlertDialog(
+            onDismissRequest = { showConfirmRipristinaTutte = false },
+            icon  = { Icon(Icons.Default.RestartAlt, null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("Ripristina tutte?", fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            text  = { Text("Tutte le ${state.pillole.size} pillole nascoste torneranno nella coda di lettura.",
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)) },
+            confirmButton = {
+                Button(onClick = {
+                    showConfirmRipristinaTutte = false
+                    vm.ripristinaTutte()
+                    scope.launch { snackbarHostState.showSnackbar("Tutte le pillole sono state ripristinate!") }
+                }) { Text("Ripristina tutte", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showConfirmRipristinaTutte = false }) { Text("Annulla") }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -93,9 +126,18 @@ fun PilloleNascosteScreen(nav: NavController) {
                         Icon(Icons.Default.ArrowBack, "Indietro")
                     }
                 },
+                actions = {
+                    if (state.pillole.isNotEmpty()) {
+                        IconButton(onClick = { showConfirmRipristinaTutte = true }) {
+                            Icon(Icons.Default.RestartAlt, "Ripristina tutte",
+                                tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.Transparent
     ) { pad ->
         val gradientBg = Brush.verticalGradient(listOf(
@@ -103,17 +145,11 @@ fun PilloleNascosteScreen(nav: NavController) {
             MaterialTheme.colorScheme.background
         ))
 
-        Column(
-            Modifier
-                .fillMaxSize()
-                .background(gradientBg)
-                .padding(pad)
-        ) {
+        Column(Modifier.fillMaxSize().background(gradientBg).padding(pad)) {
             when {
                 state.isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                     CircularProgressIndicator()
                 }
-
                 state.pillole.isEmpty() -> Column(
                     Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -121,15 +157,11 @@ fun PilloleNascosteScreen(nav: NavController) {
                 ) {
                     Text("🙈", fontSize = 56.sp)
                     Spacer(Modifier.height(16.dp))
-                    Text(
-                        "Nessuna pillola nascosta.\nLe curiosità che nascondi appariranno qui.",
-                        style     = MaterialTheme.typography.bodyLarge,
-                        color     = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
-                        textAlign = TextAlign.Center,
-                        modifier  = Modifier.padding(horizontal = 32.dp)
-                    )
+                    Text("Nessuna pillola nascosta.\nLe curiosità che nascondi appariranno qui.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
+                        textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 32.dp))
                 }
-
                 else -> {
                     Text(
                         "${state.pillole.size} pillol${if (state.pillole.size == 1) "a nascosta" else "e nascoste"}",
@@ -142,7 +174,10 @@ fun PilloleNascosteScreen(nav: NavController) {
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(state.pillole, key = { it.id }) { pillola ->
-                            PilolaNascostaCard(pillola) { vm.ripristina(pillola) }
+                            PilolaNascostaCard(pillola) {
+                                vm.ripristina(pillola)
+                                scope.launch { snackbarHostState.showSnackbar("Pillola ripristinata!") }
+                            }
                         }
                     }
                 }
@@ -156,45 +191,24 @@ private fun PilolaNascostaCard(pillola: Curiosity, onRipristina: () -> Unit) {
     Card(
         modifier  = Modifier.fillMaxWidth(),
         shape     = RoundedCornerShape(16.dp),
-        colors    = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Row(
-            Modifier.padding(16.dp).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                Modifier
-                    .size(10.dp)
-                    .background(
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
-                        CircleShape
-                    )
-            )
+        Row(Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(10.dp).background(
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f), CircleShape))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(
-                    pillola.title,
-                    style      = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines   = 2,
-                    overflow   = TextOverflow.Ellipsis,
-                    color      = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
+                Text(pillola.title, style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 Spacer(Modifier.height(2.dp))
-                Text(
-                    pillola.category,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                )
+                Text(pillola.category, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
             }
             Spacer(Modifier.width(8.dp))
-            OutlinedButton(
-                onClick = onRipristina,
-                shape   = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-            ) {
+            OutlinedButton(onClick = onRipristina, shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
                 Icon(Icons.Default.Visibility, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("Ripristina", style = MaterialTheme.typography.labelMedium)

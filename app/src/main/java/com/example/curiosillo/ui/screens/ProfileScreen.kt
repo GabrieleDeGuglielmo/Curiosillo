@@ -37,6 +37,7 @@ import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.data.BadgeCatalogo
 import com.example.curiosillo.data.BadgeDefinizione
 import com.example.curiosillo.data.BadgeSbloccato
+import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.ui.components.GamificationBanner
 import com.example.curiosillo.ui.theme.Error
 import com.example.curiosillo.ui.theme.Success
@@ -133,21 +134,6 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                             showSheet = false
                             nav.navigate("admin_curiosita")
                         }
-                    }
-                }
-
-                HorizontalDivider(Modifier.padding(vertical = 8.dp))
-
-                // Statistiche Quiz
-                AzioneItem(
-                    icon  = Icons.Default.BarChart,
-                    tint  = MaterialTheme.colorScheme.secondary,
-                    label = "Statistiche Quiz",
-                    sub   = "Cronologia e risultati dei tuoi quiz"
-                ) {
-                    scope.launch { sheetState.hide() }.invokeOnCompletion {
-                        showSheet = false
-                        nav.navigate("quiz_stats")
                     }
                 }
 
@@ -355,6 +341,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
+        bottomBar = { CuriosilloBottomBar(nav) },
         containerColor = Color.Transparent
     ) { pad ->
         val gradientBg = Brush.verticalGradient(listOf(
@@ -384,8 +371,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     ) {
                         Row(
                             Modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth(),
-                            verticalAlignment     = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.weight(1f)) {
@@ -396,32 +382,20 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                                 ) {
                                     Text(
                                         state.username.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                                        fontWeight = FontWeight.ExtraBold,
-                                        fontSize   = 20.sp,
-                                        color      = Color.White
+                                        fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color.White
                                     )
                                 }
                                 Spacer(Modifier.width(12.dp))
                                 Column {
                                     Text(state.username.ifBlank { "Utente" },
-                                        style      = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color      = MaterialTheme.colorScheme.onPrimaryContainer)
+                                        style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer)
                                     if (state.email.isNotBlank()) {
-                                        Text(state.email,
-                                            style    = MaterialTheme.typography.bodySmall,
-                                            color    = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                                        Text(state.email, style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     }
                                 }
-                            }
-                            TextButton(
-                                onClick = { showLogoutDialog = true },
-                                colors  = ButtonDefaults.textButtonColors(contentColor = Error)
-                            ) {
-                                Icon(Icons.Default.Logout, null, Modifier.size(18.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Esci", fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
@@ -528,6 +502,24 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                 }
 
                 Spacer(Modifier.height(16.dp))
+
+                // ── Esci — isolato in fondo per prevenire tap accidentali ─────
+                if (state.isLoggato) {
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                    OutlinedButton(
+                        onClick  = { showLogoutDialog = true },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape    = RoundedCornerShape(14.dp),
+                        colors   = ButtonDefaults.outlinedButtonColors(contentColor = Error),
+                        border   = ButtonDefaults.outlinedButtonBorder.copy(
+                            brush = androidx.compose.ui.graphics.SolidColor(Error))
+                    ) {
+                        Icon(Icons.Default.Logout, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Esci dall'account", fontWeight = FontWeight.SemiBold)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                }
             }
         }
     }

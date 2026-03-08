@@ -1,6 +1,7 @@
 package com.example.curiosillo.ui.screens
 
 import android.content.Intent
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -30,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -62,8 +64,9 @@ fun CuriosityScreen(nav: NavController) {
 
     var badgeDaMostrare  by remember { mutableStateOf<BadgeSbloccato?>(null) }
     var badgeQueue       by remember { mutableStateOf<List<BadgeSbloccato>>(emptyList()) }
-    var mostraCommenti   by remember { mutableStateOf(false) }
+    var mostraCommenti     by remember { mutableStateOf(false) }
     var mostraDialogIgnora by remember { mutableStateOf(false) }
+    var mostraFantastico   by remember { mutableStateOf(false) }
 
     LaunchedEffect(risultato) {
         risultato?.let {
@@ -183,28 +186,63 @@ fun CuriosityScreen(nav: NavController) {
             MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
             MaterialTheme.colorScheme.background
         ))
-        when (val s = state) {
-            is CuriosityUiState.Loading ->
-                Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
-                    CircularProgressIndicator()
+        Box(Modifier.fillMaxSize()) {
+            when (val s = state) {
+                is CuriosityUiState.Loading ->
+                    Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                is CuriosityUiState.Empty ->
+                    Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
+                        Text("Nessuna curiosità disponibile!\nTorna presto.",
+                            Modifier.padding(24.dp), textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyLarge)
+                    }
+                is CuriosityUiState.Success ->
+                    CuriosityContent(s, pad, gradientBg,
+                        onLearn      = { mostraFantastico = true; vm.markLearned() },
+                        onBookmark   = { vm.toggleBookmark() },
+                        onSalvaNota  = { vm.salvaNota(it) },
+                        onLike       = { vm.setVoto(1) },
+                        onDislike    = { vm.setVoto(-1) },
+                        onIgnora     = { mostraDialogIgnora = true },
+                        onCommenti   = { vm.caricaCommenti(); mostraCommenti = true }
+                    )
+                is CuriosityUiState.Learned -> LearnedContent(pad, gradientBg) { vm.load() }
+            }
+
+            // ── Overlay "Fantastico!" ─────────────────────────────────────────
+            if (mostraFantastico) {
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(1400)
+                    mostraFantastico = false
                 }
-            is CuriosityUiState.Empty ->
-                Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
-                    Text("Nessuna curiosità disponibile!\nTorna presto.",
-                        Modifier.padding(24.dp), textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodyLarge)
-                }
-            is CuriosityUiState.Success ->
-                CuriosityContent(s, pad, gradientBg,
-                    onLearn      = { vm.markLearned() },
-                    onBookmark   = { vm.toggleBookmark() },
-                    onSalvaNota  = { vm.salvaNota(it) },
-                    onLike       = { vm.setVoto(1) },
-                    onDislike    = { vm.setVoto(-1) },
-                    onIgnora     = { mostraDialogIgnora = true },
-                    onCommenti   = { vm.caricaCommenti(); mostraCommenti = true }
+                val pulse = rememberInfiniteTransition(label = "pulse")
+                val scale by pulse.animateFloat(
+                    initialValue  = 0.85f,
+                    targetValue   = 1.05f,
+                    animationSpec = infiniteRepeatable(
+                        tween(300, easing = FastOutSlowInEasing), RepeatMode.Reverse
+                    ),
+                    label = "scale"
                 )
-            is CuriosityUiState.Learned -> LearnedContent(pad, gradientBg) { vm.load() }
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Surface(
+                        shape           = RoundedCornerShape(28.dp),
+                        color           = MaterialTheme.colorScheme.primary,
+                        shadowElevation = 20.dp,
+                        modifier        = Modifier.graphicsLayer(scaleX = scale, scaleY = scale)
+                    ) {
+                        Text(
+                            "🎉 Fantastico!",
+                            modifier   = Modifier.padding(horizontal = 40.dp, vertical = 22.dp),
+                            style      = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color      = Color.White
+                        )
+                    }
+                }
+            }
         }
     }
 }
