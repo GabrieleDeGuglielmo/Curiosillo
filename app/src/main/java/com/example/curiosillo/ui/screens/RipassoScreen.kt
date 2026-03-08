@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.ArrowForwardIos
@@ -526,7 +527,8 @@ private fun PilloleCarousel(
                     )
                     if (hasProssima) {
                         Spacer(Modifier.width(4.dp))
-                        Icon(Icons.Default.ArrowForwardIos, null,
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowForwardIos, null,
                             Modifier.size(12.dp).graphicsLayer(alpha = hintAlpha),
                             tint = MaterialTheme.colorScheme.onBackground)
                     }
@@ -560,7 +562,7 @@ private fun PilloleCarousel(
                     ) {
                         Text("Prossima", color = Color.White)
                         Spacer(Modifier.width(6.dp))
-                        Icon(Icons.Default.ArrowForwardIos, null, Modifier.size(16.dp), tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, Modifier.size(16.dp), tint = Color.White)
                     }
                 }
                 Spacer(Modifier.height(24.dp))
