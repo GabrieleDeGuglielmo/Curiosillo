@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -34,10 +35,10 @@ import kotlinx.coroutines.launch
 // ── ViewModel ─────────────────────────────────────────────────────────────────
 
 data class AdminBroadcastUiState(
-    val isLoading:  Boolean = false,
-    val isAdmin:    Boolean = false,
-    val messaggio:  String? = null,
-    val errore:     String? = null
+    val isLoading: Boolean = false,
+    val isAdmin: Boolean = false,
+    val messaggio: String? = null,
+    val errore: String? = null
 )
 
 class AdminBroadcastViewModel : ViewModel() {
@@ -45,7 +46,9 @@ class AdminBroadcastViewModel : ViewModel() {
     private val _state = MutableStateFlow(AdminBroadcastUiState())
     val state: StateFlow<AdminBroadcastUiState> = _state.asStateFlow()
 
-    init { verificaAdmin() }
+    init {
+        verificaAdmin()
+    }
 
     private fun verificaAdmin() {
         viewModelScope.launch {
@@ -72,8 +75,13 @@ class AdminBroadcastViewModel : ViewModel() {
         }
     }
 
-    fun dismissMessaggio() { _state.value = _state.value.copy(messaggio = null) }
-    fun dismissErrore()    { _state.value = _state.value.copy(errore = null) }
+    fun dismissMessaggio() {
+        _state.value = _state.value.copy(messaggio = null)
+    }
+
+    fun dismissErrore() {
+        _state.value = _state.value.copy(errore = null)
+    }
 
     class Factory : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
@@ -89,12 +97,12 @@ fun AdminBroadcastScreen(nav: NavController) {
     val vm: AdminBroadcastViewModel = viewModel(factory = AdminBroadcastViewModel.Factory())
     val state by vm.state.collectAsState()
 
-    var titolo  by remember { mutableStateOf("") }
-    var corpo   by remember { mutableStateOf("") }
+    var titolo by remember { mutableStateOf("") }
+    var corpo by remember { mutableStateOf("") }
     var tentato by remember { mutableStateOf(false) }
 
     val errTitolo = tentato && titolo.isBlank()
-    val errCorpo  = tentato && corpo.isBlank()
+    val errCorpo = tentato && corpo.isBlank()
 
     // Auto-dismiss messaggio successo
     state.messaggio?.let {
@@ -109,22 +117,28 @@ fun AdminBroadcastScreen(nav: NavController) {
         AlertDialog(
             onDismissRequest = { vm.dismissErrore() },
             title = { Text("Errore") },
-            text  = { Text(it) },
+            text = { Text(it) },
             confirmButton = { TextButton(onClick = { vm.dismissErrore() }) { Text("OK") } }
         )
     }
 
-    val gradientBg = Brush.verticalGradient(listOf(
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-        MaterialTheme.colorScheme.background
-    ))
+    val gradientBg = Brush.verticalGradient(
+        listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.background
+        )
+    )
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Comunicazioni", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
+                    IconButton(onClick = {
+                        if (nav.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
+                            nav.popBackStack()
+                        }
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
                     }
                 },
@@ -133,19 +147,24 @@ fun AdminBroadcastScreen(nav: NavController) {
         },
         containerColor = Color.Transparent
     ) { pad ->
-        Box(Modifier.fillMaxSize().background(gradientBg).padding(pad)) {
+        Box(Modifier
+            .fillMaxSize()
+            .background(gradientBg)
+            .padding(pad)) {
 
             // Banner successo
             state.messaggio?.let { msg ->
                 Surface(
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
-                    shape    = RoundedCornerShape(20.dp),
-                    color    = Color(0xFF4CAF50)
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 8.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color(0xFF4CAF50)
                 ) {
                     Text(
                         msg,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                        color    = Color.White,
+                        color = Color.White,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -169,7 +188,7 @@ fun AdminBroadcastScreen(nav: NavController) {
                     // ── Intestazione ──────────────────────────────────────────
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier          = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 8.dp)
                     ) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
@@ -190,7 +209,7 @@ fun AdminBroadcastScreen(nav: NavController) {
                         Column {
                             Text(
                                 "Broadcast",
-                                style      = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
@@ -205,24 +224,24 @@ fun AdminBroadcastScreen(nav: NavController) {
 
                     // ── Campi ─────────────────────────────────────────────────
                     OutlinedTextField(
-                        value         = titolo,
+                        value = titolo,
                         onValueChange = { titolo = it },
-                        label         = { Text("Titolo") },
-                        singleLine    = true,
-                        modifier      = Modifier.fillMaxWidth(),
-                        isError       = errTitolo,
+                        label = { Text("Titolo") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = errTitolo,
                         supportingText = if (errTitolo) {
                             { Text("Il titolo è obbligatorio") }
                         } else null
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
-                        value         = corpo,
+                        value = corpo,
                         onValueChange = { corpo = it },
-                        label         = { Text("Messaggio") },
-                        minLines      = 5,
-                        modifier      = Modifier.fillMaxWidth(),
-                        isError       = errCorpo,
+                        label = { Text("Messaggio") },
+                        minLines = 5,
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = errCorpo,
                         supportingText = if (errCorpo) {
                             { Text("Il messaggio è obbligatorio") }
                         } else null
@@ -235,15 +254,15 @@ fun AdminBroadcastScreen(nav: NavController) {
                         Spacer(Modifier.height(16.dp))
                         Text(
                             "Anteprima",
-                            style      = MaterialTheme.typography.labelLarge,
+                            style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
-                            color      = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-                            modifier   = Modifier.padding(bottom = 8.dp)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
                         Card(
-                            modifier  = Modifier.fillMaxWidth(),
-                            shape     = RoundedCornerShape(14.dp),
-                            colors    = CardDefaults.cardColors(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer
                             ),
                             elevation = CardDefaults.cardElevation(0.dp)
@@ -252,7 +271,7 @@ fun AdminBroadcastScreen(nav: NavController) {
                                 if (titolo.isNotBlank()) {
                                     Text(
                                         titolo,
-                                        style      = MaterialTheme.typography.bodyMedium,
+                                        style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     Spacer(Modifier.height(4.dp))
@@ -277,18 +296,20 @@ fun AdminBroadcastScreen(nav: NavController) {
                             if (titolo.isNotBlank() && corpo.isNotBlank()) {
                                 vm.inviaBroadcast(titolo.trim(), corpo.trim())
                                 titolo = ""
-                                corpo  = ""
+                                corpo = ""
                                 tentato = false
                             }
                         },
-                        enabled  = !state.isLoading,
-                        modifier = Modifier.fillMaxWidth().height(54.dp),
-                        shape    = RoundedCornerShape(14.dp)
+                        enabled = !state.isLoading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp),
+                        shape = RoundedCornerShape(14.dp)
                     ) {
                         if (state.isLoading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
-                                color    = Color.White,
+                                color = Color.White,
                                 strokeWidth = 2.dp
                             )
                         } else {
@@ -297,7 +318,7 @@ fun AdminBroadcastScreen(nav: NavController) {
                             Text(
                                 "Invia a tutti gli utenti",
                                 fontWeight = FontWeight.Bold,
-                                style      = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.titleMedium
                             )
                         }
                     }
