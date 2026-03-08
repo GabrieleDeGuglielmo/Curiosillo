@@ -51,9 +51,10 @@ class CuriosityViewModel(
             _state.value = CuriosityUiState.Loading
             val categorie = prefs.categorieAttive.first()
             val c = repo.getNext(categorie)
-            _state.value = if (c != null)
-                CuriosityUiState.Success(c, repo.curiositàImparate())
-            else CuriosityUiState.Empty
+            if (c != null) {
+                _state.value = CuriosityUiState.Success(c, repo.curiositàImparate())
+                caricaCommenti()
+            } else _state.value = CuriosityUiState.Empty
         }
     }
 

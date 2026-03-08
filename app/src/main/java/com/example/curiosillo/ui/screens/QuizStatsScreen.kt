@@ -44,7 +44,7 @@ fun QuizStatsScreen(nav: NavController) {
         containerColor = Color.Transparent
     ) { pad ->
         val gradientBg = Brush.verticalGradient(listOf(
-            MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
             MaterialTheme.colorScheme.background
         ))
         when {

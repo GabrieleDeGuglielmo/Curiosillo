@@ -2,6 +2,7 @@ package com.example.curiosillo.ui.screens
 
 import android.content.Intent
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -46,7 +47,10 @@ import com.example.curiosillo.data.BadgeSbloccato
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.ui.categoryImage
 import com.example.curiosillo.ui.components.NotaBottomSheet
+import com.example.curiosillo.ui.theme.DarkText
+import com.example.curiosillo.ui.theme.Hidden
 import com.example.curiosillo.ui.theme.Success
+import com.example.curiosillo.viewmodel.CommentiUiState
 import com.example.curiosillo.viewmodel.CuriosityUiState
 import com.example.curiosillo.viewmodel.CuriosityViewModel
 
@@ -118,7 +122,8 @@ fun CuriosityScreen(nav: NavController) {
             confirmButton = {
                 Button(onClick = { mostraDialogIgnora = false; vm.toggleIgnora() },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error)) {
+                        containerColor = Hidden
+                    )) {
                     Text("Nascondi")
                 }
             },
@@ -199,7 +204,7 @@ fun CuriosityScreen(nav: NavController) {
                             style = MaterialTheme.typography.bodyLarge)
                     }
                 is CuriosityUiState.Success ->
-                    CuriosityContent(s, pad, gradientBg,
+                    CuriosityContent(s, pad, gradientBg, commentiState = commentiState,
                         onLearn      = { mostraFantastico = true; vm.markLearned() },
                         onBookmark   = { vm.toggleBookmark() },
                         onSalvaNota  = { vm.salvaNota(it) },
@@ -211,7 +216,7 @@ fun CuriosityScreen(nav: NavController) {
                 is CuriosityUiState.Learned -> LearnedContent(pad, gradientBg) { vm.load() }
             }
 
-            // ── Overlay "Fantastico!" ─────────────────────────────────────────
+            /* ── Overlay "Fantastico!" ─────────────────────────────────────────
             if (mostraFantastico) {
                 LaunchedEffect(Unit) {
                     kotlinx.coroutines.delay(1400)
@@ -242,7 +247,7 @@ fun CuriosityScreen(nav: NavController) {
                         )
                     }
                 }
-            }
+            }*/
         }
     }
 }
@@ -253,6 +258,7 @@ private fun CuriosityContent(
     s:           CuriosityUiState.Success,
     pad:         PaddingValues,
     gradientBg:  Brush,
+    commentiState: CommentiUiState,
     onLearn:     () -> Unit,
     onBookmark:  () -> Unit,
     onSalvaNota: (String) -> Unit,
@@ -291,13 +297,39 @@ private fun CuriosityContent(
             ) {
                 SuggestionChip(onClick = {},
                     label = { Text(emojiCategoria(s.curiosity.category) + " " + s.curiosity.category) })
-                Row {
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(
+                        onClick = onIgnora,
+                        modifier = Modifier.height(34.dp), // Altezza ridotta per eleganza
+                        border = BorderStroke(1.dp, DarkText),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = DarkText
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.VisibilityOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "Nascondi",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+
+                    // Nota
                     IconButton(onClick = { mostraNota = true }) {
                         Icon(Icons.Default.EditNote, "Nota",
                             tint = if (s.curiosity.nota.isNotBlank())
                                 MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
                     }
+                    // Bookmark
                     IconToggleButton(checked = s.curiosity.isBookmarked,
                         onCheckedChange = { onBookmark() }) {
                         Icon(
@@ -345,9 +377,6 @@ private fun CuriosityContent(
                     color      = MaterialTheme.colorScheme.onSurface)
             }
             Spacer(Modifier.height(16.dp))
-            Text("Curiosità imparate: ${s.readCount}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
 
             // ── Like / Dislike / Non mi interessa / Commenti ──────────────────
             Spacer(Modifier.height(16.dp))
@@ -391,16 +420,14 @@ private fun CuriosityContent(
                 Spacer(Modifier.weight(1f))
                 // Commenti
                 OutlinedButton(onClick = onCommenti, shape = RoundedCornerShape(12.dp)) {
-                    Text("💬 Commenti")
-                }
-                // Non mi interessa
-                FilledTonalIconButton(onClick = onIgnora,
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    val count = commentiState.commenti.size
+                    val label = "💬 Commenti ($count)"
+
+                    Text(
+                        text  = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
                     )
-                ) {
-                    Icon(Icons.Outlined.VisibilityOff, "Non mi interessa",
-                        tint = MaterialTheme.colorScheme.onErrorContainer)
                 }
             }
 

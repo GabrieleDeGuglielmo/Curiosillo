@@ -220,7 +220,10 @@ fun RipassoScreen(nav: NavController) {
                 ) {
                     Icon(Icons.Default.ChatBubbleOutline, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Commenti")
+
+                    val count = commentiState.commenti.size
+                    val label = "Commenti ($count)"
+                    Text(label)
                 }
             }
         }
@@ -256,7 +259,7 @@ fun RipassoScreen(nav: NavController) {
         containerColor = Color.Transparent
     ) { pad ->
         val gradientBg = Brush.verticalGradient(listOf(
-            MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
             MaterialTheme.colorScheme.background
         ))
 

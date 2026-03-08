@@ -16,7 +16,9 @@ val OnSecondary  = Color.White
 val OnBackground = Color(0xFF1F2937)
 val OnSurface    = Color(0xFF1C1B1F)
 
-val TestoScuro   = Color(0xFF0F172A) // Dark blue from logo for better contrast
+val DarkText   = Color(0xFF0F172A) // Dark blue from logo for better contrast
+
+val Hidden = Color.LightGray
 
 // ── Dark Theme ────────────────────────────────────────────────────────────────
 val PrimaryDark       = Color(0xFFFF8C5A)

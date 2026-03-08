@@ -21,7 +21,7 @@ val Nunito = FontFamily(
 // Uno stile base per non ripeterci
 private val defaultTextStyle = TextStyle(
     fontFamily = Nunito,
-    color      = TestoScuro,
+    color      = DarkText,
     platformStyle = PlatformTextStyle(includeFontPadding = false)
 )
 
