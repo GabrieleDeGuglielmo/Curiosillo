@@ -94,6 +94,7 @@ fun CategoryPickerScreen(nav: NavController, destinazione: String) {
                 item {
                     CategoriaCard(nome = "Tutte", attiva = categorieAttive.isEmpty(),
                         colore = Color(0xFF607D8B), completamento = null,
+                        emojiOverride = "🌐",
                         onClick = { vm.resetCategorie() })
                 }
                 items(categorie) { cat ->
@@ -127,25 +128,30 @@ private fun CategoriaCard(
     nome:          String,
     attiva:        Boolean,
     colore:        Color,
-    completamento: Pair<Int, Int>?,  // (lette, totali)
+    completamento: Pair<Int, Int>?,
+    emojiOverride: String? = null,
     onClick:       () -> Unit
 ) {
-    val bgColore  = if (attiva) colore else colore.copy(alpha = 0.15f)
-    // Testo scuro su sfondo chiaro, bianco su sfondo pieno — contrasto ≥ 4.5:1
-    val testoColore = if (attiva) Color.White else Color(0xFF1A1A1A)
+    val bgColore    = if (attiva) colore else colore.copy(alpha = 0.12f)
+    val testoColore = if (attiva) Color.White else colore
+    val emoji       = emojiOverride ?: emojiCategoria(nome)
 
     Card(
         onClick   = onClick,
         modifier  = Modifier.fillMaxWidth().height(90.dp),
         shape     = RoundedCornerShape(16.dp),
         colors    = CardDefaults.cardColors(containerColor = bgColore),
-        elevation = CardDefaults.cardElevation(if (attiva) 6.dp else 2.dp)
+        elevation = CardDefaults.cardElevation(if (attiva) 6.dp else 0.dp)
     ) {
         Box(Modifier.fillMaxSize().padding(10.dp)) {
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(nome, style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold, color = testoColore)
+                    Text(
+                        "$emoji  $nome",
+                        style      = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color      = testoColore
+                    )
                     if (attiva) {
                         Spacer(Modifier.width(6.dp))
                         Icon(Icons.Default.Check, null, Modifier.size(16.dp), tint = Color.White)
@@ -163,28 +169,14 @@ private fun CategoriaCard(
                         trackColor = if (attiva) Color.White.copy(alpha = 0.3f) else colore.copy(alpha = 0.2f)
                     )
                     Spacer(Modifier.height(2.dp))
-                    Text("$lette/$totali lette",
-                        style  = MaterialTheme.typography.labelSmall,
-                        color  = testoColore.copy(alpha = 0.7f),
-                        fontSize = 9.sp)
+                    Text(
+                        "$lette/$totali lette",
+                        style    = MaterialTheme.typography.labelSmall,
+                        color    = testoColore.copy(alpha = 0.7f),
+                        fontSize = 9.sp
+                    )
                 }
             }
         }
     }
-}
-
-fun coloreCategoria(categoria: String): Color = when (categoria.lowercase()) {
-    "scienza"     -> Color(0xFF1565C0)
-    "animali"     -> Color(0xFF2E7D32)
-    "storia"      -> Color(0xFF6A1B9A)
-    "sport"       -> Color(0xFFE65100)
-    "arte"        -> Color(0xFFAD1457)
-    "tecnologia"  -> Color(0xFF00838F)
-    "natura"      -> Color(0xFF558B2F)
-    "cibo"        -> Color(0xFFEF6C00)
-    "geografia"   -> Color(0xFF00695C)
-    "musica"      -> Color(0xFF4527A0)
-    "cinema"      -> Color(0xFF283593)
-    "letteratura" -> Color(0xFF4E342E)
-    else          -> Color(0xFF455A64)
 }

@@ -473,18 +473,6 @@ private fun LearnedContent(
     }
 }
 
-fun emojiCategoria(category: String): String = when (category) {
-    "Scienza"    -> "🔬"
-    "Animali"    -> "🐾"
-    "Storia"     -> "📜"
-    "Sport"      -> "⚽"
-    "Arte"       -> "🎨"
-    "Tecnologia" -> "💻"
-    "Natura"     -> "🌿"
-    "Cibo"       -> "🍽️"
-    else         -> "✨"
-}
-
 @Composable
 fun CommentiSheet(
     commentiState:  com.example.curiosillo.viewmodel.CommentiUiState,

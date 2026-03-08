@@ -384,9 +384,10 @@ fun AdminCuriositaScreen(nav: NavController) {
     // Bottom sheet form aggiungi/modifica
     if (showForm) {
         CuriositaFormSheet(
-            iniziale  = editingItem,
-            onSalva   = { c -> vm.salva(c); showForm = false },
-            onDismiss = { showForm = false }
+            iniziale       = editingItem,
+            tutteCuriosita = state.curiosita,
+            onSalva        = { c -> vm.salva(c); showForm = false },
+            onDismiss      = { showForm = false }
         )
     }
 }
@@ -471,18 +472,61 @@ private fun CuriositaAdminCard(
     }
 }
 
+// ── Categorie disponibili ─────────────────────────────────────────────────────
+
+val CATEGORIE_DISPONIBILI = listOf(
+    "Scienza", "Animali", "Storia", "Sport", "Arte", "Tecnologia",
+    "Natura", "Cibo", "Geografia", "Musica", "Cinema", "Letteratura",
+    "Lingua", "Moda", "Vita quotidiana"
+)
+
+// ── Helpers validazione ───────────────────────────────────────────────────────
+
+private fun isEmoji(s: String): Boolean {
+    val trimmed = s.trim()
+    if (trimmed.isEmpty()) return false
+    // Controlla che la stringa sia composta solo da code point emoji/modificatori
+    val it = trimmed.codePoints().iterator()
+    while (it.hasNext()) {
+        val cp = it.nextInt()
+        val type = Character.getType(cp)
+        val isEmojiLike = type == Character.OTHER_SYMBOL.toInt()           // So - emoji base
+                || type == Character.MODIFIER_SYMBOL.toInt()                   // Sk
+                || type == Character.NON_SPACING_MARK.toInt()                  // Mn - varianti
+                || cp == 0x200D                                                // ZWJ
+                || cp in 0x1F1E6..0x1F1FF                                     // flag letters
+                || cp in 0xFE00..0xFE0F                                        // variation selectors
+                || cp in 0x1F3FB..0x1F3FF                                      // skin tones
+                || cp == 0x20E3                                                 // combining enclosing keycap
+        if (!isEmojiLike) return false
+    }
+    return true
+}
+
+private fun generaId(tutteCuriosita: List<FirebaseManager.CuriositaRemota>): String {
+    // Estrae il numero da ID nel formato "cNNN", prende il massimo e incrementa
+    val maxN = tutteCuriosita
+        .mapNotNull { it.externalId.removePrefix("c").toIntOrNull() }
+        .maxOrNull() ?: 0
+    return "c${maxN + 1}"
+}
+
 // ── Form aggiungi/modifica ────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CuriositaFormSheet(
-    iniziale:  FirebaseManager.CuriositaRemota?,
-    onSalva:   (FirebaseManager.CuriositaRemota) -> Unit,
-    onDismiss: () -> Unit
+    iniziale:       FirebaseManager.CuriositaRemota?,
+    tutteCuriosita: List<FirebaseManager.CuriositaRemota>,
+    onSalva:        (FirebaseManager.CuriositaRemota) -> Unit,
+    onDismiss:      () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val isModifica = iniziale != null
 
-    var externalId       by remember { mutableStateOf(iniziale?.externalId       ?: "") }
+    // ID: immutabile in modifica, calcolato una volta sola in creazione
+    val externalId = remember { iniziale?.externalId ?: generaId(tutteCuriosita) }
+
     var titolo           by remember { mutableStateOf(iniziale?.titolo           ?: "") }
     var corpo            by remember { mutableStateOf(iniziale?.corpo            ?: "") }
     var categoria        by remember { mutableStateOf(iniziale?.categoria        ?: "") }
@@ -494,8 +538,28 @@ private fun CuriositaFormSheet(
     var errata3          by remember { mutableStateOf(iniziale?.risposteErrate?.getOrElse(2) { "" } ?: "") }
     var spiegazione      by remember { mutableStateOf(iniziale?.spiegazione      ?: "") }
 
-    val isModifica = iniziale != null
-    val campiValidi = externalId.isNotBlank() && titolo.isNotBlank() && corpo.isNotBlank()
+    var tentato by remember { mutableStateOf(false) }
+    var mostraCatDropdown by remember { mutableStateOf(false) }
+
+    // ── Errori di validazione ─────────────────────────────────────────────────
+    val errEmoji     = emoji.isBlank() || !isEmoji(emoji)
+    val errTitolo    = titolo.isBlank()
+    val errCorpo     = corpo.isBlank()
+    val errCategoria = categoria.isBlank() || !CATEGORIE_DISPONIBILI.any {
+        it.equals(categoria.trim(), ignoreCase = true) }
+    // Quiz: o tutti i campi quiz compilati, o nessuno
+    val hasQuizParziale = listOf(domanda, rispostaCorretta, errata1, errata2, errata3, spiegazione)
+        .any { it.isNotBlank() } &&
+            listOf(domanda, rispostaCorretta, errata1, errata2, errata3, spiegazione)
+                .any { it.isBlank() }
+    val errDomanda          = hasQuizParziale && domanda.isBlank()
+    val errRispostaCorretta = hasQuizParziale && rispostaCorretta.isBlank()
+    val errErrata1          = hasQuizParziale && errata1.isBlank()
+    val errErrata2          = hasQuizParziale && errata2.isBlank()
+    val errErrata3          = hasQuizParziale && errata3.isBlank()
+    val errSpiegazione      = hasQuizParziale && spiegazione.isBlank()
+
+    val campiValidi = !errEmoji && !errTitolo && !errCorpo && !errCategoria && !hasQuizParziale
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -515,94 +579,175 @@ private fun CuriositaFormSheet(
                 modifier   = Modifier.padding(bottom = 16.dp)
             )
 
-            // ── Campi base ────────────────────────────────────────────────────
+            // ── ID (non modificabile) ─────────────────────────────────────────
             OutlinedTextField(
                 value         = externalId,
-                onValueChange = { if (!isModifica) externalId = it },
-                label         = { Text("ID univoco (es. c001)") },
-                enabled       = !isModifica,
+                onValueChange = {},
+                label         = { Text("ID univoco") },
+                enabled       = false,
                 singleLine    = true,
-                modifier      = Modifier.fillMaxWidth()
+                modifier      = Modifier.fillMaxWidth(),
+                colors        = OutlinedTextFieldDefaults.colors(
+                    disabledTextColor         = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    disabledBorderColor       = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                    disabledLabelColor        = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    disabledTrailingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                ),
+                trailingIcon = { Icon(Icons.Default.Lock, null,
+                    Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)) }
             )
             Spacer(Modifier.height(10.dp))
+
+            // ── Emoji ─────────────────────────────────────────────────────────
             OutlinedTextField(
                 value         = emoji,
-                onValueChange = { emoji = it },
+                onValueChange = { if (it.length <= 8) emoji = it },
                 label         = { Text("Emoji") },
                 singleLine    = true,
-                modifier      = Modifier.fillMaxWidth()
+                modifier      = Modifier.fillMaxWidth(),
+                isError       = tentato && errEmoji,
+                supportingText = if (tentato && errEmoji) {
+                    { Text("Inserisci una sola emoji valida") }
+                } else null
             )
             Spacer(Modifier.height(10.dp))
+
+            // ── Titolo ────────────────────────────────────────────────────────
             OutlinedTextField(
                 value         = titolo,
                 onValueChange = { titolo = it },
-                label         = { Text("Titolo *") },
+                label         = { Text("Titolo") },
                 singleLine    = true,
-                modifier      = Modifier.fillMaxWidth()
+                modifier      = Modifier.fillMaxWidth(),
+                isError       = tentato && errTitolo,
+                supportingText = if (tentato && errTitolo) {
+                    { Text("Il titolo è obbligatorio") }
+                } else null
             )
             Spacer(Modifier.height(10.dp))
-            OutlinedTextField(
-                value         = categoria,
-                onValueChange = { categoria = it },
-                label         = { Text("Categoria") },
-                singleLine    = true,
-                modifier      = Modifier.fillMaxWidth()
-            )
+
+            // ── Categoria (dropdown) ──────────────────────────────────────────
+            ExposedDropdownMenuBox(
+                expanded         = mostraCatDropdown,
+                onExpandedChange = { mostraCatDropdown = it }
+            ) {
+                OutlinedTextField(
+                    value             = categoria,
+                    onValueChange     = {},
+                    readOnly          = true,
+                    label             = { Text("Categoria") },
+                    trailingIcon      = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = mostraCatDropdown) },
+                    modifier          = Modifier.fillMaxWidth().menuAnchor(),
+                    isError           = tentato && errCategoria,
+                    supportingText    = if (tentato && errCategoria) {
+                        { Text("Seleziona una categoria dalla lista") }
+                    } else null
+                )
+                ExposedDropdownMenu(
+                    expanded         = mostraCatDropdown,
+                    onDismissRequest = { mostraCatDropdown = false }
+                ) {
+                    CATEGORIE_DISPONIBILI.forEach { cat ->
+                        DropdownMenuItem(
+                            text    = { Text(cat) },
+                            onClick = { categoria = cat; mostraCatDropdown = false }
+                        )
+                    }
+                }
+            }
             Spacer(Modifier.height(10.dp))
+
+            // ── Corpo ─────────────────────────────────────────────────────────
             OutlinedTextField(
                 value         = corpo,
                 onValueChange = { corpo = it },
-                label         = { Text("Testo curiosità *") },
+                label         = { Text("Testo curiosità") },
                 minLines      = 4,
-                modifier      = Modifier.fillMaxWidth()
+                modifier      = Modifier.fillMaxWidth(),
+                isError       = tentato && errCorpo,
+                supportingText = if (tentato && errCorpo) {
+                    { Text("Il testo della curiosità è obbligatorio") }
+                } else null
             )
 
-            // ── Quiz (opzionale) ──────────────────────────────────────────────
+            // ── Quiz ──────────────────────────────────────────────────────────
             Spacer(Modifier.height(20.dp))
             HorizontalDivider()
             Spacer(Modifier.height(12.dp))
-            Text("Quiz (opzionale)", style = MaterialTheme.typography.labelLarge,
+            Text(
+                "Quiz",
+                style      = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
-                color      = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                color      = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            if (tentato && hasQuizParziale) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Compila tutti i campi del quiz oppure lasciali tutti vuoti.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(
-                value         = domanda,
-                onValueChange = { domanda = it },
-                label         = { Text("Domanda") },
-                singleLine    = true,
-                modifier      = Modifier.fillMaxWidth()
+                value          = domanda,
+                onValueChange  = { domanda = it },
+                label          = { Text("Domanda") },
+                singleLine     = true,
+                modifier       = Modifier.fillMaxWidth(),
+                isError        = tentato && errDomanda,
+                supportingText = if (tentato && errDomanda) { { Text("Campo obbligatorio") } } else null
             )
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
-                value         = rispostaCorretta,
-                onValueChange = { rispostaCorretta = it },
-                label         = { Text("Risposta corretta") },
-                singleLine    = true,
-                modifier      = Modifier.fillMaxWidth()
+                value          = rispostaCorretta,
+                onValueChange  = { rispostaCorretta = it },
+                label          = { Text("Risposta corretta") },
+                singleLine     = true,
+                modifier       = Modifier.fillMaxWidth(),
+                isError        = tentato && errRispostaCorretta,
+                supportingText = if (tentato && errRispostaCorretta) { { Text("Campo obbligatorio") } } else null
             )
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(value = errata1, onValueChange = { errata1 = it },
-                label = { Text("Risposta errata 1") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(value = errata2, onValueChange = { errata2 = it },
-                label = { Text("Risposta errata 2") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(value = errata3, onValueChange = { errata3 = it },
-                label = { Text("Risposta errata 3") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(
+                value = errata1, onValueChange = { errata1 = it },
+                label = { Text("Risposta errata 1") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                isError = tentato && errErrata1,
+                supportingText = if (tentato && errErrata1) { { Text("Campo obbligatorio") } } else null
+            )
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
-                value         = spiegazione,
-                onValueChange = { spiegazione = it },
-                label         = { Text("Spiegazione risposta") },
-                minLines      = 2,
-                modifier      = Modifier.fillMaxWidth()
+                value = errata2, onValueChange = { errata2 = it },
+                label = { Text("Risposta errata 2") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                isError = tentato && errErrata2,
+                supportingText = if (tentato && errErrata2) { { Text("Campo obbligatorio") } } else null
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = errata3, onValueChange = { errata3 = it },
+                label = { Text("Risposta errata 3") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                isError = tentato && errErrata3,
+                supportingText = if (tentato && errErrata3) { { Text("Campo obbligatorio") } } else null
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value          = spiegazione,
+                onValueChange  = { spiegazione = it },
+                label          = { Text("Spiegazione risposta") },
+                minLines       = 2,
+                modifier       = Modifier.fillMaxWidth(),
+                isError        = tentato && errSpiegazione,
+                supportingText = if (tentato && errSpiegazione) { { Text("Campo obbligatorio") } } else null
             )
 
             Spacer(Modifier.height(24.dp))
             Button(
-                onClick  = {
+                onClick = {
+                    tentato = true
+                    if (!campiValidi) return@Button
                     onSalva(FirebaseManager.CuriositaRemota(
-                        externalId       = externalId.trim(),
+                        externalId       = externalId,
                         titolo           = titolo.trim(),
                         corpo            = corpo.trim(),
                         categoria        = categoria.trim(),
@@ -614,13 +759,14 @@ private fun CuriositaFormSheet(
                         spiegazione      = spiegazione.trim().ifBlank { null }
                     ))
                 },
-                enabled  = campiValidi,
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape    = RoundedCornerShape(14.dp)
             ) {
-                Text(if (isModifica) "Aggiorna" else "Pubblica",
+                Text(
+                    if (isModifica) "Aggiorna" else "Pubblica",
                     fontWeight = FontWeight.Bold,
-                    style      = MaterialTheme.typography.titleMedium)
+                    style      = MaterialTheme.typography.titleMedium
+                )
             }
         }
     }
