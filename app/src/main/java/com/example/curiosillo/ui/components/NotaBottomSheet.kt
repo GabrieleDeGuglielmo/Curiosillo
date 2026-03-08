@@ -80,7 +80,7 @@ fun NotaBottomSheet(
                 ) {
                     Icon(Icons.Default.Save, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Salva", fontWeight = FontWeight.SemiBold)
+                    Text("Salva")
                 }
             }
         }

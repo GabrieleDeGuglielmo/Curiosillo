@@ -179,7 +179,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
             onDismissRequest = { badgeDettaglio = null },
             icon  = { Text(def.icona, fontSize = 40.sp) },
             title = {
-                Text(def.nome, fontWeight = FontWeight.Bold,
+                Text(def.nome,
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             },
             text = {
@@ -189,9 +189,9 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                             modifier = Modifier.fillMaxWidth(),
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                         Spacer(Modifier.height(8.dp))
-                        Text("✅ Badge sbloccato!", fontWeight = FontWeight.SemiBold, color = Success)
+                        Text("✅ Badge sbloccato!", color = Success)
                     } else {
-                        Text("Per sbloccare questo badge:", fontWeight = FontWeight.SemiBold,
+                        Text("Per sbloccare questo badge:",
                             modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
                             textAlign = TextAlign.Center)
                         Text(condizioneBadge(def.id), textAlign = TextAlign.Center,
@@ -212,7 +212,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
             onDismissRequest = { badgeSbloccatoAppena = null },
             icon  = { Text(badge.icona, fontSize = 48.sp) },
             title = {
-                Text("Badge sbloccato!", fontWeight = FontWeight.Bold,
+                Text("Badge sbloccato!",
                     modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             },
             text = {
@@ -229,7 +229,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
             },
             confirmButton = {
                 Button(onClick = { badgeSbloccatoAppena = null }) {
-                    Text("Ottimo!", fontWeight = FontWeight.Bold)
+                    Text("Ottimo!")
                 }
             }
         )
@@ -241,7 +241,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
             onDismissRequest = { showResetDialog = false },
             icon  = { Icon(Icons.Default.Delete, null, tint = Error) },
             title = {
-                Text("Resetta i progressi?", fontWeight = FontWeight.Bold,
+                Text("Resetta i progressi?",
                     modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             },
             text = {
@@ -252,7 +252,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
             confirmButton = {
                 Button(onClick = { vm.resetProgressi(); showResetDialog = false },
                     colors = ButtonDefaults.buttonColors(containerColor = Error)
-                ) { Text("Sì, resetta", fontWeight = FontWeight.Bold) }
+                ) { Text("Sì, resetta") }
             },
             dismissButton = {
                 OutlinedButton(onClick = { showResetDialog = false }) { Text("Annulla") }
@@ -266,7 +266,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
             onDismissRequest = { showLogoutDialog = false },
             icon  = { Icon(Icons.Default.Logout, null, tint = Error) },
             title = {
-                Text("Esci dall'account?", fontWeight = FontWeight.Bold,
+                Text("Esci dall'account?",
                     modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             },
             text = {
@@ -277,7 +277,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
             confirmButton = {
                 Button(onClick = { showLogoutDialog = false; vm.logout(onLogout) },
                     colors = ButtonDefaults.buttonColors(containerColor = Error)
-                ) { Text("Esci", fontWeight = FontWeight.Bold) }
+                ) { Text("Esci") }
             },
             dismissButton = {
                 OutlinedButton(onClick = { showLogoutDialog = false }) { Text("Annulla") }
@@ -291,7 +291,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
             onDismissRequest = { if (!state.isEliminazioneInCorso) showEliminaDialog = false },
             icon  = { Icon(Icons.Default.DeleteForever, null, tint = Error) },
             title = {
-                Text("Elimina account?", fontWeight = FontWeight.Bold,
+                Text("Elimina account?",
                     modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             },
             text = {
@@ -310,7 +310,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                         CircularProgressIndicator(Modifier.size(18.dp),
                             color = Color.White, strokeWidth = 2.dp)
                     } else {
-                        Text("Sì, elimina tutto", fontWeight = FontWeight.Bold)
+                        Text("Sì, elimina tutto")
                     }
                 }
             },
@@ -326,7 +326,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Il mio profilo", fontWeight = FontWeight.SemiBold) },
+                title = { Text("Il mio profilo") },
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, "Indietro")
@@ -388,7 +388,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                                 Spacer(Modifier.width(12.dp))
                                 Column {
                                     Text(state.username.ifBlank { "Utente" },
-                                        style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.titleSmall,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer)
                                     if (state.email.isNotBlank()) {
                                         Text(state.email, style = MaterialTheme.typography.bodySmall,
@@ -432,7 +432,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                             onDismissRequest = { showStreakInfo = false },
                             icon  = { Text("🔥", fontSize = 32.sp) },
                             title = {
-                                Text("Come funziona la streak?", fontWeight = FontWeight.Bold,
+                                Text("Come funziona la streak?",
                                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                             },
                             text = {
@@ -484,7 +484,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                 // ── Badge ─────────────────────────────────────────────────────
                 Spacer(Modifier.height(28.dp))
                 Text("Badge (${state.badgeSbloccati.size}/${BadgeCatalogo.tutti.size})",
-                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                     modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
@@ -516,7 +516,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     ) {
                         Icon(Icons.Default.Logout, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Esci dall'account", fontWeight = FontWeight.SemiBold)
+                        Text("Esci dall'account")
                     }
                     Spacer(Modifier.height(16.dp))
                 }
@@ -550,13 +550,13 @@ private fun AzioneItem(
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(label, fontWeight = FontWeight.SemiBold,
+            Text(label,
                 style = MaterialTheme.typography.bodyLarge, color = tint)
             Text(sub, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
         }
         TextButton(onClick = onClick) {
-            Text("Vai", fontWeight = FontWeight.Bold, color = tint)
+            Text("Vai", color = tint)
         }
     }
 }
@@ -593,7 +593,7 @@ private fun StatCard(modifier: Modifier, valore: String, etichetta: String, colo
     ) {
         Column(Modifier.padding(vertical = 20.dp, horizontal = 8.dp).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(valore, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+            Text(valore, fontSize = 32.sp, color = Color.White)
             Spacer(Modifier.height(4.dp))
             Text(etichetta, style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.9f), textAlign = TextAlign.Center)

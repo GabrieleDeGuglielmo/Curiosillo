@@ -221,7 +221,7 @@ fun AdminCuriositaScreen(nav: NavController) {
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
             icon  = { Icon(Icons.Default.DeleteForever, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Elimina curiosità?", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            title = { Text("Elimina curiosità?", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
             text  = { Text("Questa azione è irreversibile e rimuove la curiosità per tutti gli utenti.", textAlign = TextAlign.Center) },
             confirmButton = {
                 Button(onClick = { vm.elimina(exId); deleteTarget = null },
@@ -236,7 +236,7 @@ fun AdminCuriositaScreen(nav: NavController) {
     state.errore?.let {
         AlertDialog(
             onDismissRequest = { vm.dismissErrore() },
-            title = { Text("Errore", fontWeight = FontWeight.Bold) },
+            title = { Text("Errore") },
             text  = { Text(it) },
             confirmButton = { TextButton(onClick = { vm.dismissErrore() }) { Text("OK") } }
         )
@@ -246,14 +246,14 @@ fun AdminCuriositaScreen(nav: NavController) {
     if (showImport && jsonDaImportare.isNotBlank()) {
         AlertDialog(
             onDismissRequest = { showImport = false },
-            title = { Text("Importa JSON", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            title = { Text("Importa JSON", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
             text  = {
                 Text("Il file contiene del testo JSON. Vuoi importare le curiosità?\nVerranno aggiunte o aggiornate su Firestore.",
                     textAlign = TextAlign.Center)
             },
             confirmButton = {
                 Button(onClick = { vm.importaJson(jsonDaImportare); showImport = false; jsonDaImportare = "" }) {
-                    Text("Importa", fontWeight = FontWeight.Bold)
+                    Text("Importa")
                 }
             },
             dismissButton = { OutlinedButton(onClick = { showImport = false; jsonDaImportare = "" }) { Text("Annulla") } }
@@ -263,7 +263,7 @@ fun AdminCuriositaScreen(nav: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Gestione curiosità", fontWeight = FontWeight.SemiBold) },
+                title = { Text("Gestione curiosità") },
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, "Indietro")
@@ -294,7 +294,7 @@ fun AdminCuriositaScreen(nav: NavController) {
                     color    = Color(0xFF4CAF50)
                 ) {
                     Text(msg, modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                        color = Color.White, fontWeight = FontWeight.SemiBold)
+                        color = Color.White)
                 }
             }
 

@@ -52,7 +52,7 @@ fun NovitaScreen(nav: NavController) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("✨", fontSize = 20.sp)
                         Spacer(Modifier.width(8.dp))
-                        Text("Novità", fontWeight = FontWeight.Bold)
+                        Text("Novità")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)

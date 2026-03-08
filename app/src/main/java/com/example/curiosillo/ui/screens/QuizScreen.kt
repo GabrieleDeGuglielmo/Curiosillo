@@ -65,7 +65,7 @@ fun QuizScreen(nav: NavController) {
             },
             icon  = { Text(badge.icona, fontSize = 48.sp) },
             title = {
-                Text("Badge sbloccato!", fontWeight = FontWeight.Bold,
+                Text("Badge sbloccato!",
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             },
             text  = {
@@ -83,7 +83,7 @@ fun QuizScreen(nav: NavController) {
             confirmButton = {
                 Button(onClick = {
                     val r = badgeQueue.drop(1); badgeQueue = r; badgeDaMostrare = r.firstOrNull()
-                }) { Text("Ottimo!", fontWeight = FontWeight.Bold) }
+                }) { Text("Ottimo!") }
             }
         )
     }
@@ -91,7 +91,7 @@ fun QuizScreen(nav: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Quiz", fontWeight = FontWeight.SemiBold) },
+                title = { Text("Quiz") },
                 navigationIcon = {
                     IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Indietro") }
                 },

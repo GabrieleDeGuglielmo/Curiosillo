@@ -54,7 +54,7 @@ fun DuelloScreen(nav: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Duello", fontWeight = FontWeight.SemiBold) },
+                title = { Text("Duello") },
                 navigationIcon = {
                     IconButton(onClick = {
                         vm.annullaRicerca()
@@ -153,7 +153,7 @@ private fun LobbyContent(
             Icon(Icons.Default.Search, null, Modifier.size(22.dp))
             Spacer(Modifier.width(10.dp))
             Text("Cerca avversario casuale",
-                style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                style = MaterialTheme.typography.titleMedium)
         }
 
         Spacer(Modifier.height(14.dp))
@@ -201,7 +201,7 @@ private fun LobbyContent(
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     shape    = RoundedCornerShape(14.dp)
                 ) {
-                    Text("Unisciti", fontWeight = FontWeight.Bold)
+                    Text("Unisciti")
                 }
             }
         }
@@ -360,7 +360,7 @@ private fun PartitaContent(
                     .border(2.dp, timerColor, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text("${stato.secondiRimasti}", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = timerColor)
+                Text("${stato.secondiRimasti}", fontSize = 22.sp, color = timerColor)
             }
 
             PunteggioChip(nick = avvNick, punteggio = stato.duello.punteggio(avvUid ?: ""), isMe = false)

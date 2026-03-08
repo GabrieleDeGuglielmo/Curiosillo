@@ -62,7 +62,7 @@ fun CategoryPickerScreen(nav: NavController, destinazione: String) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Scegli categoria", fontWeight = FontWeight.SemiBold) },
+                title = { Text("Scegli categoria") },
                 navigationIcon = {
                     IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Indietro") }
                 },
@@ -115,7 +115,7 @@ fun CategoryPickerScreen(nav: NavController, destinazione: String) {
                     categorieAttive.size == 1 -> "Avanti — ${categorieAttive.first()}"
                     else                      -> "Avanti — ${categorieAttive.size} categorie"
                 }
-                Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(label, style = MaterialTheme.typography.titleMedium)
             }
             Spacer(Modifier.height(16.dp))
         }

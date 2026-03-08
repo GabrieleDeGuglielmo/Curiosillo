@@ -79,7 +79,7 @@ fun HomeScreen(nav: NavController) {
             AlertDialog(
                 onDismissRequest = { homeVm.dismissAggiornamento() },
                 icon  = { Icon(Icons.Default.SystemUpdate, null, tint = MaterialTheme.colorScheme.primary) },
-                title = { Text("Aggiornamento disponibile", fontWeight = FontWeight.Bold,
+                title = { Text("Aggiornamento disponibile",
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
                 text  = {
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -93,7 +93,7 @@ fun HomeScreen(nav: NavController) {
                         Spacer(Modifier.height(16.dp))
                         Text("Controlla tutte le novità se la tua versione è abbastanza datata!",
                             style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), fontWeight = FontWeight.Medium)
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
                     }
                 },
                 confirmButton = {
@@ -101,7 +101,7 @@ fun HomeScreen(nav: NavController) {
                         val url = if (info.downloadUrl.isNotEmpty()) info.downloadUrl else info.releaseUrl
                         ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                         homeVm.dismissAggiornamento()
-                    }) { Text("Scarica", fontWeight = FontWeight.Bold) }
+                    }) { Text("Scarica") }
                 },
                 dismissButton = {
                     TextButton(onClick = { homeVm.dismissAggiornamento() }) { Text("Dopo") }
@@ -173,7 +173,7 @@ fun HomeScreen(nav: NavController) {
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)) {
                             Text(msg, Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White, fontWeight = FontWeight.SemiBold)
+                                color = Color.White)
                         }
                     }
                 }
@@ -207,7 +207,7 @@ private fun ChangelogDialog(versioni: List<VersioneChangelog>, titolo: String, o
     val colorFix    = Color(0xFFFF9800)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(titolo, fontWeight = FontWeight.Bold,
+        title = { Text(titolo,
             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
         text  = {
             val scrollState    = rememberScrollState()
@@ -247,7 +247,7 @@ private fun ChangelogDialog(versioni: List<VersioneChangelog>, titolo: String, o
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
                             Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.primary) {
                                 Text("v${versione.versione}", modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                    style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                                    style = MaterialTheme.typography.labelLarge, color = Color.White)
                             }
                             if (versione.data.isNotBlank()) {
                                 Spacer(Modifier.width(10.dp))
@@ -325,7 +325,7 @@ private fun ChangelogDialog(versioni: List<VersioneChangelog>, titolo: String, o
                 }
             }
         },
-        confirmButton = { Button(onClick = onDismiss) { Text("Ottimo!", fontWeight = FontWeight.Bold) } }
+        confirmButton = { Button(onClick = onDismiss) { Text("Ottimo!") } }
     )
 }
 
@@ -336,11 +336,11 @@ private fun SezioneChangelog(etichetta: String, icona: ImageVector, colore: Colo
             Icon(icona, null, tint = colore, modifier = Modifier.size(14.dp))
         }
         Spacer(Modifier.width(7.dp))
-        Text(etichetta, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = colore)
+        Text(etichetta, style = MaterialTheme.typography.labelLarge, color = colore)
     }
     voci.forEach { voce ->
         Row(modifier = Modifier.padding(start = 4.dp, bottom = 5.dp), verticalAlignment = Alignment.Top) {
-            Text("·  ", color = colore, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, lineHeight = 22.sp)
+            Text("·  ", color = colore, fontSize = 18.sp, lineHeight = 22.sp)
             Text(voce, style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f), modifier = Modifier.weight(1f))
         }
@@ -356,8 +356,8 @@ private fun MenuCard(icon: ImageVector, title: String, subtitle: String, color: 
             Icon(icon, null, Modifier.size(38.dp), Color.White.copy(alpha = 0.9f))
             Spacer(Modifier.width(16.dp))
             Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f), maxLines = 1)
+                Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White)
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f), maxLines = 2)
             }
         }
     }
@@ -378,7 +378,7 @@ private fun NotificheDialog(notifiche: List<FirebaseManager.NotificaInApp>, onDi
                     Card(shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                         Column(Modifier.padding(12.dp)) {
-                            Text(n.titolo, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+                            Text(n.titolo, style = MaterialTheme.typography.bodyMedium)
                             Spacer(Modifier.height(4.dp))
                             Text(n.corpo, style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
@@ -387,6 +387,6 @@ private fun NotificheDialog(notifiche: List<FirebaseManager.NotificaInApp>, onDi
                 }
             }
         },
-        confirmButton = { Button(onClick = onDismiss) { Text("Ho capito", fontWeight = FontWeight.Bold) } }
+        confirmButton = { Button(onClick = onDismiss) { Text("Ho capito") } }
     )
 }

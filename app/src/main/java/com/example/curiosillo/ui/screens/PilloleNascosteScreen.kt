@@ -99,7 +99,7 @@ fun PilloleNascosteScreen(nav: NavController) {
         AlertDialog(
             onDismissRequest = { showConfirmRipristinaTutte = false },
             icon  = { Icon(Icons.Default.RestartAlt, null, tint = MaterialTheme.colorScheme.primary) },
-            title = { Text("Ripristina tutte?", fontWeight = FontWeight.Bold,
+            title = { Text("Ripristina tutte?",
                 textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
             text  = { Text("Tutte le ${state.pillole.size} pillole nascoste torneranno nella coda di lettura.",
                 textAlign = TextAlign.Center,
@@ -109,7 +109,7 @@ fun PilloleNascosteScreen(nav: NavController) {
                     showConfirmRipristinaTutte = false
                     vm.ripristinaTutte()
                     scope.launch { snackbarHostState.showSnackbar("Tutte le pillole sono state ripristinate!") }
-                }) { Text("Ripristina tutte", fontWeight = FontWeight.Bold) }
+                }) { Text("Ripristina tutte") }
             },
             dismissButton = {
                 OutlinedButton(onClick = { showConfirmRipristinaTutte = false }) { Text("Annulla") }
@@ -120,7 +120,7 @@ fun PilloleNascosteScreen(nav: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Pillole nascoste", fontWeight = FontWeight.SemiBold) },
+                title = { Text("Pillole nascoste") },
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, "Indietro")

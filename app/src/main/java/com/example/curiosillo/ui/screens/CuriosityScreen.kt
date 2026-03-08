@@ -85,7 +85,7 @@ fun CuriosityScreen(nav: NavController) {
             },
             icon  = { Text(badge.icona, fontSize = 48.sp) },
             title = {
-                Text("Badge sbloccato!", fontWeight = FontWeight.Bold,
+                Text("Badge sbloccato!",
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             },
             text  = {
@@ -103,7 +103,7 @@ fun CuriosityScreen(nav: NavController) {
             confirmButton = {
                 Button(onClick = {
                     val r = badgeQueue.drop(1); badgeQueue = r; badgeDaMostrare = r.firstOrNull()
-                }) { Text("Ottimo!", fontWeight = FontWeight.Bold) }
+                }) { Text("Ottimo!") }
             }
         )
     }
@@ -113,7 +113,7 @@ fun CuriosityScreen(nav: NavController) {
         AlertDialog(
             onDismissRequest = { mostraDialogIgnora = false },
             icon  = { Text("🙈", fontSize = 36.sp) },
-            title = { Text("Non mi interessa", fontWeight = FontWeight.Bold) },
+            title = { Text("Non mi interessa") },
             text  = { Text("Questa curiosità verrà nascosta da tutti i conteggi e quiz. Potrai ripristinarla in seguito.", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
             confirmButton = {
                 Button(onClick = { mostraDialogIgnora = false; vm.toggleIgnora() },
@@ -150,7 +150,7 @@ fun CuriosityScreen(nav: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Pillola", fontWeight = FontWeight.SemiBold) },
+                title = { Text("Pillola") },
                 navigationIcon = {
                     IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Indietro") }
                 },
@@ -434,7 +434,7 @@ private fun LearnedContent(
     ) {
         Icon(Icons.Default.CheckCircle, null, Modifier.size(90.dp), tint = Success)
         Spacer(Modifier.height(20.dp))
-        Text("Fantastico!", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text("Fantastico!", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(10.dp))
         Text("Hai imparato qualcosa di nuovo!\nOra puoi fare il quiz su questa curiosità.",
             style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center,
@@ -574,7 +574,7 @@ fun CommentiSheet(
                 if (commentiState.invioInCorso)
                     CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                 else
-                    Text("Pubblica commento", fontWeight = FontWeight.SemiBold)
+                    Text("Pubblica commento")
             }
         } else {
             Card(

@@ -34,7 +34,7 @@ fun QuizStatsScreen(nav: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Statistiche Quiz", fontWeight = FontWeight.SemiBold) },
+                title = { Text("Statistiche Quiz") },
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Indietro") }
                 },
@@ -139,7 +139,7 @@ fun QuizStatsScreen(nav: NavController) {
                                             color = MaterialTheme.colorScheme.onSurface)
                                         Text("${stat.corrette}/${stat.totale} — ${(pct * 100).toInt()}%",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = colore, fontWeight = FontWeight.SemiBold)
+                                            color = colore)
                                     }
                                     Spacer(Modifier.height(8.dp))
                                     LinearProgressIndicator(
@@ -188,7 +188,7 @@ private fun RiepilogoCard(modifier: Modifier, valore: String, etichetta: String,
     ) {
         Column(Modifier.padding(vertical = 16.dp, horizontal = 8.dp).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(valore, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+            Text(valore, fontSize = 26.sp, color = Color.White)
             Spacer(Modifier.height(4.dp))
             Text(etichetta, style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.9f), textAlign = TextAlign.Center)

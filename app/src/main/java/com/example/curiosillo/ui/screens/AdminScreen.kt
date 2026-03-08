@@ -118,7 +118,7 @@ fun AdminVotiScreen(nav: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Voti curiosità", fontWeight = FontWeight.SemiBold) },
+                title = { Text("Voti curiosità") },
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, "Indietro")
@@ -319,12 +319,12 @@ private fun VotoCard(voto: VotoConTitolo, query: String = "") {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.ThumbUp, null, Modifier.size(16.dp), tint = Color(0xFF4CAF50))
                         Spacer(Modifier.width(4.dp))
-                        Text("${voto.likes}", fontWeight = FontWeight.Bold, color = Color(0xFF4CAF50))
+                        Text("${voto.likes}", color = Color(0xFF4CAF50))
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.ThumbDown, null, Modifier.size(16.dp), tint = Color(0xFFF44336))
                         Spacer(Modifier.width(4.dp))
-                        Text("${voto.dislikes}", fontWeight = FontWeight.Bold, color = Color(0xFFF44336))
+                        Text("${voto.dislikes}", color = Color(0xFFF44336))
                     }
                 }
             }
@@ -356,7 +356,7 @@ fun AccessoNegatoContent() {
         ) {
             Text("🔒", fontSize = 48.sp)
             Spacer(Modifier.height(16.dp))
-            Text("Accesso negato", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text("Accesso negato", style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(8.dp))
             Text("Non hai i permessi per visualizzare questa sezione.",
                 style     = MaterialTheme.typography.bodyMedium,
@@ -369,7 +369,7 @@ fun AccessoNegatoContent() {
 @Composable
 private fun TotaleChip(valore: String, etichetta: String, colore: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(valore, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = colore)
+        Text(valore, fontSize = 20.sp, color = colore)
         Text(etichetta, style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
     }

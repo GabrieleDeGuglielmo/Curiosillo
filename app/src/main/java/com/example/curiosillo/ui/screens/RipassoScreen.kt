@@ -76,7 +76,7 @@ fun RipassoScreen(nav: NavController) {
     if (mostraSelettore) {
         AlertDialog(
             onDismissRequest = { mostraSelettore = false },
-            title = { Text("Mostra pillole lette...", fontWeight = FontWeight.Bold) },
+            title = { Text("Mostra pillole lette...") },
             text  = {
                 Column {
                     opzioniGiorni.forEach { (giorni, etichetta) ->
@@ -230,7 +230,7 @@ fun RipassoScreen(nav: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ripasso", fontWeight = FontWeight.SemiBold) },
+                title = { Text("Ripasso") },
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, "Indietro")
@@ -239,7 +239,7 @@ fun RipassoScreen(nav: NavController) {
                 actions = {
                     TextButton(onClick = { mostraSelettore = true }) {
                         val label = opzioniGiorni.find { it.first == state.giorniSelezionati }?.second ?: "Filtra"
-                        Text(label, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                        Text(label, color = MaterialTheme.colorScheme.primary)
                     }
                     // Pulsante azioni (voto/nota/commenti)
                     if (!state.pillole.isEmpty()) {

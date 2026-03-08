@@ -85,7 +85,7 @@ fun BookmarkScreen(nav: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("I miei preferiti", fontWeight = FontWeight.SemiBold) },
+                title = { Text("I miei preferiti") },
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, "Indietro")
@@ -288,10 +288,10 @@ private fun DettaglioSheet(
             Box(Modifier.size(10.dp).background(coloreCategoria(pillola.category), CircleShape))
             Spacer(Modifier.width(8.dp))
             Text(pillola.category, style = MaterialTheme.typography.labelLarge,
-                color = coloreCategoria(pillola.category), fontWeight = FontWeight.SemiBold)
+                color = coloreCategoria(pillola.category))
         }
         Spacer(Modifier.height(10.dp))
-        Text(pillola.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(pillola.title, style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(14.dp))
         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -348,7 +348,7 @@ private fun DettaglioSheet(
             border = ButtonDefaults.outlinedButtonBorder.copy(brush = SolidColor(Error))
         ) {
             Icon(Icons.Default.BookmarkRemove, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp))
-            Text("Rimuovi dai preferiti", fontWeight = FontWeight.SemiBold)
+            Text("Rimuovi dai preferiti")
         }
         Spacer(Modifier.height(8.dp))
         TextButton(onClick = onChiudi, modifier = Modifier.fillMaxWidth()) {

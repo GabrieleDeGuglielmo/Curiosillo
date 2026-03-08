@@ -3,20 +3,20 @@ package com.example.curiosillo.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // ── Light Theme ───────────────────────────────────────────────────────────────
-val Primary      = Color(0xFFFF6B35)
-val Secondary    = Color(0xFF2EC4B6)
-val Tertiary     = Color(0xFFFFBF00)
+val Primary      = Color(0xFF488188)
+val Secondary    = Color(0xFFD35400)
+val Tertiary     = Color(0xFF6D597A)
 val Background   = Color(0xFFFFF8F0)
 val Surface      = Color(0xFFFFFFFF)
-val SurfaceVar   = Color(0xFFF5F5F5)
-val Success      = Color(0xFF43A047)
-val Error        = Color(0xFFE53935)
+val SurfaceVar   = Color(0xFFEDE0D4)
+val Success      = Color(0xFF386641)
+val Error        = Color(0xFFBC4749)
 val OnPrimary    = Color.White
 val OnSecondary  = Color.White
-val OnBackground = Color(0xFF1C1B1F)
+val OnBackground = Color(0xFF1F2937)
 val OnSurface    = Color(0xFF1C1B1F)
 
-val TestoScuro   = Color(0xFF1A2B3C) // Dark blue from logo for better contrast
+val TestoScuro   = Color(0xFF0F172A) // Dark blue from logo for better contrast
 
 // ── Dark Theme ────────────────────────────────────────────────────────────────
 val PrimaryDark       = Color(0xFFFF8C5A)

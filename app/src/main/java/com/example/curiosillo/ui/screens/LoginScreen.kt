@@ -139,7 +139,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                         showRecuperoDialog = false
                         emailRecupero = ""
                         vm.resetStato()
-                    }) { Text("OK", fontWeight = FontWeight.Bold) }
+                    }) { Text("OK") }
                 } else {
                     Button(
                         onClick  = { vm.recuperaPassword(emailRecupero) },
@@ -149,7 +149,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                             CircularProgressIndicator(Modifier.size(18.dp),
                                 color = Color.White, strokeWidth = 2.dp)
                         } else {
-                            Text("Invia", fontWeight = FontWeight.Bold)
+                            Text("Invia")
                         }
                     }
                 }
@@ -172,7 +172,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             icon  = { Icon(Icons.Default.SystemUpdate, null,
                 tint = MaterialTheme.colorScheme.primary) },
             title = {
-                Text("Aggiornamento disponibile", fontWeight = FontWeight.Bold,
+                Text("Aggiornamento disponibile",
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             },
             text = {
@@ -187,7 +187,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                     val url = if (info.downloadUrl.isNotEmpty()) info.downloadUrl else info.releaseUrl
                     ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     homeVm.dismissAggiornamento()
-                }) { Text("Scarica", fontWeight = FontWeight.Bold) }
+                }) { Text("Scarica") }
             },
             dismissButton = {
                 TextButton(onClick = { homeVm.dismissAggiornamento() }) { Text("Dopo") }
@@ -338,7 +338,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape    = RoundedCornerShape(14.dp)
             ) {
-                Text("🔵  Accedi con Google", fontWeight = FontWeight.SemiBold)
+                Text("🔵  Accedi con Google")
             }
 
             Spacer(Modifier.height(24.dp))
