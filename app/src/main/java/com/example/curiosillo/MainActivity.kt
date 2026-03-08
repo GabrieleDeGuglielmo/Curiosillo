@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
                             }
                         })
                     }
+                    composable("admin_broadcast") { AdminBroadcastScreen(nav) }
                     composable("preferiti")  { BookmarkScreen(nav) }
                     composable("ripasso")    { RipassoScreen(nav) }
                     composable("quiz_stats") { QuizStatsScreen(nav) }

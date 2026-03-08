@@ -17,6 +17,10 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.EmojiObjects
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SportsMartialArts
 import androidx.compose.material.icons.filled.Star
@@ -65,10 +69,8 @@ fun HomeScreen(nav: NavController) {
         ChangelogDialog(versioni = versioni, titolo = "🎉 Cosa c'è di nuovo",
             onDismiss = { homeVm.dismissChangelog() })
     }
-    if (homeState.notifiche.isNotEmpty()) {
-        NotificheDialog(notifiche = homeState.notifiche, onDismiss = { homeVm.dismissNotifiche() })
-    }
 
+    var mostraNotifiche by remember { mutableStateOf(false) }
     val isLoggato = FirebaseManager.utenteCorrente != null
     val versioneAttuale = try {
         ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName
@@ -115,7 +117,65 @@ fun HomeScreen(nav: NavController) {
         MaterialTheme.colorScheme.background
     ))
 
+    // ── Bottom sheet notifiche ───────────────────────────────────────────────
+    if (mostraNotifiche) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        ModalBottomSheet(
+            onDismissRequest = { mostraNotifiche = false },
+            sheetState       = sheetState
+        ) {
+            NotificheSheet(
+                notifiche       = homeState.notifiche,
+                onLetta         = { id -> homeVm.segnaNotificaLetta(id) },
+                onTutteLette    = { homeVm.segnaNotificheTutteLette(); mostraNotifiche = false }
+            )
+        }
+    }
+
     Scaffold(
+        topBar = {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                // ── Campanella in alto a sinistra ─────────────────────────────
+                Box(Modifier.align(Alignment.CenterStart)) {
+                    IconButton(onClick = { mostraNotifiche = true }) {
+                        Icon(
+                            if (homeState.notifiche.isEmpty()) Icons.Default.NotificationsNone
+                            else Icons.Default.Notifications,
+                            "Notifiche",
+                            tint = if (homeState.notifiche.isEmpty())
+                                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                            else MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    // Badge contatore
+                    if (homeState.notifiche.isNotEmpty()) {
+                        Surface(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .align(Alignment.TopEnd)
+                                .offset(x = (-2).dp, y = 2.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.error
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    if (homeState.notifiche.size > 9) "9+"
+                                    else homeState.notifiche.size.toString(),
+                                    style    = MaterialTheme.typography.labelSmall,
+                                    color    = Color.White,
+                                    fontSize = 9.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
         bottomBar = { CuriosilloBottomBar(nav) },
         containerColor = Color.Transparent
     ) { scaffoldPad ->
@@ -155,7 +215,7 @@ fun HomeScreen(nav: NavController) {
                     contentDescription = "Logo Curiosillo",
                     modifier = Modifier.size(if (isSmallScreen) 72.dp else 110.dp))
 
-                Spacer(Modifier.height(if (isSmallScreen) 8.dp else 16.dp))
+                Spacer(Modifier.height(if (isSmallScreen) 0.dp else 0.dp))
                 Text("Curiosillo",
                     style = if (isSmallScreen) MaterialTheme.typography.headlineLarge
                     else MaterialTheme.typography.displayMedium,
@@ -364,29 +424,155 @@ private fun MenuCard(icon: ImageVector, title: String, subtitle: String, color: 
 }
 
 @Composable
-private fun NotificheDialog(notifiche: List<FirebaseManager.NotificaInApp>, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon  = { Text("🔔", fontSize = 32.sp) },
-        title = {
-            Text(if (notifiche.size == 1) "Hai una novità" else "Hai ${notifiche.size} novità",
-                fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        },
-        text  = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                notifiche.forEach { n ->
-                    Card(shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(n.titolo, style = MaterialTheme.typography.bodyMedium)
-                            Spacer(Modifier.height(4.dp))
-                            Text(n.corpo, style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
-                        }
+private fun NotificheSheet(
+    notifiche:    List<FirebaseManager.NotificaInApp>,
+    onLetta:      (String) -> Unit,
+    onTutteLette: () -> Unit
+) {
+    val colorePillola   = MaterialTheme.colorScheme.secondaryContainer
+    val coloreBroadcast = MaterialTheme.colorScheme.primaryContainer
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 32.dp)
+    ) {
+        // Header
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment     = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🔔", fontSize = 20.sp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Notifiche",
+                    style      = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                if (notifiche.isNotEmpty()) {
+                    Spacer(Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.error
+                    ) {
+                        Text(
+                            notifiche.size.toString(),
+                            modifier   = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style      = MaterialTheme.typography.labelSmall,
+                            color      = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
-        },
-        confirmButton = { Button(onClick = onDismiss) { Text("Ho capito") } }
-    )
+            if (notifiche.isNotEmpty()) {
+                TextButton(onClick = onTutteLette) {
+                    Text("Segna tutte lette", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        if (notifiche.isEmpty()) {
+            Box(
+                Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("🎉", fontSize = 40.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Nessuna notifica non letta",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                }
+            }
+        } else {
+            // Broadcast prima, poi pillole aggiornate
+            val broadcast = notifiche.filter { it.tipo == "broadcast" }
+            val pillole   = notifiche.filter { it.tipo != "broadcast" }
+
+            if (broadcast.isNotEmpty()) {
+                Text(
+                    "📢 Comunicazioni",
+                    style      = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color      = MaterialTheme.colorScheme.primary,
+                    modifier   = Modifier.padding(bottom = 8.dp)
+                )
+                broadcast.forEach { n ->
+                    NotificaCard(
+                        n       = n,
+                        colore  = coloreBroadcast,
+                        onLetta = onLetta
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+
+            if (pillole.isNotEmpty()) {
+                if (broadcast.isNotEmpty()) Spacer(Modifier.height(8.dp))
+                Text(
+                    "✏️ Pillole aggiornate",
+                    style      = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color      = MaterialTheme.colorScheme.secondary,
+                    modifier   = Modifier.padding(bottom = 8.dp)
+                )
+                pillole.forEach { n ->
+                    NotificaCard(
+                        n       = n,
+                        colore  = colorePillola,
+                        onLetta = onLetta
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificaCard(
+    n:      FirebaseManager.NotificaInApp,
+    colore: androidx.compose.ui.graphics.Color,
+    onLetta: (String) -> Unit
+) {
+    Card(
+        modifier  = Modifier.fillMaxWidth().clickable { onLetta(n.id) },
+        shape     = RoundedCornerShape(14.dp),
+        colors    = CardDefaults.cardColors(containerColor = colore),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(
+            Modifier.padding(14.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    n.titolo,
+                    style      = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    n.corpo,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            TextButton(
+                onClick       = { onLetta(n.id) },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text("OK", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
 }

@@ -420,7 +420,8 @@ object FirebaseManager {
         val titolo:      String,
         val corpo:       String,
         val creatoAt:    Long,
-        val externalId:  String?
+        val externalId:  String?,
+        val tipo:        String  = "pillola"  // "pillola" | "broadcast"
     )
 
     suspend fun caricaNotifichePendenti(): List<NotificaInApp> {
@@ -437,7 +438,8 @@ object FirebaseManager {
                         titolo     = doc.getString("titolo")     ?: return@mapNotNull null,
                         corpo      = doc.getString("corpo")      ?: "",
                         creatoAt   = doc.getLong("creatoAt")     ?: 0L,
-                        externalId = doc.getString("externalId")
+                        externalId = doc.getString("externalId"),
+                        tipo       = doc.getString("tipo")       ?: "pillola"
                     )
                 }.sortedByDescending { it.creatoAt }
         } catch (_: Exception) { emptyList() }
@@ -557,4 +559,37 @@ object FirebaseManager {
                 tx.set(metaRef, mapOf("versione" to current + 1))
             }.await()
         } catch (_: Exception) {}
-    }}
+    }
+    // ── Broadcast admin → tutti gli utenti ───────────────────────────────────
+
+    suspend fun inviaBroadcast(titolo: String, corpo: String): Result<Unit> {
+        return try {
+            val ora         = System.currentTimeMillis()
+            val broadcastId = "b$ora"
+
+            val utenti = db.collection("users").get().await().documents.map { it.id }
+            if (utenti.isEmpty()) return Result.failure(Exception("Nessun utente trovato"))
+
+            utenti.chunked(400).forEach { chunk ->
+                val batch = db.batch()
+                chunk.forEach { uidUtente ->
+                    val ref = db.collection("notifiche")
+                        .document(uidUtente)
+                        .collection("lista")
+                        .document(broadcastId)
+                    batch.set(ref, mapOf(
+                        "titolo"     to titolo,
+                        "corpo"      to corpo,
+                        "letta"      to false,
+                        "creatoAt"   to ora,
+                        "externalId" to null,
+                        "tipo"       to "broadcast"
+                    ))
+                }
+                batch.commit().await()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) { Result.failure(e) }
+    }
+
+}

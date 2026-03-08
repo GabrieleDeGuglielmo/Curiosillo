@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Info
@@ -133,6 +134,18 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                         scope.launch { sheetState.hide() }.invokeOnCompletion {
                             showSheet = false
                             nav.navigate("admin_curiosita")
+                        }
+                    }
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                    AzioneItem(
+                        icon  = Icons.Default.Campaign,
+                        tint  = Color(0xFF7B2D8B),
+                        label = "Admin — Comunicazioni",
+                        sub   = "Invia un messaggio broadcast a tutti gli utenti"
+                    ) {
+                        scope.launch { sheetState.hide() }.invokeOnCompletion {
+                            showSheet = false
+                            nav.navigate("admin_broadcast")
                         }
                     }
                 }

@@ -27,13 +27,14 @@ data class UpdateInfo(
 )
 
 data class HomeUiState(
-    val syncInCorso:         Boolean                          = false,
-    val syncMessaggio:       String?                          = null,
-    val aggiornamentoApp:    UpdateInfo?                      = null,
-    val changelogDaMostrare: List<VersioneChangelog>?         = null,
-    val changelogCompleto:   List<VersioneChangelog>          = emptyList(),
-    val isOffline:           Boolean                          = false,
-    val notifiche:           List<FirebaseManager.NotificaInApp> = emptyList()
+    val syncInCorso:         Boolean                              = false,
+    val syncMessaggio:       String?                              = null,
+    val aggiornamentoApp:    UpdateInfo?                          = null,
+    val changelogDaMostrare: List<VersioneChangelog>?             = null,
+    val changelogCompleto:   List<VersioneChangelog>              = emptyList(),
+    val isOffline:           Boolean                              = false,
+    // Notifiche: caricate in background, mostrate dalla campanella (non popup automatico)
+    val notifiche:           List<FirebaseManager.NotificaInApp>  = emptyList()
 )
 
 class HomeViewModel(
@@ -54,7 +55,6 @@ class HomeViewModel(
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            // Tornato online — aggiorna stato e ri-sincronizza
             _state.value = _state.value.copy(isOffline = false)
             viewModelScope.launch {
                 syncContenuti()
@@ -111,8 +111,7 @@ class HomeViewModel(
         viewModelScope.launch {
             try {
                 val versioneCorrente = context.packageManager
-                    .getPackageInfo(context.packageName, 0)
-                    .versionName ?: "1.0"
+                    .getPackageInfo(context.packageName, 0).versionName ?: "1.0"
                 val result = updateService.checkUpdate(versioneCorrente)
                 if (result is AppUpdateService.UpdateResult.AggiornamentoDisponibile) {
                     _state.value = _state.value.copy(
@@ -132,20 +131,13 @@ class HomeViewModel(
             try {
                 val lista = changelogService.scaricaChangelog()
                 if (lista.isEmpty()) return@launch
-
                 val versioneCorrente = context.packageManager
-                    .getPackageInfo(context.packageName, 0)
-                    .versionName ?: "1.0"
+                    .getPackageInfo(context.packageName, 0).versionName ?: "1.0"
                 val ultimaVista = contentPrefs.getUltimaVersioneVista()
-
                 _state.value = _state.value.copy(changelogCompleto = lista)
-
                 if (ultimaVista != versioneCorrente) {
-                    val novita = if (ultimaVista.isBlank()) {
-                        listOf(lista.first())
-                    } else {
-                        lista.takeWhile { it.versione != ultimaVista }
-                    }
+                    val novita = if (ultimaVista.isBlank()) listOf(lista.first())
+                    else lista.takeWhile { it.versione != ultimaVista }
                     if (novita.isNotEmpty()) {
                         _state.value = _state.value.copy(changelogDaMostrare = novita)
                     }
@@ -157,36 +149,42 @@ class HomeViewModel(
     fun dismissChangelog() {
         viewModelScope.launch {
             val versioneCorrente = context.packageManager
-                .getPackageInfo(context.packageName, 0)
-                .versionName ?: "1.0"
+                .getPackageInfo(context.packageName, 0).versionName ?: "1.0"
             contentPrefs.setUltimaVersioneVista(versioneCorrente)
             _state.value = _state.value.copy(changelogDaMostrare = null)
         }
     }
 
-    fun dismissAggiornamento() {
-        _state.value = _state.value.copy(aggiornamentoApp = null)
-    }
+    fun dismissAggiornamento()  { _state.value = _state.value.copy(aggiornamentoApp = null) }
+    fun dismissSyncMessaggio()  { _state.value = _state.value.copy(syncMessaggio = null) }
 
-    fun dismissSyncMessaggio() {
-        _state.value = _state.value.copy(syncMessaggio = null)
-    }
+    // ── Notifiche (campanella) ────────────────────────────────────────────────
 
-    private fun caricaNotifiche() {
+    fun caricaNotifiche() {
         viewModelScope.launch {
             val notifiche = FirebaseManager.caricaNotifichePendenti()
-            if (notifiche.isNotEmpty()) {
-                _state.value = _state.value.copy(notifiche = notifiche)
-            }
+            _state.value = _state.value.copy(notifiche = notifiche)
         }
     }
 
-    fun dismissNotifiche() {
+    fun segnaNotificaLetta(notificaId: String) {
+        viewModelScope.launch {
+            FirebaseManager.segnaNotificaLetta(notificaId)
+            _state.value = _state.value.copy(
+                notifiche = _state.value.notifiche.filter { it.id != notificaId }
+            )
+        }
+    }
+
+    fun segnaNotificheTutteLette() {
         viewModelScope.launch {
             FirebaseManager.segnaNotificheTutteLette(_state.value.notifiche)
             _state.value = _state.value.copy(notifiche = emptyList())
         }
     }
+
+    // dismissNotifiche kept for compatibility (same as segnaNotificheTutteLette)
+    fun dismissNotifiche() = segnaNotificheTutteLette()
 
     class Factory(
         private val repo:         CuriosityRepository,
