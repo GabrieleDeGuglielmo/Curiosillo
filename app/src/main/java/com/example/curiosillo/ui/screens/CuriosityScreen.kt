@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -157,7 +158,7 @@ fun CuriosityScreen(nav: NavController) {
             TopAppBar(
                 title = { Text("Pillola") },
                 navigationIcon = {
-                    IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Indietro") }
+                    IconButton({ nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro") }
                 },
                 actions = {
                     if (state is CuriosityUiState.Success) {

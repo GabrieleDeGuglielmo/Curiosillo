@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Person
@@ -59,7 +60,7 @@ fun DuelloScreen(nav: NavController) {
                     IconButton(onClick = {
                         vm.annullaRicerca()
                         nav.popBackStack()
-                    }) { Icon(Icons.Default.ArrowBack, "Indietro") }
+                    }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro") }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
