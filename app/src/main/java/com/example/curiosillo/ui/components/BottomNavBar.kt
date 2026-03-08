@@ -1,10 +1,12 @@
 package com.example.curiosillo.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -17,8 +19,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -35,7 +35,7 @@ data class NavItem(
 val navItems = listOf(
     NavItem("novita",  Icons.Default.AutoAwesome,       "Novità"),
     NavItem("ripasso", Icons.Default.Refresh,           "Ripasso"),
-    NavItem("home",    Icons.Default.Home,              "Home"),
+    NavItem("home",    Icons.Default.Home,              ""),
     NavItem("duello",  Icons.Default.SportsMartialArts, "Duello"),
     NavItem("profile", Icons.Default.Person,            "Profilo")
 )
@@ -44,109 +44,96 @@ val navBarRoutes = setOf("home", "ripasso", "duello", "profile", "novita")
 
 @Composable
 fun CuriosilloBottomBar(nav: NavController) {
-    val backStack    by nav.currentBackStackEntryAsState()
+    val backStack by nav.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
 
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 8.dp
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        contentAlignment = Alignment.BottomCenter
     ) {
-        navItems.forEachIndexed { index, item ->
-            val isSelected = currentRoute == item.route
-            val isHome     = index == 2
+        // 1. La barra di navigazione alta 95.dp
+        NavigationBar(
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 12.dp,
+            modifier = Modifier.height(95.dp)
+        ) {
+            navItems.forEachIndexed { index, item ->
+                val isSelected = currentRoute == item.route
 
-            if (isHome) {
-                // ── FAB centrale che spunta fuori dalla barra ─────────────────
-                NavigationBarItem(
-                    selected = isSelected,
-                    onClick  = {
-                        nav.navigate("home") {
-                            popUpTo("home") { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    },
-                    icon = {
-                        Box(
-                            modifier          = Modifier
-                                .size(62.dp)
-                                .offset(y = (-18).dp)
-                                .clip(CircleShape),
-                            contentAlignment  = Alignment.Center
-                        ) {
-                            // Ombra/sfondo
-                            Surface(
-                                modifier      = Modifier.size(62.dp),
-                                shape         = CircleShape,
-                                color         = if (isSelected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.primaryContainer,
-                                shadowElevation = if (isSelected) 10.dp else 4.dp,
-                                tonalElevation  = 4.dp
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        item.icon, null,
-                                        modifier = Modifier.size(30.dp),
-                                        tint     = if (isSelected) Color.White
-                                        else MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
+                if (index == 2) {
+                    // Segnaposto centrale con ETICHETTA ripristinata
+                    NavigationBarItem(
+                        selected = isSelected,
+                        onClick  = {
+                            nav.navigate("home") {
+                                popUpTo("home") { inclusive = true }
+                                launchSingleTop = true
                             }
-                        }
-                    },
-                    label = {
-                        Text(
-                            item.label,
-                            style      = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color      = if (isSelected) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        },
+                        // Spacer ridotto per lasciare spazio all'etichetta sotto il FAB
+                        icon  = { Spacer(Modifier.size(40.dp)) },
+                        label = {
+                            Text(
+                                item.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = Color.Transparent
                         )
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = Color.Transparent
                     )
-                )
-            } else {
-                val scale by animateFloatAsState(
-                    targetValue   = if (isSelected) 1.15f else 1f,
-                    animationSpec = tween(200),
-                    label         = "scale_$index"
-                )
-                NavigationBarItem(
-                    selected = isSelected,
-                    onClick  = {
-                        nav.navigate(item.route) {
-                            popUpTo("home") { saveState = true }
-                            launchSingleTop = true
-                            restoreState    = true
+                } else {
+                    NavigationBarItem(
+                        selected = isSelected,
+                        onClick  = {
+                            nav.navigate(item.route) {
+                                popUpTo("home") { saveState = true }
+                                launchSingleTop = true
+                                restoreState    = true
+                            }
+                        },
+                        icon = { Icon(item.icon, null, modifier = Modifier.size(26.dp)) },
+                        label = {
+                            Text(
+                                item.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium
+                            )
                         }
-                    },
-                    icon = {
-                        Icon(
-                            item.icon, null,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .scale(scale),
-                            tint = if (isSelected) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
-                    },
-                    label = {
-                        Text(
-                            item.label,
-                            style      = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color      = if (isSelected) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        indicatorColor      = MaterialTheme.colorScheme.primaryContainer,
-                        selectedIconColor   = MaterialTheme.colorScheme.primary,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
-                )
+                }
             }
+        }
+
+        // 2. Pulsante Home (FAB) rimpicciolito
+        val isHomeSelected = currentRoute == "home"
+
+        LargeFloatingActionButton(
+            onClick = {
+                nav.navigate("home") {
+                    popUpTo("home") { inclusive = true }
+                    launchSingleTop = true
+                }
+            },
+            shape = CircleShape,
+            containerColor = if (isHomeSelected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.primaryContainer,
+            contentColor   = if (isHomeSelected) Color.White
+            else MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier
+                .offset(y = (-38).dp)
+                .size(68.dp)
+        ) {
+            Icon(
+                Icons.Default.Home,
+                contentDescription = "Home",
+                modifier = Modifier.size(36.dp) // Icona rimpicciolita (era 42.dp)
+            )
         }
     }
 }

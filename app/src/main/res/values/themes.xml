@@ -4,7 +4,7 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
     </style>
     <style name="Theme.Curiosillo.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">#FF6B35</item>
+        <item name="windowSplashScreenBackground">#FFF8F0</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/splash_screen</item>
         <item name="postSplashScreenTheme">@style/Theme.Curiosillo</item>
     </style>

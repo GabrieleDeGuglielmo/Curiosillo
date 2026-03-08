@@ -42,5 +42,5 @@ fun CuriosilloTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColors else LightColors
-    MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+    MaterialTheme(colorScheme = colorScheme, typography = AppTypography, content = content)
 }
