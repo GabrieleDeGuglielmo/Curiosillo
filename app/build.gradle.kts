@@ -13,8 +13,8 @@ android {
         applicationId = "com.example.curiosillo"
         minSdk        = 24
         targetSdk     = 34
-        versionCode   = 12
-        versionName   = "3.0.1"
+        versionCode   = 13
+        versionName   = "3.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

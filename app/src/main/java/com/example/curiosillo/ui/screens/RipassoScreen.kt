@@ -1,30 +1,26 @@
 package com.example.curiosillo.ui.screens
 
-import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBackIosNew
-import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ChatBubbleOutline
-import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,15 +29,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
@@ -51,10 +46,10 @@ import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.ui.components.NotaBottomSheet
 import com.example.curiosillo.ui.theme.Success
 import com.example.curiosillo.viewmodel.RipassoViewModel
+import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
-import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun RipassoScreen(nav: NavController) {
     val ctx = LocalContext.current
@@ -64,7 +59,6 @@ fun RipassoScreen(nav: NavController) {
     )
     val state             by vm.state.collectAsState()
     val commentiState     by vm.commentiState.collectAsState()
-
     val segnalazioneState by vm.segnalazioneState.collectAsState()
 
     var mostraNota         by remember { mutableStateOf(false) }
@@ -72,6 +66,8 @@ fun RipassoScreen(nav: NavController) {
     var mostraCommenti     by remember { mutableStateOf(false) }
     var mostraAzioni       by remember { mutableStateOf(false) }
     var mostraSegnalazione by remember { mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope()
 
     val opzioniGiorni = listOf(
         0  to "Tutte",
@@ -81,14 +77,12 @@ fun RipassoScreen(nav: NavController) {
         30 to "30+ giorni fa"
     )
 
-    // Automatically close the report sheet on success
     LaunchedEffect(segnalazioneState) {
         if (segnalazioneState is SegnalazioneUiState.Successo) {
             mostraSegnalazione = false
         }
     }
 
-    // ── Dialog filtro ─────────────────────────────────────────────────────────
     if (mostraSelettore) {
         AlertDialog(
             onDismissRequest = { mostraSelettore = false },
@@ -115,9 +109,8 @@ fun RipassoScreen(nav: NavController) {
         )
     }
 
-    val pillola = vm.pilloleCorrente()
+    val pillola = state.pillole.getOrNull(state.indiceCorrente)
 
-    // ── Nota bottom sheet ─────────────────────────────────────────────────────
     if (mostraNota && pillola != null) {
         NotaBottomSheet(
             notaAttuale = pillola.nota,
@@ -126,7 +119,6 @@ fun RipassoScreen(nav: NavController) {
         )
     }
 
-    // ── Segnalazione bottom sheet ─────────────────────────────────────────────
     if (mostraSegnalazione) {
         SegnalazioneBottomSheet(
             onInvia   = { tipo, testo -> vm.inviaSegnalazione(tipo, testo) },
@@ -135,7 +127,6 @@ fun RipassoScreen(nav: NavController) {
         )
     }
 
-    // ── Commenti bottom sheet ─────────────────────────────────────────────────
     if (mostraCommenti) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
         ModalBottomSheet(
@@ -153,9 +144,17 @@ fun RipassoScreen(nav: NavController) {
         }
     }
 
-    // ── Menu azioni (bottom sheet) ────────────────────────────────────────────
     if (mostraAzioni && pillola != null) {
         val sheetStateAzioni = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+        val animateChiudiAzioni: () -> Unit = {
+            coroutineScope.launch {
+                sheetStateAzioni.hide()
+            }.invokeOnCompletion {
+                mostraAzioni = false
+            }
+        }
+
         ModalBottomSheet(
             onDismissRequest = { mostraAzioni = false },
             sheetState       = sheetStateAzioni
@@ -173,9 +172,11 @@ fun RipassoScreen(nav: NavController) {
                     modifier   = Modifier.padding(bottom = 16.dp)
                 )
 
-                // ── Bookmark ─────────────────────────────────────────────────
                 OutlinedButton(
-                    onClick  = { mostraAzioni = false; vm.toggleBookmark() },
+                    onClick  = {
+                        vm.toggleBookmark()
+                        // Il menu NON si chiude quando si preme preferiti, come richiesto
+                    },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape    = RoundedCornerShape(14.dp)
                 ) {
@@ -191,9 +192,14 @@ fun RipassoScreen(nav: NavController) {
 
                 Spacer(Modifier.height(12.dp))
 
-                // ── Nota ─────────────────────────────────────────────────────
                 OutlinedButton(
-                    onClick  = { mostraAzioni = false; mostraNota = true },
+                    onClick  = {
+                        animateChiudiAzioni()
+                        coroutineScope.launch {
+                            kotlinx.coroutines.delay(300)
+                            mostraNota = true
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape    = RoundedCornerShape(14.dp)
                 ) {
@@ -208,12 +214,14 @@ fun RipassoScreen(nav: NavController) {
 
                 Spacer(Modifier.height(12.dp))
 
-                // ── Commenti ─────────────────────────────────────────────────
                 OutlinedButton(
                     onClick  = {
-                        mostraAzioni = false
-                        vm.caricaCommenti()
-                        mostraCommenti = true
+                        animateChiudiAzioni()
+                        coroutineScope.launch {
+                            kotlinx.coroutines.delay(300)
+                            vm.caricaCommenti()
+                            mostraCommenti = true
+                        }
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape    = RoundedCornerShape(14.dp)
@@ -225,9 +233,14 @@ fun RipassoScreen(nav: NavController) {
 
                 Spacer(Modifier.height(12.dp))
 
-                // ── Segnala ─────────────────────────────────────────────────────
                 OutlinedButton(
-                    onClick  = { mostraAzioni = false; mostraSegnalazione = true },
+                    onClick  = {
+                        animateChiudiAzioni()
+                        coroutineScope.launch {
+                            kotlinx.coroutines.delay(300)
+                            mostraSegnalazione = true
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape    = RoundedCornerShape(14.dp),
                     border   = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f)),
@@ -241,7 +254,6 @@ fun RipassoScreen(nav: NavController) {
         }
     }
 
-    // ── Scaffold ──────────────────────────────────────────────────────────────
     Scaffold(
         topBar = {
             TopAppBar(
@@ -301,16 +313,16 @@ fun RipassoScreen(nav: NavController) {
                         }
                     }
 
-                else -> PilloleCarousel(
-                    state         = state,
-                    gradientBg    = gradientBg,
-                    pad           = pad,
-                    onProssima    = { vm.prossima() },
-                    onPrecedente  = { vm.precedente() }
-                )
+                else -> {
+                    PillolePager(
+                        state = state,
+                        gradientBg = gradientBg,
+                        pad = pad,
+                        vm = vm
+                    )
+                }
             }
 
-            // ── Banner Notifiche Segnalazione ─────────────────────────────
             when (val sState = segnalazioneState) {
                 is SegnalazioneUiState.Successo -> {
                     LaunchedEffect(Unit) {
@@ -352,254 +364,190 @@ fun RipassoScreen(nav: NavController) {
     }
 }
 
-// ── Carousel con swipe + peek card successiva ─────────────────────────────────
-
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-private fun PilloleCarousel(
-    state:        com.example.curiosillo.viewmodel.RipassoUiState,
-    gradientBg:   Brush,
-    pad:          PaddingValues,
-    onProssima:   () -> Unit,
-    onPrecedente: () -> Unit
+private fun PillolePager(
+    state:      com.example.curiosillo.viewmodel.RipassoUiState,
+    gradientBg: Brush,
+    pad:        PaddingValues,
+    vm:         RipassoViewModel
 ) {
-    // ── Swipe state ───────────────────────────────────────────────────────────
-    var rawOffset    by remember { mutableFloatStateOf(0f) }
-    val animSpec     = spring<Float>(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
-    val animOffset   by animateFloatAsState(targetValue = rawOffset, animationSpec = animSpec, label = "offset")
+    val pagerState = rememberPagerState(initialPage = state.indiceCorrente, pageCount = { state.pillole.size })
+    val coroutineScope = rememberCoroutineScope()
 
-    val swipeThreshold = 100f
-    val indice = state.indiceCorrente
+    LaunchedEffect(pagerState.currentPage) {
+        vm.setIndice(pagerState.currentPage)
+    }
 
-    LaunchedEffect(indice) { rawOffset = 0f }
-
-    val cur           = state.pillole[indice]
-    val hasProssima   = indice < state.pillole.size - 1
-    val hasPrecedente = indice > 0
-    val noteCardBg    = MaterialTheme.colorScheme.surfaceVariant
-    val noteTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-
-    val rotation = (animOffset / 25f).coerceIn(-8f, 8f)
-
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(gradientBg)
-            .padding(pad)
-            .pointerInput(indice) {
-                detectHorizontalDragGestures(
-                    onDragEnd = {
-                        when {
-                            rawOffset < -swipeThreshold && hasProssima   -> onProssima()
-                            rawOffset > swipeThreshold  && hasPrecedente -> onPrecedente()
-                            else -> rawOffset = 0f
-                        }
-                    },
-                    onDragCancel = { rawOffset = 0f },
-                    onHorizontalDrag = { _, delta -> rawOffset += delta }
-                )
+    val onProssima: () -> Unit = {
+        coroutineScope.launch {
+            if (pagerState.currentPage < state.pillole.size - 1) {
+                pagerState.animateScrollToPage(pagerState.currentPage + 1)
             }
-    ) {
+        }
+    }
+    val onPrecedente: () -> Unit = {
+        coroutineScope.launch {
+            if (pagerState.currentPage > 0) {
+                pagerState.animateScrollToPage(pagerState.currentPage - 1)
+            }
+        }
+    }
+
+    Box(Modifier.fillMaxSize().background(gradientBg).padding(pad)) {
         LinearProgressIndicator(
-            progress   = { (indice + 1f) / state.pillole.size },
-            modifier   = Modifier
-                .fillMaxWidth()
-                .height(3.dp)
-                .align(Alignment.TopCenter),
+            progress = { (pagerState.currentPage + 1f) / state.pillole.size },
+            modifier   = Modifier.fillMaxWidth().height(3.dp).align(Alignment.TopCenter),
             color      = MaterialTheme.colorScheme.secondary,
             trackColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
         )
 
-        if (hasProssima) {
-            val nextPeekOffset = (animOffset * 0.12f)
-            Box(
-                Modifier
-                    .align(Alignment.CenterEnd)
-                    .offset { IntOffset((80 + nextPeekOffset).roundToInt(), 0) }
-                    .graphicsLayer(alpha = 0.55f, rotationZ = 3f, scaleX = 0.93f, scaleY = 0.93f)
-            ) {
-                val nextCur = state.pillole[indice + 1]
-                Card(
-                    modifier  = Modifier.width(280.dp),
-                    shape     = RoundedCornerShape(24.dp),
-                    colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(2.dp)
-                ) {
-                    Image(
-                        painter            = painterResource(id = categoryImage(nextCur.category)),
-                        contentDescription = null,
-                        modifier           = Modifier.fillMaxWidth().height(100.dp),
-                        contentScale       = ContentScale.Crop
-                    )
-                    Text(
-                        nextCur.title,
-                        modifier   = Modifier.padding(12.dp),
-                        style      = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines   = 2,
-                        color      = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                }
-            }
-        }
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 32.dp),
+            pageSpacing = 16.dp,
+            verticalAlignment = Alignment.CenterVertically
+        ) { page ->
+            val cur = state.pillole[page]
 
-        Column(
-            Modifier
-                .fillMaxSize()
-                .offset { IntOffset(animOffset.roundToInt(), 0) }
-                .graphicsLayer(rotationZ = rotation)
-                .verticalScroll(rememberScrollState())
-        ) {
-            Image(
-                painter            = painterResource(id = categoryImage(cur.category)),
-                contentDescription = cur.category,
-                modifier           = Modifier
+            Card(
+                modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
-                    .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)),
-                contentScale = ContentScale.Crop
-            )
+                    .fillMaxHeight(0.85f)
+                    .graphicsLayer {
+                        val pageOffset = (
+                                (pagerState.currentPage - page) + pagerState
+                                    .currentPageOffsetFraction
+                                ).absoluteValue
 
-            Column(Modifier.padding(horizontal = 24.dp)) {
-                Spacer(Modifier.height(16.dp))
+                        alpha = lerp(
+                            start = 0.5f,
+                            stop = 1f,
+                            fraction = 1f - pageOffset.coerceIn(0f, 1f)
+                        )
 
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment     = Alignment.CenterVertically
-                ) {
-                    SuggestionChip(
-                        onClick = {},
-                        label   = { Text(emojiCategoria(cur.category) + " " + cur.category) }
+                        scaleY = lerp(
+                            start = 0.85f,
+                            stop = 1f,
+                            fraction = 1f - pageOffset.coerceIn(0f, 1f)
+                        )
+                    },
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+            ) {
+                Column(Modifier.fillMaxSize()) {
+                    Image(
+                        painter = painterResource(id = categoryImage(cur.category)),
+                        contentDescription = cur.category,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
+                        contentScale = ContentScale.Crop
                     )
 
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = MaterialTheme.colorScheme.secondary
+                    Column(
+                        Modifier
+                            .padding(20.dp)
+                            .verticalScroll(rememberScrollState())
+                            .weight(1f)
                     ) {
                         Row(
-                            Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                "${indice + 1}",
-                                style      = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.ExtraBold,
-                                color      = Color.White
+                            SuggestionChip(
+                                onClick = {},
+                                label = { Text(emojiCategoria(cur.category) + " " + cur.category) }
                             )
-                            Text(
-                                "/ ${state.pillole.size}",
-                                style  = MaterialTheme.typography.bodySmall,
-                                color  = Color.White.copy(alpha = 0.75f)
-                            )
+
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
+                            ) {
+                                Text(
+                                    "${page + 1} / ${state.pillole.size}",
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
                         }
-                    }
-                }
 
-                Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(12.dp))
 
-                Text(
-                    cur.title,
-                    style      = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color      = MaterialTheme.colorScheme.onBackground
-                )
-                Spacer(Modifier.height(16.dp))
+                        Text(
+                            cur.title,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground)
 
-                Card(
-                    Modifier.fillMaxWidth(),
-                    shape     = RoundedCornerShape(18.dp),
-                    colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(4.dp)
-                ) {
-                    Text(
-                        cur.body,
-                        Modifier.padding(20.dp),
-                        style      = MaterialTheme.typography.bodyLarge,
-                        lineHeight = 27.sp,
-                        color      = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+                        Spacer(Modifier.height(12.dp))
 
-                if (cur.nota.isNotBlank()) {
-                    Spacer(Modifier.height(12.dp))
-                    Card(
-                        Modifier.fillMaxWidth(),
-                        shape     = RoundedCornerShape(12.dp),
-                        colors    = CardDefaults.cardColors(containerColor = noteCardBg),
-                        elevation = CardDefaults.cardElevation(0.dp)
-                    ) {
-                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-                            Text("📝 ", fontSize = 14.sp)
-                            Text(cur.nota, style = MaterialTheme.typography.bodySmall, color = noteTextColor)
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(24.dp))
-
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment     = Alignment.CenterVertically
-                ) {
-                    val hintAlpha by animateFloatAsState(
-                        targetValue   = if (rawOffset.absoluteValue > 10f) 0f else 0.4f,
-                        animationSpec = tween(200),
-                        label         = "hintAlpha"
-                    )
-                    if (hasPrecedente) {
-                        Icon(Icons.Default.ArrowBackIosNew, null,
-                            Modifier.size(12.dp).graphicsLayer(alpha = hintAlpha),
-                            tint = MaterialTheme.colorScheme.onBackground)
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    Text(
-                        "scorri per cambiare pillola",
-                        style    = MaterialTheme.typography.labelSmall,
-                        color    = MaterialTheme.colorScheme.onBackground.copy(alpha = hintAlpha),
-                    )
-                    if (hasProssima) {
-                        Spacer(Modifier.width(4.dp))
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowForwardIos, null,
-                            Modifier.size(12.dp).graphicsLayer(alpha = hintAlpha),
-                            tint = MaterialTheme.colorScheme.onBackground)
-                    }
-                }
-
-                Spacer(Modifier.height(12.dp))
-
-                // ── Navigazione pulsanti ────────────────────
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick  = onPrecedente,
-                        enabled  = hasPrecedente,
-                        modifier = Modifier.weight(1f).height(52.dp),
-                        shape    = RoundedCornerShape(14.dp)
-                    ) {
-                        Icon(Icons.Default.ArrowBackIosNew, null, Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Precedente")
-                    }
-                    Button(
-                        onClick  = onProssima,
-                        enabled  = hasProssima,
-                        modifier = Modifier.weight(1f).height(52.dp),
-                        shape    = RoundedCornerShape(14.dp),
-                        colors   = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary
+                        Text(
+                            cur.body,
+                            style = MaterialTheme.typography.bodyMedium,
+                            lineHeight = 24.sp,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
+
+                        if (cur.nota.isNotBlank()) {
+                            Spacer(Modifier.height(16.dp))
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                            ) {
+                                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+                                    Text("📝 ", fontSize = 14.sp)
+                                    Text(
+                                        cur.nota,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text("Prossima", color = Color.White)
-                        Spacer(Modifier.width(6.dp))
-                        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, Modifier.size(16.dp), tint = Color.White)
+                        if (page > 0) {
+                            FilledTonalIconButton(
+                                onClick = onPrecedente,
+                                modifier = Modifier.size(48.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.ArrowBackIosNew, null, Modifier.size(18.dp))
+                            }
+                        } else {
+                            Spacer(Modifier.size(48.dp))
+                        }
+
+                        Button(
+                            onClick = onProssima,
+                            enabled = page < state.pillole.size - 1,
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondary
+                            )
+                        ) {
+                            Text(if (page < state.pillole.size - 1) "Prossima" else "Fine ripasso")
+                            if (page < state.pillole.size - 1) {
+                                Spacer(Modifier.width(8.dp))
+                                Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, Modifier.size(16.dp))
+                            }
+                        }
                     }
                 }
-                Spacer(Modifier.height(24.dp))
             }
         }
     }

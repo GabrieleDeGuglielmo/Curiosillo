@@ -258,8 +258,46 @@ object FirebaseManager {
             mapOf("totale" to FieldValue.increment(1)),
             SetOptions.merge()
         ).await()
+
+        // Notifica gli admin della nuova segnalazione
+        notificaAdminNuovaSegnalazione(externalId, tipo)
+
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
+
+    private suspend fun notificaAdminNuovaSegnalazione(externalId: String, tipo: String) {
+        try {
+            // Recupera il titolo della curiosità per la notifica
+            val curiositaDoc = db.collection("curiosita").document(externalId).get().await()
+            val titoloCuriosita = curiositaDoc.getString("titolo") ?: externalId
+
+            // Trova tutti gli admin
+            val adminSnap = db.collection("users")
+                .whereEqualTo("isAdmin", true)
+                .get().await()
+
+            if (adminSnap.isEmpty) return
+
+            val ora = System.currentTimeMillis()
+            val batch = db.batch()
+
+            adminSnap.documents.forEach { adminDoc ->
+                val notificaRef = db.collection("notifiche")
+                    .document(adminDoc.id)
+                    .collection("lista")
+                    .document()
+                batch.set(notificaRef, mapOf(
+                    "titolo"     to "Nuova segnalazione 🚩",
+                    "corpo"      to "È stata segnalata la curiosità «$titoloCuriosita» per: $tipo",
+                    "letta"      to false,
+                    "creatoAt"   to ora,
+                    "externalId" to externalId,
+                    "tipo"       to "segnalazione_admin" // Tipo specifico per distinguere
+                ))
+            }
+            batch.commit().await()
+        } catch (_: Exception) {}
+    }
 
     /** Carica tutte le segnalazioni — usato dalla schermata admin */
     suspend fun caricaTutteSegnalazioni(): List<SegnalazioneConTitolo> = try {
@@ -536,7 +574,7 @@ object FirebaseManager {
 
         val docs = snap.documents.filter { it.id != "_meta_" }
 
-        // Recupera tutti i quiz in parallelo invece di sequenzialmente
+        // Recupera tutti i quiz in parallelo instead of sequentially
         coroutineScope {
             docs.map { doc ->
                 async {

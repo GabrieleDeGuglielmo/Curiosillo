@@ -149,24 +149,6 @@ fun AdminBroadcastScreen(nav: NavController) {
             .background(gradientBg)
             .padding(pad)) {
 
-            // Banner successo
-            state.messaggio?.let { msg ->
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 8.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color(0xFF4CAF50)
-                ) {
-                    Text(
-                        msg,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-
             if (!state.isAdmin) {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Text(
@@ -319,6 +301,25 @@ fun AdminBroadcastScreen(nav: NavController) {
                             )
                         }
                     }
+                }
+            }
+
+            // Banner successo
+            state.messaggio?.let { msg ->
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 8.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color(0xFF4CAF50),
+                    shadowElevation = 8.dp
+                ) {
+                    Text(
+                        msg,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }

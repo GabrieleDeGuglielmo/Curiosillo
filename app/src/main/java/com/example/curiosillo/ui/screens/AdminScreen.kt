@@ -497,17 +497,14 @@ private fun SegnalazioneItemCard(
     fmt:          SimpleDateFormat,
     onSegnaLetta: ((String) -> Unit)?
 ) {
-    Card(
-        modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(12.dp),
-        colors    = CardDefaults.cardColors(
-            containerColor = if (!item.letta)
-                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
-            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+            .padding(14.dp)
     ) {
-        Column(Modifier.padding(14.dp)) {
+        Column {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,

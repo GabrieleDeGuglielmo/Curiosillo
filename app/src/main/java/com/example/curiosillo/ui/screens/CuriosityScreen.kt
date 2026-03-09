@@ -115,19 +115,43 @@ fun CuriosityScreen(nav: NavController) {
     if (mostraDialogIgnora) {
         AlertDialog(
             onDismissRequest = { mostraDialogIgnora = false },
-            icon  = { Text("🙈", fontSize = 36.sp) },
-            title = { Text("Non mi interessa") },
-            text  = { Text("Questa curiosità verrà nascosta da tutti i conteggi e quiz. Potrai ripristinarla in seguito.", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            icon  = { Text("🙈", fontSize = 42.sp) },
+            title = {
+                Text(
+                    "Vuoi nascondere questa pillola?",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            text  = {
+                Text(
+                    "Non la vedrai più nei quiz o durante la lettura giornaliera.\n\nPotrai ripristinarla in qualsiasi momento dalle impostazioni del profilo.",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
             confirmButton = {
-                Button(onClick = { mostraDialogIgnora = false; vm.toggleIgnora() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Hidden
-                    )) {
-                    Text("Nascondi")
+                Button(
+                    onClick = { mostraDialogIgnora = false; vm.toggleIgnora() },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Icon(Icons.Outlined.VisibilityOff, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Nascondi pillola", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { mostraDialogIgnora = false }) { Text("Annulla") }
+                TextButton(
+                    onClick = { mostraDialogIgnora = false },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                ) {
+                    Text("Annulla", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                }
             }
         )
     }
@@ -316,11 +340,11 @@ private fun CuriosityContent(
                     OutlinedButton(
                         onClick = onIgnora,
                         modifier = Modifier.height(34.dp), // Reduced height for elegance
-                        border = BorderStroke(1.dp, DarkText),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = DarkText
+                            contentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     ) {
                         Icon(
@@ -332,7 +356,7 @@ private fun CuriosityContent(
                         Text(
                             text = "Nascondi",
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.ExtraBold
+                            fontWeight = FontWeight.Bold
                         )
                     }
 

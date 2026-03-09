@@ -31,7 +31,7 @@ class RipassoViewModel(
     private val _commentiState = MutableStateFlow(CommentiUiState())
     val commentiState: StateFlow<CommentiUiState> = _commentiState.asStateFlow()
 
-    // Shared report state (AGGIUNTA)
+    // Shared report state
     private val _segnalazioneState = MutableStateFlow<SegnalazioneUiState>(SegnalazioneUiState.Idle)
     val segnalazioneState: StateFlow<SegnalazioneUiState> = _segnalazioneState.asStateFlow()
 
@@ -39,7 +39,6 @@ class RipassoViewModel(
         carica(0)
     }
 
-    // LOGICA ORIGINALE MANTENUTA
     fun carica(giorni: Int) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, giorniSelezionati = giorni)
@@ -68,6 +67,13 @@ class RipassoViewModel(
         }
     }
 
+    fun setIndice(indice: Int) {
+        val s = _state.value
+        if (indice in s.pillole.indices && indice != s.indiceCorrente) {
+            _state.value = s.copy(indiceCorrente = indice)
+        }
+    }
+
     fun salvaNota(testo: String) {
         val pillola = pilloleCorrente() ?: return
         viewModelScope.launch {
@@ -84,7 +90,6 @@ class RipassoViewModel(
         }
     }
 
-    // Helper per aggiornare la pillola corrente nella lista senza ricaricare dal DB (AGGIUNTA)
     private fun aggiornaPillolaCorrente(nuovaPillola: Curiosity) {
         val s = _state.value
         val lista = s.pillole.toMutableList()
@@ -94,7 +99,7 @@ class RipassoViewModel(
         }
     }
 
-    // ── Bookmarks (AGGIUNTA) ──────────────────────────────────────────────────
+    // ── Bookmarks ─────────────────────────────────────────────────────────────
 
     fun toggleBookmark() {
         val pillola = pilloleCorrente() ?: return
@@ -104,7 +109,7 @@ class RipassoViewModel(
         }
     }
 
-    // ── Reports (Segnalazioni) (AGGIUNTA) ─────────────────────────────────────
+    // ── Reports (Segnalazioni) ────────────────────────────────────────────────
 
     fun inviaSegnalazione(tipo: String, testo: String) {
         val pillola = pilloleCorrente() ?: return

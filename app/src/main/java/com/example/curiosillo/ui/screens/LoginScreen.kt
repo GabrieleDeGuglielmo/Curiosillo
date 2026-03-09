@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -36,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.curiosillo.CuriosityApplication
+import com.example.curiosillo.R
 import com.example.curiosillo.viewmodel.AuthUiState
 import com.example.curiosillo.viewmodel.AuthViewModel
 import com.example.curiosillo.viewmodel.HomeViewModel
@@ -209,14 +212,20 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                 .padding(top = 80.dp, bottom = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("🧠", fontSize = 64.sp)
+
+            // ── Logo Curiosillo ──────────────────────────────────────────────────
+            Image(
+                painter = painterResource(id = R.drawable.ic_logo),
+                contentDescription = "Logo Curiosillo",
+                modifier = Modifier.size(80.dp)
+            )
             Spacer(Modifier.height(8.dp))
             Text("Curiosillo",
                 style      = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.ExtraBold,
                 color      = MaterialTheme.colorScheme.primary)
             Text(
-                if (isRegistrazione) "Crea il tuo account" else "Bentornato!",
+                if (isRegistrazione) "Crea il tuo account" else "Benvenuto!",
                 style    = MaterialTheme.typography.bodyLarge,
                 color    = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 modifier = Modifier.padding(top = 4.dp, bottom = 32.dp)

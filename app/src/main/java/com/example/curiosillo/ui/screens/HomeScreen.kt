@@ -141,7 +141,7 @@ fun HomeScreen(nav: NavController) {
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 // ── Campanella in alto a sinistra ─────────────────────────────
-                Box(Modifier.align(Alignment.CenterStart)) {
+                Box(Modifier.align(Alignment.CenterEnd)) {
                     IconButton(onClick = { mostraNotifiche = true }) {
                         Icon(
                             if (homeState.notifiche.isEmpty()) Icons.Default.NotificationsNone

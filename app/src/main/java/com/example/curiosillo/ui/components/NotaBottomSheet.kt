@@ -6,7 +6,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -14,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.curiosillo.ui.theme.Primary
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,8 +23,17 @@ fun NotaBottomSheet(
     onChiudi:    () -> Unit
 ) {
     val sheetState   = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope        = rememberCoroutineScope()
     var testo        by remember { mutableStateOf(notaAttuale) }
     val focusRequester = remember { FocusRequester() }
+
+    val animateChiudi: () -> Unit = {
+        scope.launch {
+            sheetState.hide()
+        }.invokeOnCompletion {
+            onChiudi()
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onChiudi,
@@ -67,13 +76,13 @@ fun NotaBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedButton(
-                    onClick  = onChiudi,
+                    onClick  = animateChiudi,
                     modifier = Modifier.weight(1f).height(52.dp),
                     shape    = RoundedCornerShape(14.dp)
                 ) { Text("Annulla") }
 
                 Button(
-                    onClick  = { onSalva(testo); onChiudi() },
+                    onClick  = { onSalva(testo); animateChiudi() },
                     modifier = Modifier.weight(1f).height(52.dp),
                     shape    = RoundedCornerShape(14.dp),
                     colors   = ButtonDefaults.buttonColors(containerColor = Primary)
