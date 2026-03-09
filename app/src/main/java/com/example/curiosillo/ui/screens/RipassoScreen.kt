@@ -537,6 +537,7 @@ private fun PillolePager(
                         horizontalAlignment = Alignment.End
                     ) {
                         // Bottone Dimmi di più (piccolo)
+                        val giaSvelato = cur.approfondimentoAi != null
                         OutlinedButton(
                             onClick = onDimmiDiPiu,
                             modifier = Modifier.height(36.dp),
@@ -547,9 +548,9 @@ private fun PillolePager(
                             ),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                         ) {
-                            Icon(Icons.Default.AutoAwesome, null, Modifier.size(14.dp))
+                            Icon(if (giaSvelato) Icons.Default.CheckCircle else Icons.Default.AutoAwesome, null, Modifier.size(14.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Dimmi di più", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            Text(if (giaSvelato) "Già svelato! 🐾" else "Dimmi di più", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                         }
 
                         Spacer(Modifier.height(10.dp))

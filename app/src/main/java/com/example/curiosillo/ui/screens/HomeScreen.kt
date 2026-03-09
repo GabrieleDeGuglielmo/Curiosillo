@@ -2,6 +2,7 @@ package com.example.curiosillo.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -76,40 +77,41 @@ fun HomeScreen(nav: NavController) {
         ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName
     } catch (e: Exception) { "N/D" }
 
-    if (isLoggato) {
-        homeState.aggiornamentoApp?.let { info ->
-            AlertDialog(
-                onDismissRequest = { homeVm.dismissAggiornamento() },
-                icon  = { Icon(Icons.Default.SystemUpdate, null, tint = MaterialTheme.colorScheme.primary) },
-                title = { Text("Aggiornamento disponibile",
-                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-                text  = {
-                    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("La tua versione: $versioneAttuale",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                        Spacer(Modifier.height(12.dp))
-                        Text("È disponibile la versione ${info.versione} di Curiosillo.\nVuoi scaricarla adesso?",
-                            textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
-                        Spacer(Modifier.height(16.dp))
-                        Text("Controlla tutte le novità se la tua versione è abbastanza datata!",
-                            style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
-                    }
-                },
-                confirmButton = {
-                    Button(onClick = {
+    // ── Obbligatorio: Aggiornamento App ──────────────────────────────────────
+    homeState.aggiornamentoApp?.let { info ->
+        // Se c'è un aggiornamento, impediamo di chiudere il dialog
+        BackHandler { /* Disabilitiamo il tasto indietro */ }
+
+        AlertDialog(
+            onDismissRequest = { /* Non facciamo nulla: deve aggiornare */ },
+            icon  = { Icon(Icons.Default.SystemUpdate, null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("Aggiornamento Obbligatorio",
+                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            text  = {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("La tua versione: $versioneAttuale",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Spacer(Modifier.height(12.dp))
+                    Text("È disponibile la versione ${info.versione} di Curiosillo.\nPer continuare a imparare è necessario aggiornare l'applicazione.",
+                        textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
+                    Spacer(Modifier.height(16.dp))
+                    Text("Ci scusiamo per il disturbo, ma stiamo introducendo novità incredibili!",
+                        style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
+                }
+            },
+            confirmButton = {
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
                         val url = if (info.downloadUrl.isNotEmpty()) info.downloadUrl else info.releaseUrl
                         ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                        homeVm.dismissAggiornamento()
-                    }) { Text("Scarica") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { homeVm.dismissAggiornamento() }) { Text("Dopo") }
-                }
-            )
-        }
+                    }
+                ) { Text("Aggiorna Ora") }
+            }
+        )
     }
 
     val gradientBg = Brush.verticalGradient(listOf(

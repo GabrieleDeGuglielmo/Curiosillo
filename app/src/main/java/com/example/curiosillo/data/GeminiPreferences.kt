@@ -16,7 +16,7 @@ class GeminiPreferences(private val context: Context) {
     companion object {
         private val ULTIMO_UTILIZZO = longPreferencesKey("ultimo_utilizzo_gemini")
         private val CONTEGGIO_GIORNALIERO = intPreferencesKey("conteggio_giornaliero_gemini")
-        private const val LIMITE_GIORNALIERO = 3
+        private const val LIMITE_GIORNALIERO = 5
     }
 
     suspend fun canUseGemini(): Boolean {
@@ -24,13 +24,14 @@ class GeminiPreferences(private val context: Context) {
         val prefs = context.geminiStore.data.first()
         val ultimoGiorno = (prefs[ULTIMO_UTILIZZO] ?: 0L) / (24L * 60 * 60 * 1000)
         
+        val currentCount = prefs[CONTEGGIO_GIORNALIERO] ?: 0
+        
         return if (ultimoGiorno < oggi) {
             // Nuovo giorno, reset conteggio
             context.geminiStore.edit { it[CONTEGGIO_GIORNALIERO] = 0 }
             true
         } else {
-            val conteggio = prefs[CONTEGGIO_GIORNALIERO] ?: 0
-            conteggio < LIMITE_GIORNALIERO
+            currentCount < LIMITE_GIORNALIERO
         }
     }
 
@@ -47,6 +48,9 @@ class GeminiPreferences(private val context: Context) {
         val oggi = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
         val ultimoGiorno = (prefs[ULTIMO_UTILIZZO] ?: 0L) / (24L * 60 * 60 * 1000)
         if (ultimoGiorno < oggi) LIMITE_GIORNALIERO
-        else LIMITE_GIORNALIERO - (prefs[CONTEGGIO_GIORNALIERO] ?: 0)
+        else {
+            val count = prefs[CONTEGGIO_GIORNALIERO] ?: 0
+            (LIMITE_GIORNALIERO - count).coerceAtLeast(0)
+        }
     }
 }

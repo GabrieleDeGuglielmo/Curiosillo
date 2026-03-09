@@ -1,22 +1,16 @@
 package com.example.curiosillo.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.curiosillo.BuildConfig
 import com.example.curiosillo.data.CategoryPreferences
 import com.example.curiosillo.data.Curiosity
 import com.example.curiosillo.data.GeminiPreferences
 import com.example.curiosillo.domain.GamificationEngine
 import com.example.curiosillo.domain.RisultatoAzione
-import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.repository.CuriosityRepository
 import com.example.curiosillo.ui.screens.SegnalazioneHelper
 import com.example.curiosillo.ui.screens.SegnalazioneUiState
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.RequestOptions
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,14 +24,6 @@ sealed class CuriosityUiState {
     data class Success(val curiosity: Curiosity, val readCount: Int) : CuriosityUiState()
     object Learned : CuriosityUiState()
 }
-
-data class GeminiUiState(
-    val isLoading: Boolean = false,
-    val risposta:  String  = "",
-    val errore:    String? = null,
-    val isScritturaInCorso: Boolean = false,
-    val rimanenti: Int = 2 //limite utilizzi giornaliero
-)
 
 class CuriosityViewModel(
     private val repo:   CuriosityRepository,
@@ -60,12 +46,6 @@ class CuriosityViewModel(
 
     private val _geminiState = MutableStateFlow(GeminiUiState())
     val geminiState: StateFlow<GeminiUiState> = _geminiState.asStateFlow()
-
-    private val generativeModel = GenerativeModel(
-        modelName = "gemini-2.5-flash-lite",
-        apiKey    = BuildConfig.GEMINI_API_KEY,
-        requestOptions = RequestOptions(apiVersion = "v1")
-    )
 
     init {
         load()
@@ -103,49 +83,21 @@ class CuriosityViewModel(
             return
         }
 
-        viewModelScope.launch {
-            if (!geminiPrefs.canUseGemini()) {
-                _geminiState.value = _geminiState.value.copy(errore = "Hai esaurito i tuoi 3 approfondimenti giornalieri. Torna domani!")
-                return@launch
-            }
-
-            _geminiState.value = _geminiState.value.copy(isLoading = true, errore = null, risposta = "")
-            try {
-                val prompt = "Sei un divulgatore scientifico esperto e simpatico di nome Curiosillo. " +
-                        "Approfondisci questa curiosità fornendo dettagli storici, scientifici o aneddoti interessanti in circa 150 parole. " +
-                        "Usa un tono amichevole. Non usare grassetti o formattazioni markdown pesanti.\n" +
-                        "Titolo: ${c.title}\nContenuto: ${c.body}\nCategoria: ${c.category}"
-                
-                val response = generativeModel.generateContent(prompt)
-                val fullText = response.text ?: "Uhm, non sono riuscito a trovare altre informazioni al momento."
-                
-                // Salva nel database
-                repo.salvaApprofondimentoAi(c, fullText)
-                geminiPrefs.incrementUsage()
-
-                // Aggiorna la pillola nello stato UI per includere l'approfondimento
-                _state.value = s.copy(curiosity = c.copy(approfondimentoAi = fullText))
-
-                // Effetto macchina da scrivere
-                _geminiState.value = _geminiState.value.copy(isLoading = false, isScritturaInCorso = true)
-                var currentText = ""
-                
-                fullText.split(" ").forEach { word ->
-                    currentText += "$word "
-                    _geminiState.value = _geminiState.value.copy(risposta = currentText)
-                    delay(30) 
-                }
-                _geminiState.value = _geminiState.value.copy(isScritturaInCorso = false)
-                
-            } catch (e: Exception) {
-                Log.e("CuriosityViewModel", "Errore Gemini AI: ${e.message}", e)
-                _geminiState.value = _geminiState.value.copy(isLoading = false, errore = "Errore Gemini: ${e.localizedMessage}")
-            }
-        }
+        GeminiHelper.generaApprofondimento(
+            scope = viewModelScope,
+            geminiState = _geminiState,
+            pillola = c,
+            repo = repo,
+            geminiPrefs = geminiPrefs,
+            onPillolaAggiornata = { nuovaPillola ->
+                _state.value = s.copy(curiosity = nuovaPillola)
+            },
+            tagLog = "CuriosityViewModel"
+        )
     }
 
     fun resetGemini() {
-        _geminiState.value = _geminiState.value.copy(risposta = "", errore = null, isLoading = false, isScritturaInCorso = false)
+        GeminiHelper.reset(_geminiState)
     }
 
     fun markLearned() {
@@ -201,45 +153,19 @@ class CuriosityViewModel(
     fun caricaCommenti() {
         val s = _state.value as? CuriosityUiState.Success ?: return
         val externalId = s.curiosity.externalId ?: return
-        viewModelScope.launch {
-            _commentiState.value = _commentiState.value.copy(isLoading = true)
-            val commenti = FirebaseManager.caricaCommenti(externalId)
-            _commentiState.value = _commentiState.value.copy(commenti = commenti, isLoading = false)
-        }
+        FirebaseHelper.caricaCommenti(viewModelScope, _commentiState, externalId)
     }
 
     fun inviaCommento(testo: String) {
         val s = _state.value as? CuriosityUiState.Success ?: return
         val externalId = s.curiosity.externalId ?: return
-        if (FirebaseManager.contienePaloroleVietate(testo)) {
-            _commentiState.value = _commentiState.value.copy(
-                erroreInvio = "Il commento contiene parole non consentite."
-            )
-            return
-        }
-        viewModelScope.launch {
-            _commentiState.value = _commentiState.value.copy(invioInCorso = true, erroreInvio = null)
-            val result = FirebaseManager.aggiungiCommento(externalId, testo)
-            if (result.isSuccess) {
-                val commenti = FirebaseManager.caricaCommenti(externalId)
-                _commentiState.value = _commentiState.value.copy(commenti = commenti, invioInCorso = false)
-            } else {
-                _commentiState.value = _commentiState.value.copy(
-                    invioInCorso = false,
-                    erroreInvio  = "Errore durante l'invio. Riprova."
-                )
-            }
-        }
+        FirebaseHelper.inviaCommento(viewModelScope, _commentiState, externalId, testo)
     }
 
     fun eliminaCommento(commentoId: String) {
         val s = _state.value as? CuriosityUiState.Success ?: return
         val externalId = s.curiosity.externalId ?: return
-        viewModelScope.launch {
-            FirebaseManager.eliminaCommento(externalId, commentoId)
-            val commenti = FirebaseManager.caricaCommenti(externalId)
-            _commentiState.value = _commentiState.value.copy(commenti = commenti)
-        }
+        FirebaseHelper.eliminaCommento(viewModelScope, _commentiState, externalId, commentoId)
     }
 
     fun dismissErroreCommento() {

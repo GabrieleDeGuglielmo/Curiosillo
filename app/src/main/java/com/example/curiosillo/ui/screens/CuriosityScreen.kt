@@ -51,6 +51,8 @@ import com.example.curiosillo.viewmodel.CommentiUiState
 import com.example.curiosillo.viewmodel.CuriosityUiState
 import com.example.curiosillo.viewmodel.CuriosityViewModel
 import com.example.curiosillo.viewmodel.GeminiUiState
+import com.example.curiosillo.viewmodel.FirebaseHelper
+import com.example.curiosillo.viewmodel.GeminiHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -520,6 +522,7 @@ private fun CuriosityContent(
                 verticalAlignment     = Alignment.CenterVertically
             ) {
                 // Dimmi di più (Gemini) - Versione Outlined Teal
+                val giaSvelato = s.curiosity.approfondimentoAi != null
                 OutlinedButton(
                     onClick = onDimmiDiPiu,
                     modifier = Modifier.weight(1f).height(48.dp),
@@ -529,9 +532,9 @@ private fun CuriosityContent(
                         contentColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp))
+                    Icon(if (giaSvelato) Icons.Default.CheckCircle else Icons.Default.AutoAwesome, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Dimmi di più", fontWeight = FontWeight.Bold)
+                    Text(if (giaSvelato) "Già svelato! 🐾" else "Dimmi di più", fontWeight = FontWeight.Bold)
                 }
 
                 // Comments - Versione Outlined teal
