@@ -20,6 +20,10 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,13 +46,13 @@ import com.example.curiosillo.data.BadgeSbloccato
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.ui.categoryImage
 import com.example.curiosillo.ui.components.NotaBottomSheet
-import com.example.curiosillo.ui.theme.DarkText
-import com.example.curiosillo.ui.theme.Hidden
-import com.example.curiosillo.ui.theme.Secondary
 import com.example.curiosillo.ui.theme.Success
 import com.example.curiosillo.viewmodel.CommentiUiState
 import com.example.curiosillo.viewmodel.CuriosityUiState
 import com.example.curiosillo.viewmodel.CuriosityViewModel
+import com.example.curiosillo.viewmodel.GeminiUiState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,18 +61,23 @@ fun CuriosityScreen(nav: NavController) {
     val ctx   = LocalContext.current
     val app   = ctx.applicationContext as CuriosityApplication
     val vm: CuriosityViewModel = viewModel(
-        factory = CuriosityViewModel.Factory(app.repository, app.categoryPrefs, app.gamificationEngine)
+        factory = CuriosityViewModel.Factory(app.repository, app.categoryPrefs, app.gamificationEngine, app.geminiPrefs)
     )
     val state             by vm.state.collectAsState()
     val risultato         by vm.risultatoAzione.collectAsState()
     val commentiState     by vm.commentiState.collectAsState()
     val segnalazioneState by vm.segnalazioneState.collectAsState()
+    val geminiState       by vm.geminiState.collectAsState()
+
+    val coroutineScope = rememberCoroutineScope()
 
     var badgeDaMostrare    by remember { mutableStateOf<BadgeSbloccato?>(null) }
     var badgeQueue         by remember { mutableStateOf<List<BadgeSbloccato>>(emptyList()) }
     var mostraCommenti     by remember { mutableStateOf(false) }
     var mostraDialogIgnora by remember { mutableStateOf(false) }
-    var mostraFantastico   by remember { mutableStateOf(false) }
+    var mostraAzioni       by remember { mutableStateOf(false) }
+    var mostraGemini       by remember { mutableStateOf(false) }
+    var triggerSegnala     by remember { mutableStateOf(false) }
 
     LaunchedEffect(risultato) {
         risultato?.let {
@@ -174,6 +183,116 @@ fun CuriosityScreen(nav: NavController) {
         }
     }
 
+    // Gemini Bottom Sheet
+    if (mostraGemini) {
+        val sheetStateGemini = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        ModalBottomSheet(
+            onDismissRequest = { 
+                mostraGemini = false 
+            },
+            sheetState = sheetStateGemini
+        ) {
+            GeminiSheet(geminiState)
+        }
+    }
+
+    // Actions Menu (Bottom Sheet)
+    if (mostraAzioni && state is CuriosityUiState.Success) {
+        val pillola = (state as CuriosityUiState.Success).curiosity
+        val sheetStateAzioni = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        
+        val animateChiudiAzioni: () -> Unit = {
+            coroutineScope.launch { 
+                sheetStateAzioni.hide() 
+            }.invokeOnCompletion {
+                mostraAzioni = false
+            }
+        }
+
+        ModalBottomSheet(
+            onDismissRequest = { mostraAzioni = false },
+            sheetState       = sheetStateAzioni
+        ) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                Text(
+                    "Azioni",
+                    style      = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier   = Modifier.padding(bottom = 16.dp)
+                )
+
+                // Condividi
+                OutlinedButton(
+                    onClick = {
+                        animateChiudiAzioni()
+                        val testo = buildString {
+                            append("📚 ${pillola.title}\n\n")
+                            append(pillola.body)
+                            append("\n\n— Categoria: ${pillola.category}")
+                            append("\nScoperto con Curiosillo 🎓")
+                        }
+                        ctx.startActivity(Intent.createChooser(
+                            Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, testo)
+                            }, "Condividi pillola"))
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape    = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(Icons.Default.Share, null, Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Condividi pillola", fontWeight = FontWeight.SemiBold)
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // Nascondi
+                OutlinedButton(
+                    onClick = {
+                        animateChiudiAzioni()
+                        coroutineScope.launch {
+                            delay(300)
+                            mostraDialogIgnora = true
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape    = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(Icons.Outlined.VisibilityOff, null, Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Nascondi (Non mi interessa)", fontWeight = FontWeight.SemiBold)
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // Segnala
+                OutlinedButton(
+                    onClick = {
+                        animateChiudiAzioni()
+                        coroutineScope.launch {
+                            delay(300)
+                            triggerSegnala = true
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape    = RoundedCornerShape(14.dp),
+                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f)),
+                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Icon(Icons.Default.Flag, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Segnala errore o imprecisione", fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -183,22 +302,9 @@ fun CuriosityScreen(nav: NavController) {
                 },
                 actions = {
                     if (state is CuriosityUiState.Success) {
-                        val pillola = (state as CuriosityUiState.Success).curiosity
-                        IconButton(onClick = {
-                            val testo = buildString {
-                                append("📚 ${pillola.title}\n\n")
-                                append(pillola.body)
-                                append("\n\n— Categoria: ${pillola.category}")
-                                append("\nScoperto con Curiosillo 🎓")
-                            }
-                            ctx.startActivity(Intent.createChooser(
-                                Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, testo)
-                                }, "Condividi pillola"))
-                        }) {
-                            Icon(Icons.Default.Share, "Condividi",
-                                tint = MaterialTheme.colorScheme.primary)
+                        IconButton(onClick = { mostraAzioni = true }) {
+                            Icon(Icons.Default.MoreVert, "Azioni",
+                                tint = MaterialTheme.colorScheme.onBackground)
                         }
                     }
                 },
@@ -226,17 +332,20 @@ fun CuriosityScreen(nav: NavController) {
                             Modifier.padding(24.dp), textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyLarge)
                     }
-                is CuriosityUiState.Success ->
+                is CuriosityUiState.Success -> {
                     CuriosityContent(s, pad, gradientBg,
                         commentiState = commentiState,
                         segnalazioneState = segnalazioneState,
-                        onLearn      = { mostraFantastico = true; vm.markLearned() },
+                        triggerSegnalaExternally = triggerSegnala,
+                        onSegnalaReset = { triggerSegnala = false },
+                        onLearn      = { vm.markLearned() },
                         onBookmark   = { vm.toggleBookmark() },
                         onSalvaNota  = { vm.salvaNota(it) },
                         onSegnala    = { tipo, testo -> vm.inviaSegnalazione(tipo, testo) },
-                        onIgnora     = { mostraDialogIgnora = true },
-                        onCommenti   = { vm.caricaCommenti(); mostraCommenti = true }
+                        onCommenti   = { vm.caricaCommenti(); mostraCommenti = true },
+                        onDimmiDiPiu = { vm.dimmiDiPiu(); mostraGemini = true }
                     )
+                }
                 is CuriosityUiState.Learned -> LearnedContent(pad, gradientBg) { vm.load() }
             }
 
@@ -244,7 +353,7 @@ fun CuriosityScreen(nav: NavController) {
             when (val sState = segnalazioneState) {
                 is SegnalazioneUiState.Successo -> {
                     LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay(3000)
+                        delay(3000)
                         vm.dismissSegnalazione()
                     }
                     Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
@@ -263,7 +372,7 @@ fun CuriosityScreen(nav: NavController) {
                 }
                 is SegnalazioneUiState.Errore -> {
                     LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay(3500)
+                        delay(3500)
                         vm.dismissSegnalazione()
                     }
                     Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
@@ -285,22 +394,32 @@ fun CuriosityScreen(nav: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CuriosityContent(
-    s:                 CuriosityUiState.Success,
-    pad:               PaddingValues,
-    gradientBg:        Brush,
-    commentiState:     CommentiUiState,
-    segnalazioneState: SegnalazioneUiState,
-    onLearn:           () -> Unit,
-    onBookmark:        () -> Unit,
-    onSalvaNota:       (String) -> Unit,
-    onSegnala:         (tipo: String, testo: String) -> Unit,
-    onIgnora:          () -> Unit,
-    onCommenti:        () -> Unit
+    s:                        CuriosityUiState.Success,
+    pad:                      PaddingValues,
+    gradientBg:               Brush,
+    commentiState:            CommentiUiState,
+    segnalazioneState:        SegnalazioneUiState,
+    triggerSegnalaExternally: Boolean = false,
+    onSegnalaReset:           () -> Unit = {},
+    onLearn:                  () -> Unit,
+    onBookmark:               () -> Unit,
+    onSalvaNota:              (String) -> Unit,
+    onSegnala:                (tipo: String, testo: String) -> Unit,
+    onCommenti:               () -> Unit,
+    onDimmiDiPiu:             () -> Unit
 ) {
     var mostraSegnalazione by remember { mutableStateOf(false) }
     var mostraNota         by remember { mutableStateOf(false) }
     val noteCardBg         = MaterialTheme.colorScheme.surfaceVariant
     val noteTextColor      = MaterialTheme.colorScheme.onSurfaceVariant
+
+    // Reazione al trigger esterno del menu a 3 puntini
+    LaunchedEffect(triggerSegnalaExternally) {
+        if (triggerSegnalaExternally) {
+            mostraSegnalazione = true
+            onSegnalaReset()
+        }
+    }
 
     // Automatically close the sheet on success
     LaunchedEffect(segnalazioneState) {
@@ -337,29 +456,6 @@ private fun CuriosityContent(
                     label = { Text(emojiCategoria(s.curiosity.category) + " " + s.curiosity.category) })
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(
-                        onClick = onIgnora,
-                        modifier = Modifier.height(34.dp), // Reduced height for elegance
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.VisibilityOff,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = "Nascondi",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
                     // Note
                     IconButton(onClick = { mostraNota = true }) {
                         Icon(Icons.Default.EditNote, "Nota",
@@ -416,49 +512,56 @@ private fun CuriosityContent(
             }
             Spacer(Modifier.height(16.dp))
 
-            // ── Actions: Report / Comments ──────────────────────────────────────
-            Spacer(Modifier.height(16.dp))
+            // ── Actions: AI / Comments ──────────────────────────────────────
+            Spacer(Modifier.height(8.dp))
             Row(
                 Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                // Report
-                if (mostraSegnalazione) {
-                    SegnalazioneBottomSheet(
-                        onInvia   = { tipo, testo -> onSegnala(tipo, testo) }, // State handles closure
-                        onDismiss = { mostraSegnalazione = false },
-                        isLoading = segnalazioneState is SegnalazioneUiState.Loading // Binds UI to state
-                    )
-                }
+                // Dimmi di più (Gemini) - Versione Outlined Teal
                 OutlinedButton(
-                    onClick        = { mostraSegnalazione = true },
-                    modifier       = Modifier.height(36.dp),
-                    border         = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                    shape          = RoundedCornerShape(12.dp)
+                    onClick = onDimmiDiPiu,
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
                 ) {
-                    Icon(Icons.Default.Flag, null, Modifier.size(15.dp),
-                        tint = Secondary)
-                    Spacer(Modifier.width(5.dp))
-                    Text("Segnala",
-                        style      = MaterialTheme.typography.labelMedium,
-                        color      = Secondary,
-                        fontWeight = FontWeight.SemiBold)
+                    Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Dimmi di più", fontWeight = FontWeight.Bold)
                 }
-                Spacer(Modifier.weight(1f))
 
-                // Comments
-                OutlinedButton(onClick = onCommenti, shape = RoundedCornerShape(12.dp)) {
+                // Comments - Versione Outlined teal
+                OutlinedButton(
+                    onClick = onCommenti,
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
                     val count = commentiState.commenti.size
-                    val label = "💬 Commenti ($count)"
-
+                    Icon(Icons.Default.ChatBubbleOutline, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text(
-                        text  = label,
+                        text  = "Commenti ($count)",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
                     )
                 }
+            }
+
+            // Hidden Report Sheet logic
+            if (mostraSegnalazione) {
+                SegnalazioneBottomSheet(
+                    onInvia   = { tipo, testo -> onSegnala(tipo, testo) },
+                    onDismiss = { mostraSegnalazione = false },
+                    isLoading = segnalazioneState is SegnalazioneUiState.Loading
+                )
             }
 
             Spacer(Modifier.height(16.dp))
@@ -474,6 +577,96 @@ private fun CuriosityContent(
                 ) { Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium) }
             }
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+fun GeminiSheet(state: GeminiUiState) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 48.dp)
+            .heightIn(min = 300.dp, max = 500.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = if (state.errore != null) Icons.Default.Warning else Icons.Default.AutoAwesome,
+                contentDescription = null,
+                tint = if (state.errore != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = if (state.errore != null && state.rimanenti == 0) "Limite raggiunto" 
+                          else if (state.errore != null) "Oops! Servizio non disponibile" 
+                          else "Approfondimento AI",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (state.errore != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Rimanenti oggi: ${state.rimanenti}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+            }
+        }
+        
+        Spacer(Modifier.height(20.dp))
+
+        if (state.isLoading) {
+            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    Spacer(Modifier.height(12.dp))
+                    Text("Curiosillo sta pensando...", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        } else if (state.errore != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(Modifier.padding(20.dp)) {
+                    Text(
+                        state.errore,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    
+                    if (state.rimanenti > 0) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "Assicurati di avere una connessione internet attiva o riprova tra qualche minuto.\n\nGrazie della comprensione.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+            }
+        } else {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                Text(
+                    text = state.risposta,
+                    style = MaterialTheme.typography.bodyLarge,
+                    lineHeight = 26.sp
+                )
+                
+                if (state.isScritturaInCorso) {
+                    Box(
+                        Modifier
+                            .padding(top = 4.dp)
+                            .size(12.dp, 20.dp)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
+                    )
+                }
+            }
         }
     }
 }

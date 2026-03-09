@@ -26,5 +26,9 @@ data class Curiosity(
     // 1 = like, -1 = dislike, null = nessun voto
     val voto:        Int?    = null,
     // se true: esclusa da conteggi, quiz e ripasso
-    val isIgnorata:  Boolean = false
+    val isIgnorata:  Boolean = false,
+
+    // Approfondimento generato da AI (Gemini).
+    // Salvato localmente nel DB Room.
+    val approfondimentoAi: String? = null
 )

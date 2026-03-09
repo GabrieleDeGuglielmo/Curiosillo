@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,11 +7,20 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(localPropertiesFile.inputStream())
+}
+
+val geminiApiKey = localProperties.getProperty("GEMINI_API_KEY")
+
 android {
     namespace  = "com.example.curiosillo"
     compileSdk = 34
 
     defaultConfig {
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
         applicationId = "com.example.curiosillo"
         minSdk        = 24
         targetSdk     = 34
@@ -30,7 +41,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     composeOptions { kotlinCompilerExtensionVersion = "1.5.11" }
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
 }
@@ -60,6 +74,10 @@ dependencies {
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
+    
+    // Gemini AI
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

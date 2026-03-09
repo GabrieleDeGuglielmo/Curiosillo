@@ -48,6 +48,9 @@ class CuriosityRepository(private val db: AppDatabase) {
     suspend fun toggleIgnora(curiosity: Curiosity) =
         curDao.update(curiosity.copy(isIgnorata = !curiosity.isIgnorata))
 
+    suspend fun salvaApprofondimentoAi(curiosity: Curiosity, testo: String) =
+        curDao.update(curiosity.copy(approfondimentoAi = testo))
+
     suspend fun getTutteImparate(categorie: Set<String>): List<Curiosity> =
         if (categorie.isEmpty()) curDao.getTutteImparate()
         else curDao.getPerRipassoFiltered(Long.MAX_VALUE, categorie.toList())

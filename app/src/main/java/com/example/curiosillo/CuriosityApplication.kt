@@ -1,11 +1,7 @@
 package com.example.curiosillo
 
 import android.app.Application
-import com.example.curiosillo.data.AppDatabase
-import com.example.curiosillo.data.CategoryPreferences
-import com.example.curiosillo.data.ContentPreferences
-import com.example.curiosillo.data.GamificationPreferences
-import com.example.curiosillo.data.ThemePreferences
+import com.example.curiosillo.data.*
 import com.example.curiosillo.domain.GamificationEngine
 import com.example.curiosillo.repository.CuriosityRepository
 import com.google.firebase.FirebaseApp
@@ -21,6 +17,7 @@ class CuriosityApplication : Application() {
     val gamificationPrefs by lazy { GamificationPreferences(this) }
     val themePrefs        by lazy { ThemePreferences(this) }
     val contentPrefs      by lazy { ContentPreferences(this) }
+    val geminiPrefs       by lazy { GeminiPreferences(this) }
 
     val gamificationEngine by lazy {
         GamificationEngine(gamificationPrefs, repository)
