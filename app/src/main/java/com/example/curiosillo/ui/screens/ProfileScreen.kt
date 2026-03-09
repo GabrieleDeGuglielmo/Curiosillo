@@ -1,6 +1,7 @@
 package com.example.curiosillo.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -17,7 +18,10 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.RestartAlt
@@ -27,6 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -59,7 +65,9 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
     )
     val state by vm.state.collectAsState()
 
-    var showResetDialog by remember { mutableStateOf(false) }
+    var showAdminSheet   by remember { mutableStateOf(false) }
+    var showAccountSheet by remember { mutableStateOf(false) }
+    var showResetDialog  by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showEliminaDialog by remember { mutableStateOf(false) }
     var badgeDettaglio by remember { mutableStateOf<BadgeDefinizione?>(null) }
@@ -117,73 +125,147 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
 
                 if (state.isAdmin) {
                     HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                    AzioneItem(
-                        icon = Icons.Default.BarChart,
-                        tint = Color(0xFF7B2D8B),
-                        label = "Admin — Voti curiosità",
-                        sub = "Visualizza like/dislike di tutte le curiosità"
+                    // Voce Admin → apre sotto-sheet
+                    AzioneItemNav(
+                        icon  = Icons.Default.Shield,
+                        tint  = Color(0xFF7B2D8B),
+                        label = "Admin",
+                        sub   = "Gestione contenuti e utenti"
                     ) {
-                        scope.launch { sheetState.hide() }.invokeOnCompletion {
-                            showSheet = false
-                            nav.navigate("admin_voti")
-                        }
-                    }
-                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                    AzioneItem(
-                        icon = Icons.Default.Edit,
-                        tint = Color(0xFF7B2D8B),
-                        label = "Admin — Gestione curiosità",
-                        sub = "Aggiungi, modifica o importa curiosità"
-                    ) {
-                        scope.launch { sheetState.hide() }.invokeOnCompletion {
-                            showSheet = false
-                            nav.navigate("admin_curiosita")
-                        }
-                    }
-                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                    AzioneItem(
-                        icon = Icons.Default.Campaign,
-                        tint = Color(0xFF7B2D8B),
-                        label = "Admin — Comunicazioni",
-                        sub = "Invia un messaggio broadcast a tutti gli utenti"
-                    ) {
-                        scope.launch { sheetState.hide() }.invokeOnCompletion {
-                            showSheet = false
-                            nav.navigate("admin_broadcast")
-                        }
+                        showAdminSheet = true
                     }
                 }
 
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
-                // Resetta progressi
-                AzioneItem(
-                    icon = Icons.Default.RestartAlt,
-                    tint = Error,
-                    label = "Resetta progressi",
-                    sub = "Azzera XP, streak, badge e pillole lette"
+                // Voce Account → apre sotto-sheet
+                AzioneItemNav(
+                    icon  = Icons.Default.ManageAccounts,
+                    tint  = Error,
+                    label = "Account",
+                    sub   = "Resetta progressi, esci o elimina account"
                 ) {
-                    scope.launch { sheetState.hide() }.invokeOnCompletion {
-                        showSheet = false
+                    showAccountSheet = true
+                }
+
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+
+    // ── Sub-sheet Admin ──────────────────────────────────────────────────────
+    if (showAdminSheet) {
+        val adminSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showAdminSheet = false },
+            sheetState       = adminSheetState
+        ) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                Text(
+                    "🛡 Admin",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+                AzioneItem(
+                    icon  = Icons.Default.BarChart,
+                    tint  = Color(0xFF7B2D8B),
+                    label = "Segnalazioni",
+                    sub   = "Visualizza segnalazioni alle curiosità"
+                ) {
+                    scope.launch { adminSheetState.hide() }.invokeOnCompletion {
+                        showAdminSheet = false
+                        nav.navigate("admin_voti")
+                    }
+                }
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                AzioneItem(
+                    icon  = Icons.Default.Edit,
+                    tint  = Color(0xFF7B2D8B),
+                    label = "Gestione curiosità",
+                    sub   = "Aggiungi, modifica o importa curiosità"
+                ) {
+                    scope.launch { adminSheetState.hide() }.invokeOnCompletion {
+                        showAdminSheet = false
+                        nav.navigate("admin_curiosita")
+                    }
+                }
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                AzioneItem(
+                    icon  = Icons.Default.Campaign,
+                    tint  = Color(0xFF7B2D8B),
+                    label = "Comunicazioni",
+                    sub   = "Invia un messaggio broadcast a tutti gli utenti"
+                ) {
+                    scope.launch { adminSheetState.hide() }.invokeOnCompletion {
+                        showAdminSheet = false
+                        nav.navigate("admin_broadcast")
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+
+    // ── Sub-sheet Account ─────────────────────────────────────────────────────
+    if (showAccountSheet) {
+        val accountSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showAccountSheet = false },
+            sheetState       = accountSheetState
+        ) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                Text(
+                    "Account",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+                AzioneItem(
+                    icon  = Icons.Default.RestartAlt,
+                    tint  = Error,
+                    label = "Resetta progressi",
+                    sub   = "Azzera XP, streak, badge e pillole lette"
+                ) {
+                    scope.launch { accountSheetState.hide() }.invokeOnCompletion {
+                        showAccountSheet = false
                         showResetDialog = true
                     }
                 }
-
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
-
-                // Elimina account
                 AzioneItem(
-                    icon = Icons.Default.DeleteForever,
-                    tint = Error,
-                    label = "Elimina account",
-                    sub = "Cancella account e tutti i dati in modo permanente"
+                    icon  = Icons.Default.Logout,
+                    tint  = Error,
+                    label = "Esci dall'account",
+                    sub   = "Verrai disconnesso da questo dispositivo"
                 ) {
-                    scope.launch { sheetState.hide() }.invokeOnCompletion {
-                        showSheet = false
+                    scope.launch { accountSheetState.hide() }.invokeOnCompletion {
+                        showAccountSheet = false
+                        showLogoutDialog = true
+                    }
+                }
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                AzioneItem(
+                    icon  = Icons.Default.DeleteForever,
+                    tint  = Error,
+                    label = "Elimina account",
+                    sub   = "Cancella account e tutti i dati in modo permanente"
+                ) {
+                    scope.launch { accountSheetState.hide() }.invokeOnCompletion {
+                        showAccountSheet = false
                         showEliminaDialog = true
                     }
                 }
-
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -482,6 +564,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     }
                 }
 
+                /* TODO: PROPIC
                 // ── Avatar + titolo ───────────────────────────────────────────
                 Box(
                     Modifier
@@ -497,6 +580,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(20.dp))
+                */
 
                 // Banner XP
                 GamificationBanner(xpTotali = state.xpTotali, streakCorrente = state.streakCorrente)
@@ -619,27 +703,6 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                 }
 
                 Spacer(Modifier.height(16.dp))
-
-                // ── Esci — isolato in fondo per prevenire tap accidentali ─────
-                if (state.isLoggato) {
-                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                    OutlinedButton(
-                        onClick = { showLogoutDialog = true },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Error),
-                        border = ButtonDefaults.outlinedButtonBorder.copy(
-                            brush = androidx.compose.ui.graphics.SolidColor(Error)
-                        )
-                    ) {
-                        Icon(Icons.Default.Logout, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Esci dall'account")
-                    }
-                    Spacer(Modifier.height(16.dp))
-                }
             }
         }
     }
@@ -647,17 +710,18 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
 
 // ── Componente riga azione nel BottomSheet ────────────────────────────────────
 @Composable
-private fun AzioneItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    tint: Color,
-    label: String,
-    sub: String,
+private fun AzioneItemNav(
+    icon:    ImageVector,
+    tint:    Color,
+    label:   String,
+    sub:     String,
     onClick: () -> Unit
 ) {
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -670,17 +734,50 @@ private fun AzioneItem(
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(
-                label,
-                style = MaterialTheme.typography.bodyLarge, color = tint
-            )
+            Text(label, style = MaterialTheme.typography.bodyLarge, color = tint)
             Text(
                 sub, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
             )
         }
-        TextButton(onClick = onClick) {
-            Text("Vai", color = tint)
+        Icon(
+            Icons.Default.ChevronRight, null,
+            tint     = tint.copy(alpha = 0.7f),
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+@Composable
+private fun AzioneItem(
+    icon: ImageVector,
+    tint: Color,
+    label: String,
+    sub: String,
+    onClick: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(42.dp)
+                .background(tint.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge, color = tint)
+            Text(
+                sub, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+            )
         }
     }
 }

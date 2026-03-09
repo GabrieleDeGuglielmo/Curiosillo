@@ -75,19 +75,11 @@ class RipassoViewModel(
         }
     }
 
-    fun setVoto(voto: Int?) {
-        val pillola = pilloleCorrente() ?: return
+    fun inviaSegnalazione(tipo: String, testo: String) {
+        val pillola    = pilloleCorrente() ?: return
+        val externalId = pillola.externalId ?: return
         viewModelScope.launch {
-            val nuovoVoto   = if (pillola.voto == voto) null else voto
-            val vecchioVoto = pillola.voto
-            repo.setVoto(pillola, nuovoVoto)
-            // Aggiorna stato locale
-            val pilloleAggiornate = _state.value.pillole.toMutableList()
-            pilloleAggiornate[_state.value.indiceCorrente] = pillola.copy(voto = nuovoVoto)
-            _state.value = _state.value.copy(pillole = pilloleAggiornate)
-            // Sync su Firestore
-            val externalId = pillola.externalId ?: return@launch
-            FirebaseManager.sincronizzaVoto(externalId, vecchioVoto, nuovoVoto)
+            FirebaseManager.inviaSegnalazione(externalId, tipo, testo)
         }
     }
 

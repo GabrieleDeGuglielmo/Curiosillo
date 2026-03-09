@@ -22,12 +22,12 @@ sealed class CuriosityUiState {
     object Learned : CuriosityUiState()
 }
 
-data class CommentiUiState(
-    val commenti:      List<FirebaseManager.Commento> = emptyList(),
-    val isLoading:     Boolean = false,
-    val erroreInvio:   String? = null,
-    val invioInCorso:  Boolean = false
-)
+sealed class SegnalazioneUiState {
+    object Idle     : SegnalazioneUiState()
+    object Loading  : SegnalazioneUiState()
+    object Successo : SegnalazioneUiState()
+    data class Errore(val msg: String) : SegnalazioneUiState()
+}
 
 class CuriosityViewModel(
     private val repo:   CuriosityRepository,
@@ -51,10 +51,9 @@ class CuriosityViewModel(
             _state.value = CuriosityUiState.Loading
             val categorie = prefs.categorieAttive.first()
             val c = repo.getNext(categorie)
-            if (c != null) {
-                _state.value = CuriosityUiState.Success(c, repo.curiositàImparate())
-                caricaCommenti()
-            } else _state.value = CuriosityUiState.Empty
+            _state.value = if (c != null)
+                CuriosityUiState.Success(c, repo.curiositàImparate())
+            else CuriosityUiState.Empty
         }
     }
 
@@ -86,19 +85,25 @@ class CuriosityViewModel(
         }
     }
 
-    fun setVoto(voto: Int?) {
+    // ── Segnalazioni ─────────────────────────────────────────────────────────
+
+    private val _segnalazioneState = MutableStateFlow<SegnalazioneUiState>(SegnalazioneUiState.Idle)
+    val segnalazioneState: StateFlow<SegnalazioneUiState> = _segnalazioneState.asStateFlow()
+
+    fun inviaSegnalazione(tipo: String, testo: String) {
         val s = _state.value as? CuriosityUiState.Success ?: return
+        val externalId = s.curiosity.externalId ?: return
         viewModelScope.launch {
-            // toggle: se lo stesso voto è già impostato, rimuovilo
-            val nuovoVoto = if (s.curiosity.voto == voto) null else voto
-            val vecchioVoto = s.curiosity.voto
-            repo.setVoto(s.curiosity, nuovoVoto)
-            _state.value = s.copy(curiosity = s.curiosity.copy(voto = nuovoVoto))
-            // Sync su Firestore (solo se la curiosità ha un externalId)
-            val externalId = s.curiosity.externalId ?: return@launch
-            FirebaseManager.sincronizzaVoto(externalId, vecchioVoto, nuovoVoto)
+            _segnalazioneState.value = SegnalazioneUiState.Loading
+            val result = FirebaseManager.inviaSegnalazione(externalId, tipo, testo)
+            _segnalazioneState.value = if (result.isSuccess)
+                SegnalazioneUiState.Successo
+            else
+                SegnalazioneUiState.Errore(result.exceptionOrNull()?.message ?: "Errore")
         }
     }
+
+    fun dismissSegnalazione() { _segnalazioneState.value = SegnalazioneUiState.Idle }
 
     fun toggleIgnora() {
         val s = _state.value as? CuriosityUiState.Success ?: return

@@ -36,6 +36,7 @@ android {
 }
 
 dependencies {
+    implementation("org.chromium.net:cronet-embedded:143.7445.0")
     val composeBom = platform("androidx.compose:compose-bom:2024.04.01")
     implementation(composeBom)
     implementation("androidx.core:core-splashscreen:1.0.1")

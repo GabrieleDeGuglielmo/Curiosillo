@@ -28,6 +28,10 @@ sealed class DuelloUiState {
         val codice:    String,
         val mioNick:   String
     ) : DuelloUiState()
+    data class InCountdown(
+        val secondiRimasti: Int,   // 3..1
+        val mioNick:        String
+    ) : DuelloUiState()
     data class InCorso(
         val duello:          DuelloStato,
         val mioUid:          String,
@@ -235,16 +239,24 @@ class DuelloViewModel(
 
     private fun avviaDuello(stato: DuelloStato) {
         osservaJob?.cancel()
-        _state.value = DuelloUiState.InCorso(
-            duello          = stato,
-            mioUid          = mioUid,
-            mioNick         = mioNick,
-            indiceCorrente  = 0,
-            rispostaData    = null,
-            secondiRimasti  = 10,
-            risposteCorrentiAvversario = 0
-        )
-        avviaTimer(0, stato)
+        // Countdown 3s prima di avviare la partita
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            for (s in 3 downTo 1) {
+                _state.value = DuelloUiState.InCountdown(secondiRimasti = s, mioNick = mioNick)
+                delay(1000)
+            }
+            _state.value = DuelloUiState.InCorso(
+                duello          = stato,
+                mioUid          = mioUid,
+                mioNick         = mioNick,
+                indiceCorrente  = 0,
+                rispostaData    = null,
+                secondiRimasti  = 10,
+                risposteCorrentiAvversario = 0
+            )
+            avviaTimer(0, stato)
+        }
         osservaDuello(stato.id)
     }
 
@@ -378,10 +390,32 @@ class DuelloViewModel(
         duelloId = ""
     }
 
+    /** Chiamato quando l'utente esce dal duello (back fisico, back button, onCleared).
+     *  Elimina il documento Firestore → l'avversario riceve null e vede "ha abbandonato". */
+    fun abbandonaDuello() {
+        val id = duelloId
+        timerJob?.cancel()
+        osservaJob?.cancel()
+        _state.value = DuelloUiState.Idle
+        duelloId = ""
+        if (id.isBlank()) return
+        viewModelScope.launch {
+            duelloRepo.annullaRicerca(mioUid, id)
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         timerJob?.cancel()
         osservaJob?.cancel()
+        // Se il ViewModel viene distrutto mentre si è in partita (es. navigazione di sistema)
+        // elimina il duello così l'avversario viene notificato
+        val id = duelloId
+        if (id.isNotBlank()) {
+            viewModelScope.launch {
+                duelloRepo.annullaRicerca(mioUid, id)
+            }
+        }
     }
 
     class Factory(

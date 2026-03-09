@@ -1,17 +1,16 @@
 package com.example.curiosillo.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ThumbDown
-import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,58 +40,83 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
-data class VotoConTitolo(
+data class SegnalazioneConInfo(
     val externalId: String,
-    val titolo: String,
-    val likes: Long,
-    val dislikes: Long
+    val titolo:     String,
+    val segnalazioni: List<FirebaseManager.SegnalazioneItem>
 )
 
-enum class FiltroVoti { TUTTI, SOLO_NEGATIVI }
+enum class FiltroSegnalazioni { TUTTE, NON_LETTE }
 
-data class AdminVotiUiState(
-    val isLoading: Boolean = true,
-    val isAdmin: Boolean = false,
-    val voti: List<VotoConTitolo> = emptyList()
+data class AdminSegnalazioniUiState(
+    val isLoading:    Boolean                       = true,
+    val isAdmin:      Boolean                       = false,
+    val segnalazioni: List<SegnalazioneConInfo>     = emptyList()
 )
 
 // ── ViewModel ─────────────────────────────────────────────────────────────────
 
 class AdminVotiViewModel(private val repo: CuriosityRepository) : ViewModel() {
 
-    private val _state = MutableStateFlow(AdminVotiUiState())
-    val state: StateFlow<AdminVotiUiState> = _state.asStateFlow()
+    private val _state = MutableStateFlow(AdminSegnalazioniUiState())
+    val state: StateFlow<AdminSegnalazioniUiState> = _state.asStateFlow()
 
-    init {
-        carica()
-    }
+    init { carica() }
 
     fun carica() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
             val isAdmin = FirebaseManager.isAdmin()
             if (!isAdmin) {
-                _state.value = AdminVotiUiState(isLoading = false, isAdmin = false); return@launch
+                _state.value = AdminSegnalazioniUiState(isLoading = false, isAdmin = false)
+                return@launch
             }
 
-            val votiFirestore = FirebaseManager.caricaTuttiVoti()
-            val tutteLeCuriosita = repo.getTutteLeCuriosita()
-            val mappa = tutteLeCuriosita.associateBy { it.externalId ?: "" }
+            val tutteCuriosita = repo.getTutteLeCuriosita()
+            val mappa = tutteCuriosita.associateBy { it.externalId ?: "" }
 
-            _state.value = AdminVotiUiState(
-                isLoading = false,
-                isAdmin = true,
-                voti = votiFirestore.map { v ->
-                    VotoConTitolo(
-                        externalId = v.externalId,
-                        titolo = mappa[v.externalId]?.title ?: v.externalId,
-                        likes = v.likes,
-                        dislikes = v.dislikes
-                    )
-                }
+            // Carica tutti i documenti radice segnalazioni
+            val radici = try {
+                FirebaseManager.caricaTutteSegnalazioni()
+            } catch (_: Exception) { emptyList() }
+
+            val lista = radici.mapNotNull { radice ->
+                val items = FirebaseManager.caricaSegnalazioniPerCuriosita(radice.externalId)
+                if (items.isEmpty()) return@mapNotNull null
+                SegnalazioneConInfo(
+                    externalId   = radice.externalId,
+                    titolo       = mappa[radice.externalId]?.title ?: radice.externalId,
+                    segnalazioni = items
+                )
+            }.sortedByDescending { segnalazione ->
+                segnalazione.segnalazioni.count { !it.letta }
+            }
+
+            _state.value = AdminSegnalazioniUiState(
+                isLoading    = false,
+                isAdmin      = true,
+                segnalazioni = lista
+            )
+        }
+    }
+
+    fun segnaLetta(externalId: String, segnalazioneId: String) {
+        viewModelScope.launch {
+            FirebaseManager.segnaSegnalazioneLetta(externalId, segnalazioneId)
+            _state.value = _state.value.copy(
+                segnalazioni = _state.value.segnalazioni.map { s ->
+                    if (s.externalId != externalId) s
+                    else s.copy(segnalazioni = s.segnalazioni.map { item ->
+                        if (item.id == segnalazioneId) item.copy(letta = true) else item
+                    })
+                }.filter { it.segnalazioni.any { item -> !item.letta } ||
+                        it.segnalazioni.isNotEmpty() }
             )
         }
     }
@@ -113,20 +137,34 @@ fun AdminVotiScreen(nav: NavController) {
     val vm: AdminVotiViewModel = viewModel(factory = AdminVotiViewModel.Factory(app.repository))
     val state by vm.state.collectAsState()
 
-    var query by remember { mutableStateOf("") }
-    var filtro by remember { mutableStateOf(FiltroVoti.TUTTI) }
+    var query  by remember { mutableStateOf("") }
+    var filtro by remember { mutableStateOf(FiltroSegnalazioni.NON_LETTE) }
+    var aperta by remember { mutableStateOf<SegnalazioneConInfo?>(null) }
 
-    val gradientBg = Brush.verticalGradient(
-        listOf(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-            MaterialTheme.colorScheme.background
-        )
-    )
+    val gradientBg = Brush.verticalGradient(listOf(
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+        MaterialTheme.colorScheme.background
+    ))
+
+    // Detail bottom sheet
+    aperta?.let { info ->
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        ModalBottomSheet(
+            onDismissRequest = { aperta = null },
+            sheetState       = sheetState
+        ) {
+            SegnalazioniDetailSheet(
+                info     = info,
+                onSegnaLetta = { id -> vm.segnaLetta(info.externalId, id) },
+                onChiudi     = { aperta = null }
+            )
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Voti curiosità") },
+                title = { Text("Segnalazioni", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = {
                         if (nav.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
@@ -136,39 +174,28 @@ fun AdminVotiScreen(nav: NavController) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
                     }
                 },
+                actions = {
+                    IconButton(onClick = { vm.carica() }) {
+                        Icon(Icons.Default.Flag, "Aggiorna",
+                            tint = MaterialTheme.colorScheme.primary)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
         containerColor = Color.Transparent
     ) { pad ->
-        Box(Modifier
-            .fillMaxSize()
-            .background(gradientBg)
-            .padding(pad)) {
+        Box(Modifier.fillMaxSize().background(gradientBg).padding(pad)) {
             when {
                 state.isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                     CircularProgressIndicator()
                 }
-
                 !state.isAdmin -> AccessoNegatoContent()
-                state.voti.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("📊", fontSize = 48.sp)
-                        Spacer(Modifier.height(16.dp))
-                        Text(
-                            "Nessun voto ancora registrato.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f)
-                        )
-                    }
-                }
-
                 else -> {
-                    // Applica filtri in memoria
-                    val filtrati = remember(state.voti, query, filtro) {
-                        var lista = state.voti
-                        if (filtro == FiltroVoti.SOLO_NEGATIVI)
-                            lista = lista.filter { it.dislikes > 0 }
+                    val filtrate = remember(state.segnalazioni, query, filtro) {
+                        var lista = state.segnalazioni
+                        if (filtro == FiltroSegnalazioni.NON_LETTE)
+                            lista = lista.filter { s -> s.segnalazioni.any { !it.letta } }
                         if (query.isNotBlank()) {
                             val q = query.trim().lowercase()
                             lista = lista.filter {
@@ -179,53 +206,56 @@ fun AdminVotiScreen(nav: NavController) {
                         lista
                     }
 
-                    val totLikes = state.voti.sumOf { it.likes }
-                    val totDislikes = state.voti.sumOf { it.dislikes }
+                    val totNonLette = state.segnalazioni.sumOf { s ->
+                        s.segnalazioni.count { !it.letta }
+                    }
+                    val totTutte = state.segnalazioni.sumOf { it.segnalazioni.size }
 
                     LazyColumn(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                        contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // ── Card riepilogo globale ────────────────────────────
+                        // ── Card riepilogo ────────────────────────────────────
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(18.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                                )
+                                shape    = RoundedCornerShape(18.dp),
+                                colors   = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer)
                             ) {
                                 Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(20.dp),
+                                    Modifier.fillMaxWidth().padding(20.dp),
                                     horizontalArrangement = Arrangement.SpaceEvenly
                                 ) {
-                                    TotaleChip("👍 $totLikes", "Like totali", Color(0xFF4CAF50))
                                     TotaleChip(
-                                        "👎 $totDislikes",
-                                        "Dislike totali",
-                                        Color(0xFFF44336)
+                                        "🚩 $totNonLette",
+                                        "Non lette",
+                                        MaterialTheme.colorScheme.error
                                     )
                                     TotaleChip(
-                                        "📊 ${state.voti.size}",
-                                        "Curiosità votate",
+                                        "📋 $totTutte",
+                                        "Totale",
                                         MaterialTheme.colorScheme.primary
+                                    )
+                                    TotaleChip(
+                                        "📚 ${state.segnalazioni.size}",
+                                        "Curiosità",
+                                        Color(0xFF7B2D8B)
                                     )
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
                         }
 
-                        // ── Barra ricerca ─────────────────────────────────────
+                        // ── Ricerca ───────────────────────────────────────────
                         item {
                             OutlinedTextField(
-                                value = query,
+                                value         = query,
                                 onValueChange = { query = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                placeholder = { Text("Cerca per ID o titolo…") },
-                                leadingIcon = { Icon(Icons.Default.Search, null) },
-                                trailingIcon = {
+                                modifier      = Modifier.fillMaxWidth(),
+                                placeholder   = { Text("Cerca per ID o titolo…") },
+                                leadingIcon   = { Icon(Icons.Default.Search, null) },
+                                trailingIcon  = {
                                     if (query.isNotBlank()) {
                                         IconButton(onClick = { query = "" }) {
                                             Icon(Icons.Default.Close, "Cancella")
@@ -233,61 +263,61 @@ fun AdminVotiScreen(nav: NavController) {
                                     }
                                 },
                                 singleLine = true,
-                                shape = RoundedCornerShape(14.dp)
+                                shape      = RoundedCornerShape(14.dp)
                             )
                             Spacer(Modifier.height(8.dp))
                         }
 
-                        // ── Chip filtro ───────────────────────────────────────
+                        // ── Filtri ────────────────────────────────────────────
                         item {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 FilterChip(
-                                    selected = filtro == FiltroVoti.TUTTI,
-                                    onClick = { filtro = FiltroVoti.TUTTI },
-                                    label = { Text("Tutte") }
+                                    selected = filtro == FiltroSegnalazioni.NON_LETTE,
+                                    onClick  = { filtro = FiltroSegnalazioni.NON_LETTE },
+                                    label    = { Text("🚩 Non lette") }
                                 )
                                 FilterChip(
-                                    selected = filtro == FiltroVoti.SOLO_NEGATIVI,
-                                    onClick = { filtro = FiltroVoti.SOLO_NEGATIVI },
-                                    label = { Text("👎 Con almeno un dislike") }
+                                    selected = filtro == FiltroSegnalazioni.TUTTE,
+                                    onClick  = { filtro = FiltroSegnalazioni.TUTTE },
+                                    label    = { Text("Tutte") }
                                 )
                             }
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                if (query.isBlank() && filtro == FiltroVoti.TUTTI)
-                                    "${state.voti.size} curiosità votate"
-                                else "${filtrati.size} risultati",
+                                "${filtrate.size} curiosità con segnalazioni",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
                             )
                         }
 
-                        // ── Lista filtrata ────────────────────────────────────
-                        if (filtrati.isEmpty()) {
+                        // ── Lista ─────────────────────────────────────────────
+                        if (filtrate.isEmpty()) {
                             item {
                                 Box(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 48.dp),
+                                    Modifier.fillMaxWidth().padding(top = 48.dp),
                                     Alignment.Center
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("🔍", fontSize = 40.sp)
+                                        Text(if (totNonLette == 0) "🎉" else "🔍", fontSize = 40.sp)
                                         Spacer(Modifier.height(12.dp))
                                         Text(
-                                            "Nessun risultato",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onBackground.copy(
-                                                alpha = 0.5f
-                                            ),
+                                            if (totNonLette == 0 && filtro == FiltroSegnalazioni.NON_LETTE)
+                                                "Nessuna segnalazione non letta"
+                                            else "Nessun risultato",
+                                            style     = MaterialTheme.typography.bodyMedium,
+                                            color     = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                                             textAlign = TextAlign.Center
                                         )
                                     }
                                 }
                             }
                         } else {
-                            items(filtrati, key = { it.externalId }) { voto ->
-                                VotoCard(voto, query)
+                            items(filtrate, key = { it.externalId }) { info ->
+                                SegnalazioneCard(
+                                    info    = info,
+                                    query   = query,
+                                    onClick = { aperta = info }
+                                )
                             }
                         }
                     }
@@ -297,108 +327,238 @@ fun AdminVotiScreen(nav: NavController) {
     }
 }
 
-// ── Highlight helper ──────────────────────────────────────────────────────────
+// ── SegnalazioneCard ──────────────────────────────────────────────────────────
 
-private fun highlight(text: String, query: String): AnnotatedString {
-    if (query.isBlank()) return AnnotatedString(text)
-    return buildAnnotatedString {
-        val lower = text.lowercase()
-        val q = query.trim().lowercase()
-        var cursor = 0
-        while (cursor < text.length) {
-            val idx = lower.indexOf(q, cursor)
-            if (idx < 0) {
-                append(text.substring(cursor)); break
-            }
-            append(text.substring(cursor, idx))
-            withStyle(
-                SpanStyle(
-                    background = Color(0xFFFFEB3B).copy(alpha = 0.5f),
-                    fontWeight = FontWeight.Bold
+@Composable
+private fun SegnalazioneCard(
+    info:    SegnalazioneConInfo,
+    query:   String,
+    onClick: () -> Unit
+) {
+    val nonLette = info.segnalazioni.count { !it.letta }
+    val hasNonLette = nonLette > 0
+
+    Card(
+        modifier  = Modifier.fillMaxWidth().clickable { onClick() },
+        shape     = RoundedCornerShape(16.dp),
+        colors    = CardDefaults.cardColors(
+            containerColor = if (hasNonLette)
+                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+            else MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(if (hasNonLette) 3.dp else 1.dp)
+    ) {
+        Row(
+            Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    highlight(info.titolo, query),
+                    style      = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines   = 2,
+                    overflow   = TextOverflow.Ellipsis
                 )
-            ) { append(text.substring(idx, idx + q.length)) }
-            cursor = idx + q.length
+                Text(
+                    highlight(info.externalId, query),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                )
+                if (info.segnalazioni.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    // Mostra i tipi unici delle segnalazioni
+                    val tipi = info.segnalazioni.map { it.tipo }.distinct().take(3)
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        tipi.forEach { tipo ->
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Text(
+                                    tipo,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    style    = MaterialTheme.typography.labelSmall,
+                                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            // Badge contatore non lette
+            if (hasNonLette) {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.error
+                ) {
+                    Text(
+                        nonLette.toString(),
+                        modifier   = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        color      = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        style      = MaterialTheme.typography.labelMedium
+                    )
+                }
+            } else {
+                Text(
+                    "${info.segnalazioni.size}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                )
+            }
         }
     }
 }
 
-// ── VotoCard ──────────────────────────────────────────────────────────────────
+// ── Detail sheet ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun VotoCard(voto: VotoConTitolo, query: String = "") {
-    val totale = voto.likes + voto.dislikes
-    val likesPct = if (totale > 0) voto.likes.toFloat() / totale else 0f
-    val isNegativo = voto.dislikes > voto.likes
+private fun SegnalazioniDetailSheet(
+    info:         SegnalazioneConInfo,
+    onSegnaLetta: (String) -> Unit,
+    onChiudi:     () -> Unit
+) {
+    val fmt = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.ITALY)
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isNegativo)
-                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
-            else MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(2.dp)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 32.dp)
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
+        // Header
+        Text(
+            info.titolo,
+            style      = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            maxLines   = 2,
+            overflow   = TextOverflow.Ellipsis
+        )
+        Text(
+            info.externalId,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        val nonLette = info.segnalazioni.filter { !it.letta }
+        val lette    = info.segnalazioni.filter { it.letta }
+
+        if (nonLette.isNotEmpty()) {
+            Text(
+                "🚩 Da leggere (${nonLette.size})",
+                style      = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color      = MaterialTheme.colorScheme.error,
+                modifier   = Modifier.padding(bottom = 8.dp)
+            )
+            nonLette.forEach { item ->
+                SegnalazioneItemCard(item = item, fmt = fmt, onSegnaLetta = onSegnaLetta)
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+
+        if (lette.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "✓ Già lette (${lette.size})",
+                style      = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color      = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                modifier   = Modifier.padding(bottom = 8.dp)
+            )
+            lette.forEach { item ->
+                SegnalazioneItemCard(item = item, fmt = fmt, onSegnaLetta = null)
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SegnalazioneItemCard(
+    item:         FirebaseManager.SegnalazioneItem,
+    fmt:          SimpleDateFormat,
+    onSegnaLetta: ((String) -> Unit)?
+) {
+    Card(
+        modifier  = Modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(12.dp),
+        colors    = CardDefaults.cardColors(
+            containerColor = if (!item.letta)
+                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
+            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.Top
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
                     Text(
-                        highlight(voto.titolo, query),
-                        style = MaterialTheme.typography.bodyLarge,
+                        item.tipo,
+                        modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        style      = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        highlight(voto.externalId, query),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                        color      = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
-                Spacer(Modifier.width(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.ThumbUp,
-                            null,
-                            Modifier.size(16.dp),
-                            tint = Color(0xFF4CAF50)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text("${voto.likes}", color = Color(0xFF4CAF50))
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.ThumbDown,
-                            null,
-                            Modifier.size(16.dp),
-                            tint = Color(0xFFF44336)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text("${voto.dislikes}", color = Color(0xFFF44336))
+                Text(
+                    fmt.format(Date(item.creatoAt)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                )
+            }
+            if (item.testo.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    item.testo,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
+            }
+            if (onSegnaLetta != null) {
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(
+                        onClick       = { onSegnaLetta(item.id) },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text("Segna come letta", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
-            if (totale > 0) {
-                Spacer(Modifier.height(10.dp))
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    LinearProgressIndicator(
-                        progress = { likesPct },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(6.dp),
-                        color = Color(0xFF4CAF50),
-                        trackColor = Color(0xFFF44336)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "${(likesPct * 100).toInt()}%",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                }
-            }
+        }
+    }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+private fun highlight(text: String, query: String): AnnotatedString {
+    if (query.isBlank()) return AnnotatedString(text)
+    return buildAnnotatedString {
+        val lower  = text.lowercase()
+        val q      = query.trim().lowercase()
+        var cursor = 0
+        while (cursor < text.length) {
+            val idx = lower.indexOf(q, cursor)
+            if (idx < 0) { append(text.substring(cursor)); break }
+            append(text.substring(cursor, idx))
+            withStyle(SpanStyle(
+                background = Color(0xFFFFEB3B).copy(alpha = 0.5f),
+                fontWeight = FontWeight.Bold
+            )) { append(text.substring(idx, idx + q.length)) }
+            cursor = idx + q.length
         }
     }
 }
@@ -416,8 +576,8 @@ fun AccessoNegatoContent() {
             Spacer(Modifier.height(8.dp))
             Text(
                 "Non hai i permessi per visualizzare questa sezione.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
+                style     = MaterialTheme.typography.bodyMedium,
+                color     = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
                 textAlign = TextAlign.Center
             )
         }
@@ -427,9 +587,10 @@ fun AccessoNegatoContent() {
 @Composable
 private fun TotaleChip(valore: String, etichetta: String, colore: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(valore, fontSize = 20.sp, color = colore)
+        Text(valore, fontSize = 20.sp, color = colore, fontWeight = FontWeight.Bold)
         Text(
-            etichetta, style = MaterialTheme.typography.labelSmall,
+            etichetta,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
         )
     }

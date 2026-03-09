@@ -1,6 +1,7 @@
 package com.example.curiosillo.ui.screens
 
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -10,7 +11,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -32,25 +32,40 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
-import com.example.curiosillo.repository.DuelloRepository
 import com.example.curiosillo.ui.components.CuriosilloBottomBar
+import com.example.curiosillo.repository.DuelloRepository
 import com.example.curiosillo.viewmodel.DuelloUiState
 import com.example.curiosillo.viewmodel.DuelloViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DuelloScreen(nav: NavController) {
-    val ctx  = LocalContext.current
-    val app  = ctx.applicationContext as CuriosityApplication
+    val ctx = LocalContext.current
+    val app = ctx.applicationContext as CuriosityApplication
     val vm: DuelloViewModel = viewModel(
         factory = DuelloViewModel.Factory(app.repository, DuelloRepository(), ctx)
     )
     val state by vm.state.collectAsState()
 
-    val gradientBg = Brush.verticalGradient(listOf(
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-        MaterialTheme.colorScheme.background
-    ))
+    val inPartita = state is DuelloUiState.InCorso
+            || state is DuelloUiState.Pausa
+            || state is DuelloUiState.InCountdown
+    val inAttesa  = state is DuelloUiState.InAttesa
+
+    var showAbbandonaDialog by remember { mutableStateOf(false) }
+
+    // Back fisico: durante partita/countdown chiede conferma, altrimenti annulla e torna indietro
+    BackHandler(enabled = inPartita || inAttesa) {
+        if (inPartita) showAbbandonaDialog = true
+        else { vm.abbandonaDuello(); nav.popBackStack() }
+    }
+
+    val gradientBg = Brush.verticalGradient(
+        listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+            MaterialTheme.colorScheme.background
+        )
+    )
 
     Scaffold(
         topBar = {
@@ -58,19 +73,33 @@ fun DuelloScreen(nav: NavController) {
                 title = { Text("Duello") },
                 navigationIcon = {
                     IconButton(onClick = {
-                        vm.annullaRicerca()
-                        nav.popBackStack()
-                    }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro") }
+                        val inP = state is DuelloUiState.InCorso
+                                || state is DuelloUiState.Pausa
+                                || state is DuelloUiState.InCountdown
+                        if (inP) showAbbandonaDialog = true
+                        else { vm.annullaRicerca(); nav.popBackStack() }
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        bottomBar = { CuriosilloBottomBar(nav) },
+        bottomBar = {
+            val mostraBar = state is DuelloUiState.Idle || state is DuelloUiState.Risultati
+            if (mostraBar) CuriosilloBottomBar(nav)
+        },
         containerColor = Color.Transparent
     ) { pad ->
-        Box(Modifier.fillMaxSize().background(gradientBg).padding(pad)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(gradientBg)
+                .padding(pad)
+        ) {
+            // ── Contenuto principale ──────────────────────────────────────────
             when (val s = state) {
-                is DuelloUiState.Idle    -> LobbyContent(
+                is DuelloUiState.Idle -> LobbyContent(
                     onCasuale = { vm.cercaAvversarioCasuale() },
                     onAmico   = { vm.creaStanza() },
                     onCodice  = { codice -> vm.uniscitiConCodice(codice) }
@@ -83,12 +112,13 @@ fun DuelloScreen(nav: NavController) {
                     }
                 }
                 is DuelloUiState.InAttesa -> AttesaContent(
-                    stato   = s,
-                    context = ctx,
+                    stato     = s,
+                    context   = ctx,
                     onAnnulla = { vm.annullaRicerca(); nav.popBackStack() }
                 )
-                is DuelloUiState.InCorso  -> PartitaContent(
-                    stato     = s,
+                is DuelloUiState.InCountdown -> CountdownContent(stato = s)
+                is DuelloUiState.InCorso -> PartitaContent(
+                    stato      = s,
                     onRisposta = { vm.rispondi(it) }
                 )
                 is DuelloUiState.Pausa -> PausaContent(stato = s)
@@ -104,13 +134,42 @@ fun DuelloScreen(nav: NavController) {
                     ) {
                         Text("⚠️", fontSize = 48.sp)
                         Spacer(Modifier.height(16.dp))
-                        Text(s.messaggio, textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            s.messaggio,
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                         Spacer(Modifier.height(24.dp))
                         Button(onClick = { vm.reset() }) { Text("Torna indietro") }
                     }
                 }
             }
+
+            // ── Dialog conferma abbandono ─────────────────────────────────────
+            if (showAbbandonaDialog) {
+                AlertDialog(
+                    onDismissRequest = { showAbbandonaDialog = false },
+                    title = { Text("Abbandona il duello?") },
+                    text  = { Text("Se esci ora, il duello verrà annullato e l'avversario sarà avvisato.") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                showAbbandonaDialog = false
+                                vm.abbandonaDuello()
+                                nav.popBackStack()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) { Text("Abbandona") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showAbbandonaDialog = false }) { Text("Resta") }
+                    }
+                )
+            }
+
+
         }
     }
 }
@@ -134,18 +193,21 @@ private fun LobbyContent(
     ) {
         Text("⚔️", fontSize = 64.sp)
         Spacer(Modifier.height(16.dp))
-        Text("Modalità Duello",
+        Text(
+            "Modalità Duello",
             style      = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.ExtraBold,
-            textAlign  = TextAlign.Center)
+            textAlign  = TextAlign.Center
+        )
         Spacer(Modifier.height(8.dp))
-        Text("10 domande • 10 secondi a domanda • risposta in simultanea",
+        Text(
+            "10 domande • 10 secondi a domanda",
             style     = MaterialTheme.typography.bodyMedium,
             color     = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
-            textAlign = TextAlign.Center)
+            textAlign = TextAlign.Center
+        )
         Spacer(Modifier.height(40.dp))
 
-        // Avversario casuale
         Button(
             onClick  = onCasuale,
             modifier = Modifier.fillMaxWidth().height(58.dp),
@@ -153,13 +215,11 @@ private fun LobbyContent(
         ) {
             Icon(Icons.Default.Search, null, Modifier.size(22.dp))
             Spacer(Modifier.width(10.dp))
-            Text("Cerca avversario casuale",
-                style = MaterialTheme.typography.titleMedium)
+            Text("Cerca avversario casuale", style = MaterialTheme.typography.titleMedium)
         }
 
         Spacer(Modifier.height(14.dp))
 
-        // Crea stanza per amico
         OutlinedButton(
             onClick  = onAmico,
             modifier = Modifier.fillMaxWidth().height(58.dp),
@@ -167,20 +227,17 @@ private fun LobbyContent(
         ) {
             Icon(Icons.Default.Person, null, Modifier.size(22.dp))
             Spacer(Modifier.width(10.dp))
-            Text("Crea stanza per un amico",
-                style = MaterialTheme.typography.titleMedium)
+            Text("Crea stanza per un amico", style = MaterialTheme.typography.titleMedium)
         }
 
         Spacer(Modifier.height(14.dp))
 
-        // Unisciti con codice
         OutlinedButton(
             onClick  = { mostraInputCodice = !mostraInputCodice },
             modifier = Modifier.fillMaxWidth().height(58.dp),
             shape    = RoundedCornerShape(16.dp)
         ) {
-            Text("Inserisci codice stanza",
-                style = MaterialTheme.typography.titleMedium)
+            Text("Inserisci codice stanza", style = MaterialTheme.typography.titleMedium)
         }
 
         AnimatedVisibility(visible = mostraInputCodice) {
@@ -213,8 +270,8 @@ private fun LobbyContent(
 
 @Composable
 private fun AttesaContent(
-    stato:    DuelloUiState.InAttesa,
-    context:  android.content.Context,
+    stato:     DuelloUiState.InAttesa,
+    context:   android.content.Context,
     onAnnulla: () -> Unit
 ) {
     val clipboard = LocalClipboardManager.current
@@ -225,12 +282,12 @@ private fun AttesaContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Animazione puntini attesa
         val infiniteTransition = rememberInfiniteTransition(label = "attesa")
         val alpha by infiniteTransition.animateFloat(
-            initialValue = 0.3f, targetValue = 1f,
+            initialValue  = 0.3f,
+            targetValue   = 1f,
             animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
-            label = "alpha"
+            label         = "alpha"
         )
 
         Text("⏳", fontSize = 56.sp)
@@ -247,27 +304,27 @@ private fun AttesaContent(
 
         if (!isCasuale) {
             Spacer(Modifier.height(32.dp))
-            Text("Codice stanza",
+            Text(
+                "Codice stanza",
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            )
             Spacer(Modifier.height(10.dp))
-
-            // Codice grande
             Card(
                 shape  = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
             ) {
                 Text(
                     stato.codice,
-                    modifier   = Modifier.padding(horizontal = 32.dp, vertical = 16.dp),
-                    fontSize   = 38.sp,
-                    fontWeight = FontWeight.ExtraBold,
+                    modifier      = Modifier.padding(horizontal = 32.dp, vertical = 16.dp),
+                    fontSize      = 38.sp,
+                    fontWeight    = FontWeight.ExtraBold,
                     letterSpacing = 8.sp,
-                    color      = MaterialTheme.colorScheme.onPrimaryContainer
+                    color         = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
-
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
@@ -282,8 +339,10 @@ private fun AttesaContent(
                     onClick = {
                         val intent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT,
-                                "Sfidami su Curiosillo! Codice stanza: ${stato.codice} ⚔️")
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "Sfidami su Curiosillo! Codice stanza: ${stato.codice} ⚔️"
+                            )
                         }
                         context.startActivity(Intent.createChooser(intent, "Condividi codice"))
                     },
@@ -307,21 +366,19 @@ private fun AttesaContent(
 
 @Composable
 private fun PartitaContent(
-    stato:     DuelloUiState.InCorso,
+    stato:      DuelloUiState.InCorso,
     onRisposta: (String) -> Unit
 ) {
-    val domanda      = stato.duello.domande.getOrNull(stato.indiceCorrente) ?: return
-    val avvUid       = stato.duello.avversarioUid(stato.mioUid)
-    val avvNick      = avvUid?.let { stato.duello.giocatori[it]?.nickname } ?: "Avversario"
-    val avvRisposto  = stato.risposteCorrentiAvversario > stato.indiceCorrente
+    val domanda     = stato.duello.domande.getOrNull(stato.indiceCorrente) ?: return
+    val avvUid      = stato.duello.avversarioUid(stato.mioUid)
+    val avvNick     = avvUid?.let { stato.duello.giocatori[it]?.nickname } ?: "Avversario"
+    val avvRisposto = stato.risposteCorrentiAvversario > stato.indiceCorrente
 
-    // Shuffled con seed stabile per la stessa domanda
-    val seed         = (stato.duello.id + stato.indiceCorrente).hashCode().toLong()
-    val risposte     = remember(stato.indiceCorrente, stato.duello.id) {
+    val seed     = (stato.duello.id + stato.indiceCorrente).hashCode().toLong()
+    val risposte = remember(stato.indiceCorrente, stato.duello.id) {
         domanda.risposteShuffled(seed)
     }
 
-    // Colore timer
     val timerColor = when {
         stato.secondiRimasti > 6 -> Color(0xFF4CAF50)
         stato.secondiRimasti > 3 -> Color(0xFFFF9800)
@@ -332,10 +389,11 @@ private fun PartitaContent(
         Modifier.fillMaxSize().padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // ── Progresso ─────────────────────────────────────────────────────────
-        Text("Domanda ${stato.indiceCorrente + 1} di ${stato.duello.domande.size}",
+        Text(
+            "Domanda ${stato.indiceCorrente + 1} di ${stato.duello.domande.size}",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+        )
         Spacer(Modifier.height(6.dp))
         LinearProgressIndicator(
             progress   = { (stato.indiceCorrente + 1f) / stato.duello.domande.size },
@@ -343,47 +401,53 @@ private fun PartitaContent(
             color      = Color(0xFFFF9800),
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
-
         Spacer(Modifier.height(10.dp))
 
-        // ── Giocatori + punteggi (sotto la barra) ─────────────────────────────
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment     = Alignment.CenterVertically
         ) {
-            PunteggioChip(nick = stato.mioNick, punteggio = stato.duello.punteggio(stato.mioUid), isMe = true)
-
-            // Timer
+            PunteggioChip(
+                nick      = stato.mioNick,
+                punteggio = stato.duello.punteggio(stato.mioUid),
+                isMe      = true
+            )
             Box(
-                Modifier.size(56.dp).clip(CircleShape)
+                Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
                     .background(timerColor.copy(alpha = 0.15f))
                     .border(2.dp, timerColor, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text("${stato.secondiRimasti}", fontSize = 22.sp, color = timerColor)
             }
-
-            PunteggioChip(nick = avvNick, punteggio = stato.duello.punteggio(avvUid ?: ""), isMe = false)
+            PunteggioChip(
+                nick      = avvNick,
+                punteggio = stato.duello.punteggio(avvUid ?: ""),
+                isMe      = false
+            )
         }
 
         Spacer(Modifier.height(8.dp))
-
-        // Indicatore avversario
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             AnimatedVisibility(visible = avvRisposto) {
-                Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
-                    Text("✓ $avvNick ha risposto",
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Text(
+                        "✓ $avvNick ha risposto",
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         style    = MaterialTheme.typography.labelSmall,
-                        color    = MaterialTheme.colorScheme.onSecondaryContainer)
+                        color    = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
                 }
             }
         }
 
         Spacer(Modifier.height(16.dp))
-
-        // ── Domanda ───────────────────────────────────────────────────────────
         Card(
             Modifier.fillMaxWidth(),
             shape     = RoundedCornerShape(20.dp),
@@ -401,19 +465,17 @@ private fun PartitaContent(
         }
 
         Spacer(Modifier.height(20.dp))
-
-        // ── Risposte ──────────────────────────────────────────────────────────
         risposte.forEach { risposta ->
             val isSelezionata = stato.rispostaData == risposta
             val isCorretta    = risposta == domanda.correctAnswer
             val haRisposto    = stato.rispostaData != null
 
             val bgColor = when {
-                !haRisposto   -> MaterialTheme.colorScheme.surface
+                !haRisposto                  -> MaterialTheme.colorScheme.surface
                 isSelezionata && isCorretta  -> Color(0xFF4CAF50)
                 isSelezionata && !isCorretta -> Color(0xFFF44336)
                 haRisposto && isCorretta     -> Color(0xFF4CAF50).copy(alpha = 0.3f)
-                else          -> MaterialTheme.colorScheme.surface
+                else                         -> MaterialTheme.colorScheme.surface
             }
 
             Card(
@@ -425,7 +487,9 @@ private fun PartitaContent(
             ) {
                 Text(
                     risposta,
-                    modifier   = Modifier.padding(horizontal = 20.dp, vertical = 16.dp).fillMaxWidth(),
+                    modifier   = Modifier
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                        .fillMaxWidth(),
                     style      = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (isSelezionata) FontWeight.Bold else FontWeight.Normal,
                     color      = when {
@@ -449,16 +513,21 @@ private fun PunteggioChip(nick: String, punteggio: Int, isMe: Boolean) {
             Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(nick, style = MaterialTheme.typography.labelSmall,
+            Text(
+                nick,
+                style      = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = if (isMe) MaterialTheme.colorScheme.onPrimaryContainer
+                color      = if (isMe) MaterialTheme.colorScheme.onPrimaryContainer
                 else MaterialTheme.colorScheme.onSecondaryContainer,
-                maxLines = 1)
-            Text("$punteggio pt",
-                style = MaterialTheme.typography.titleMedium,
+                maxLines   = 1
+            )
+            Text(
+                "$punteggio pt",
+                style      = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.ExtraBold,
-                color = if (isMe) MaterialTheme.colorScheme.onPrimaryContainer
-                else MaterialTheme.colorScheme.onSecondaryContainer)
+                color      = if (isMe) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onSecondaryContainer
+            )
         }
     }
 }
@@ -467,24 +536,21 @@ private fun PunteggioChip(nick: String, punteggio: Int, isMe: Boolean) {
 
 @Composable
 private fun PausaContent(stato: DuelloUiState.Pausa) {
-    val isCorretta  = stato.eraCorretta
+    val isCorretta    = stato.eraCorretta
     val nonHaRisposto = stato.miaRisposta == null
 
-    val bgColor = when {
+    val bgColor   = when {
         nonHaRisposto -> MaterialTheme.colorScheme.surfaceVariant
         isCorretta    -> Color(0xFF1B5E20)
         else          -> Color(0xFFB71C1C)
     }
-
-    // Determiniamo il colore del testo in base alla risposta
     val textColor = if (nonHaRisposto) Color.Black else Color.White
-
-    val emoji = when {
+    val emoji     = when {
         nonHaRisposto -> "⏰"
         isCorretta    -> "✅"
         else          -> "❌"
     }
-    val titolo = when {
+    val titolo    = when {
         nonHaRisposto -> "Tempo scaduto!"
         isCorretta    -> "Risposta corretta!"
         else          -> "Risposta errata"
@@ -509,18 +575,20 @@ private fun PausaContent(stato: DuelloUiState.Pausa) {
             )
             Spacer(Modifier.height(20.dp))
 
-            // Risposta corretta Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape    = RoundedCornerShape(16.dp),
                 colors   = CardDefaults.cardColors(
                     containerColor = if (nonHaRisposto) Color.Black.copy(alpha = 0.05f)
-                    else Color.White.copy(alpha = 0.15f))
+                    else Color.White.copy(alpha = 0.15f)
+                )
             ) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Risposta corretta:",
-                        style     = MaterialTheme.typography.labelLarge,
-                        color     = textColor.copy(alpha = 0.7f))
+                    Text(
+                        "Risposta corretta:",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = textColor.copy(alpha = 0.7f)
+                    )
                     Spacer(Modifier.height(6.dp))
                     Text(
                         stato.rispostaCorretta,
@@ -531,19 +599,21 @@ private fun PausaContent(stato: DuelloUiState.Pausa) {
                 }
             }
 
-            // Se ha risposto in modo errato, mostra anche la sua risposta
             if (!nonHaRisposto && !isCorretta) {
                 Spacer(Modifier.height(10.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape    = RoundedCornerShape(16.dp),
                     colors   = CardDefaults.cardColors(
-                        containerColor = Color.White.copy(alpha = 0.10f))
+                        containerColor = Color.White.copy(alpha = 0.10f)
+                    )
                 ) {
                     Column(Modifier.padding(16.dp)) {
-                        Text("La tua risposta:",
+                        Text(
+                            "La tua risposta:",
                             style = MaterialTheme.typography.labelLarge,
-                            color = Color.White.copy(alpha = 0.7f))
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
                         Spacer(Modifier.height(6.dp))
                         Text(
                             stato.miaRisposta ?: "",
@@ -556,12 +626,10 @@ private fun PausaContent(stato: DuelloUiState.Pausa) {
             }
 
             Spacer(Modifier.height(28.dp))
-
-            // Countdown
             Text(
                 "Prossima domanda tra ${stato.secondiRimasti}…",
-                style  = MaterialTheme.typography.bodyMedium,
-                color  = textColor.copy(alpha = 0.65f),
+                style     = MaterialTheme.typography.bodyMedium,
+                color     = textColor.copy(alpha = 0.65f),
                 textAlign = TextAlign.Center
             )
         }
@@ -584,7 +652,10 @@ private fun RisultatiContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(when { pareggio -> "🤝"; haVinto -> "🏆"; else -> "😔" }, fontSize = 72.sp)
+        Text(
+            when { pareggio -> "🤝"; haVinto -> "🏆"; else -> "😔" },
+            fontSize = 72.sp
+        )
         Spacer(Modifier.height(16.dp))
         Text(
             when { pareggio -> "Pareggio!"; haVinto -> "Hai vinto!"; else -> "Hai perso!" },
@@ -594,7 +665,6 @@ private fun RisultatiContent(
         )
         Spacer(Modifier.height(32.dp))
 
-        // Punteggi
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -623,8 +693,11 @@ private fun RisultatiContent(
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape    = RoundedCornerShape(16.dp)
         ) {
-            Text("Gioca ancora", style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold)
+            Text(
+                "Gioca ancora",
+                style      = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
         }
         Spacer(Modifier.height(12.dp))
         OutlinedButton(
@@ -651,7 +724,8 @@ private fun RisultatoCard(
         shape     = RoundedCornerShape(18.dp),
         colors    = CardDefaults.cardColors(
             containerColor = if (haVinto) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.surfaceVariant),
+            else MaterialTheme.colorScheme.surfaceVariant
+        ),
         elevation = CardDefaults.cardElevation(if (haVinto) 6.dp else 2.dp)
     ) {
         Column(
@@ -683,6 +757,54 @@ private fun RisultatoCard(
                 color = if (haVinto) Color.White.copy(alpha = 0.8f)
                 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
+        }
+    }
+}
+
+// ── Countdown pre-partita ─────────────────────────────────────────────────────
+
+@Composable
+private fun CountdownContent(stato: DuelloUiState.InCountdown) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.55f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            shape     = RoundedCornerShape(24.dp),
+            colors    = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ),
+            elevation = CardDefaults.cardElevation(12.dp),
+            modifier  = Modifier.padding(32.dp)
+        ) {
+            Column(
+                Modifier.padding(horizontal = 48.dp, vertical = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("⚔️", fontSize = 52.sp)
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Avversario trovato!",
+                    style      = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color      = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Il duello inizia tra",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+                Spacer(Modifier.height(20.dp))
+                Text(
+                    "${stato.secondiRimasti}",
+                    fontSize   = 72.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color      = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

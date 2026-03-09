@@ -1,8 +1,6 @@
 package com.example.curiosillo.ui.screens
 
 import android.content.Intent
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -13,18 +11,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.ThumbDown
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.outlined.ThumbDown
-import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -50,10 +44,12 @@ import com.example.curiosillo.ui.categoryImage
 import com.example.curiosillo.ui.components.NotaBottomSheet
 import com.example.curiosillo.ui.theme.DarkText
 import com.example.curiosillo.ui.theme.Hidden
+import com.example.curiosillo.ui.theme.Secondary
 import com.example.curiosillo.ui.theme.Success
 import com.example.curiosillo.viewmodel.CommentiUiState
 import com.example.curiosillo.viewmodel.CuriosityUiState
 import com.example.curiosillo.viewmodel.CuriosityViewModel
+import com.example.curiosillo.viewmodel.SegnalazioneUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,7 +61,16 @@ fun CuriosityScreen(nav: NavController) {
     )
     val state    by vm.state.collectAsState()
     val risultato by vm.risultatoAzione.collectAsState()
-    val commentiState by vm.commentiState.collectAsState()
+    val commentiState     by vm.commentiState.collectAsState()
+    val segnalazioneState by vm.segnalazioneState.collectAsState()
+
+    // Banner segnalazione inviata
+    if (segnalazioneState is SegnalazioneUiState.Successo) {
+        LaunchedEffect(Unit) {
+            kotlinx.coroutines.delay(2500)
+            vm.dismissSegnalazione()
+        }
+    }
 
     var badgeDaMostrare  by remember { mutableStateOf<BadgeSbloccato?>(null) }
     var badgeQueue       by remember { mutableStateOf<List<BadgeSbloccato>>(emptyList()) }
@@ -209,8 +214,7 @@ fun CuriosityScreen(nav: NavController) {
                         onLearn      = { mostraFantastico = true; vm.markLearned() },
                         onBookmark   = { vm.toggleBookmark() },
                         onSalvaNota  = { vm.salvaNota(it) },
-                        onLike       = { vm.setVoto(1) },
-                        onDislike    = { vm.setVoto(-1) },
+                        onSegnala    = { tipo, testo -> vm.inviaSegnalazione(tipo, testo) },
                         onIgnora     = { mostraDialogIgnora = true },
                         onCommenti   = { vm.caricaCommenti(); mostraCommenti = true }
                     )
@@ -263,11 +267,11 @@ private fun CuriosityContent(
     onLearn:     () -> Unit,
     onBookmark:  () -> Unit,
     onSalvaNota: (String) -> Unit,
-    onLike:      () -> Unit,
-    onDislike:   () -> Unit,
+    onSegnala:   (tipo: String, testo: String) -> Unit,
     onIgnora:    () -> Unit,
     onCommenti:  () -> Unit
 ) {
+    var mostraSegnalazione by remember { mutableStateOf(false) }
     var mostraNota by remember { mutableStateOf(false) }
     val noteCardBg = MaterialTheme.colorScheme.surfaceVariant
     val noteTextColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -386,37 +390,27 @@ private fun CuriosityContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                // Like
-                FilledTonalIconButton(
-                    onClick = onLike,
-                    colors  = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = if (s.curiosity.voto == 1)
-                            MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Icon(
-                        if (s.curiosity.voto == 1) Icons.Default.ThumbUp else Icons.Outlined.ThumbUp,
-                        contentDescription = "Mi piace",
-                        tint = if (s.curiosity.voto == 1) Color.White
-                        else MaterialTheme.colorScheme.onSurfaceVariant
+                // Segnala
+                if (mostraSegnalazione) {
+                    SegnalazioneBottomSheet(
+                        onInvia   = { tipo, testo -> onSegnala(tipo, testo); mostraSegnalazione = false },
+                        onDismiss = { mostraSegnalazione = false }
                     )
                 }
-                // Dislike
-                FilledTonalIconButton(
-                    onClick = onDislike,
-                    colors  = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = if (s.curiosity.voto == -1)
-                            MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.surfaceVariant
-                    )
+                OutlinedButton(
+                    onClick        = { mostraSegnalazione = true },
+                    modifier       = Modifier.height(36.dp),
+                    border         = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                    shape          = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(
-                        if (s.curiosity.voto == -1) Icons.Default.ThumbDown else Icons.Outlined.ThumbDown,
-                        contentDescription = "Non mi piace",
-                        tint = if (s.curiosity.voto == -1) Color.White
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Icon(Icons.Default.Flag, null, Modifier.size(15.dp),
+                        tint = Secondary)
+                    Spacer(Modifier.width(5.dp))
+                    Text("Segnala",
+                        style    = MaterialTheme.typography.labelMedium,
+                        color    = Secondary,
+                        fontWeight = FontWeight.SemiBold)
                 }
                 Spacer(Modifier.weight(1f))
                 // Commenti

@@ -82,20 +82,10 @@ class BookmarkViewModel(private val repo: CuriosityRepository) : ViewModel() {
         }
     }
 
-    fun setVoto(pillola: Curiosity, voto: Int?) {
+    fun inviaSegnalazione(pillola: Curiosity, tipo: String, testo: String) {
+        val externalId = pillola.externalId ?: return
         viewModelScope.launch {
-            val vecchioVoto = pillola.voto
-            val nuovoVoto   = if (vecchioVoto == voto) null else voto
-            repo.setVoto(pillola, nuovoVoto)
-            // aggiorna la pillola nel dettaglio se aperta
-            val aggiornata = pillola.copy(voto = nuovoVoto)
-            _state.value = _state.value.copy(
-                dettaglio = if (_state.value.dettaglio?.id == pillola.id) aggiornata else _state.value.dettaglio,
-                risultati = _state.value.risultati.map { if (it.id == pillola.id) aggiornata else it }
-            )
-            // Sync su Firestore
-            val externalId = pillola.externalId ?: return@launch
-            FirebaseManager.sincronizzaVoto(externalId, vecchioVoto, nuovoVoto)
+            FirebaseManager.inviaSegnalazione(externalId, tipo, testo)
         }
     }
 

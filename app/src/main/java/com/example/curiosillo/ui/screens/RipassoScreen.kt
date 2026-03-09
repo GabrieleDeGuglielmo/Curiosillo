@@ -4,7 +4,9 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,11 +19,10 @@ import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.ThumbDown
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.outlined.ThumbDown
-import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -65,7 +66,8 @@ fun RipassoScreen(nav: NavController) {
     var mostraNota      by remember { mutableStateOf(false) }
     var mostraSelettore by remember { mutableStateOf(false) }
     var mostraCommenti  by remember { mutableStateOf(false) }
-    var mostraAzioni    by remember { mutableStateOf(false) }
+    var mostraAzioni       by remember { mutableStateOf(false) }
+    var mostraSegnalazione by remember { mutableStateOf(false) }
 
     val opzioniGiorni = listOf(
         0  to "Tutte",
@@ -132,6 +134,13 @@ fun RipassoScreen(nav: NavController) {
 
     // ── Menu azioni (bottom sheet) ────────────────────────────────────────────
     val cur = vm.pilloleCorrente()
+    if (mostraSegnalazione) {
+        SegnalazioneBottomSheet(
+            onInvia   = { tipo, testo -> vm.inviaSegnalazione(tipo, testo); mostraSegnalazione = false },
+            onDismiss = { mostraSegnalazione = false }
+        )
+    }
+
     if (mostraAzioni && cur != null) {
         val sheetStateAzioni = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
@@ -151,45 +160,17 @@ fun RipassoScreen(nav: NavController) {
                     modifier   = Modifier.padding(bottom = 16.dp)
                 )
 
-                // ── Voto ─────────────────────────────────────────────────────
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                // ── Segnala ─────────────────────────────────────────────────────
+                OutlinedButton(
+                    onClick  = { mostraAzioni = false; mostraSegnalazione = true },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape    = RoundedCornerShape(14.dp),
+                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f))
                 ) {
-                    OutlinedButton(
-                        onClick  = { vm.setVoto(1); mostraAzioni = false },
-                        modifier = Modifier.weight(1f).height(52.dp),
-                        shape    = RoundedCornerShape(14.dp),
-                        colors   = if (cur.voto == 1)
-                            ButtonDefaults.outlinedButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor   = Color.White)
-                        else ButtonDefaults.outlinedButtonColors()
-                    ) {
-                        Icon(
-                            if (cur.voto == 1) Icons.Default.ThumbUp else Icons.Outlined.ThumbUp,
-                            null, Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text("Mi piace")
-                    }
-                    OutlinedButton(
-                        onClick  = { vm.setVoto(-1); mostraAzioni = false },
-                        modifier = Modifier.weight(1f).height(52.dp),
-                        shape    = RoundedCornerShape(14.dp),
-                        colors   = if (cur.voto == -1)
-                            ButtonDefaults.outlinedButtonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor   = Color.White)
-                        else ButtonDefaults.outlinedButtonColors()
-                    ) {
-                        Icon(
-                            if (cur.voto == -1) Icons.Default.ThumbDown else Icons.Outlined.ThumbDown,
-                            null, Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text("Non mi piace")
-                    }
+                    Icon(Icons.Default.Flag, null, Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Segnala curiosità", fontWeight = FontWeight.SemiBold)
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -251,7 +232,7 @@ fun RipassoScreen(nav: NavController) {
                         val label = opzioniGiorni.find { it.first == state.giorniSelezionati }?.second ?: "Filtra"
                         Text(label, color = MaterialTheme.colorScheme.primary)
                     }
-                    // Pulsante azioni (voto/nota/commenti)
+                    // Pulsante azioni (segnala/nota/commenti)
                     if (!state.pillole.isEmpty()) {
                         IconButton(onClick = { mostraAzioni = true }) {
                             Icon(Icons.Default.MoreVert, "Azioni",

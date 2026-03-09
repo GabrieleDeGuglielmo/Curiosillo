@@ -5,6 +5,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,17 +14,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.BookmarkRemove
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.ThumbDown
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.outlined.ThumbDown
-import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,7 +49,8 @@ fun BookmarkScreen(nav: NavController) {
     val repo = (ctx.applicationContext as CuriosityApplication).repository
     val vm: BookmarkViewModel = viewModel(factory = BookmarkViewModel.Factory(repo))
     val state by vm.state.collectAsState()
-    var pillolaPerNota by remember { mutableStateOf<Curiosity?>(null) }
+    var pillolaPerNota     by remember { mutableStateOf<Curiosity?>(null) }
+    var mostraSegnalazione by remember { mutableStateOf<Curiosity?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     pillolaPerNota?.let { pillola ->
@@ -63,6 +60,13 @@ fun BookmarkScreen(nav: NavController) {
             onChiudi = { pillolaPerNota = null })
     }
 
+    mostraSegnalazione?.let { pillola ->
+        SegnalazioneBottomSheet(
+            onInvia   = { tipo, testo -> vm.inviaSegnalazione(pillola, tipo, testo); mostraSegnalazione = null },
+            onDismiss = { mostraSegnalazione = null }
+        )
+    }
+
     state.dettaglio?.let { pillola ->
         ModalBottomSheet(onDismissRequest = { vm.chiudiDettaglio() }, sheetState = sheetState) {
             val context = LocalContext.current
@@ -70,8 +74,7 @@ fun BookmarkScreen(nav: NavController) {
                 pillola = pillola,
                 onRimuovi = { vm.rimuoviBookmark(pillola) },
                 onNota = { pillolaPerNota = pillola },
-                onLike = { vm.setVoto(pillola, 1) },
-                onDislike = { vm.setVoto(pillola, -1) },
+                onSegnala = { mostraSegnalazione = pillola; vm.chiudiDettaglio() },
                 onCondividi = {
                     val testo =
                         "📚 ${pillola.title}\n\n${pillola.body}\n\n— Categoria: ${pillola.category}\nScoperto con Curiosillo 🎓"
@@ -328,7 +331,7 @@ private fun BookmarkCard(pillola: Curiosity, onClick: () -> Unit) {
 @Composable
 private fun DettaglioSheet(
     pillola: Curiosity, onRimuovi: () -> Unit, onNota: () -> Unit,
-    onLike: () -> Unit, onDislike: () -> Unit, onCondividi: () -> Unit, onChiudi: () -> Unit
+    onSegnala: () -> Unit, onCondividi: () -> Unit, onChiudi: () -> Unit
 ) {
     val noteCardBg = MaterialTheme.colorScheme.surfaceVariant
     val noteTextColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -380,41 +383,20 @@ private fun DettaglioSheet(
         }
         Spacer(Modifier.height(20.dp))
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(
-                onClick = onLike, modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = if (pillola.voto == 1) ButtonDefaults.outlinedButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White
-                )
-                else ButtonDefaults.outlinedButtonColors()
-            ) {
-                Icon(
-                    if (pillola.voto == 1) Icons.Default.ThumbUp else Icons.Outlined.ThumbUp,
-                    null,
-                    Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(6.dp)); Text("Mi piace")
-            }
-            OutlinedButton(
-                onClick = onDislike, modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = if (pillola.voto == -1) ButtonDefaults.outlinedButtonColors(
-                    containerColor = MaterialTheme.colorScheme.error, contentColor = Color.White
-                )
-                else ButtonDefaults.outlinedButtonColors()
-            ) {
-                Icon(
-                    if (pillola.voto == -1) Icons.Default.ThumbDown else Icons.Outlined.ThumbDown,
-                    null,
-                    Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(6.dp)); Text("Non mi piace")
-            }
+        // Segnala — gestita nel parent per evitare sheet annidati
+        OutlinedButton(
+            onClick        = { onSegnala() },
+            modifier       = Modifier.fillMaxWidth().height(48.dp),
+            shape          = RoundedCornerShape(12.dp),
+            border         = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+        ) {
+            Icon(Icons.Default.Flag, null, Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+            Spacer(Modifier.width(6.dp))
+            Text("Segnala curiosità",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
         }
 
         Spacer(Modifier.height(10.dp))
