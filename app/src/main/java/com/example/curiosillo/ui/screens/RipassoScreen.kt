@@ -17,6 +17,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.CheckCircle
@@ -40,7 +42,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
@@ -48,6 +49,7 @@ import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.ui.categoryImage
 import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.ui.components.NotaBottomSheet
+import com.example.curiosillo.ui.theme.Success
 import com.example.curiosillo.viewmodel.RipassoViewModel
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -60,12 +62,14 @@ fun RipassoScreen(nav: NavController) {
     val vm: RipassoViewModel = viewModel(
         factory = RipassoViewModel.Factory(app.repository)
     )
-    val state         by vm.state.collectAsState()
-    val commentiState by vm.commentiState.collectAsState()
+    val state             by vm.state.collectAsState()
+    val commentiState     by vm.commentiState.collectAsState()
 
-    var mostraNota      by remember { mutableStateOf(false) }
-    var mostraSelettore by remember { mutableStateOf(false) }
-    var mostraCommenti  by remember { mutableStateOf(false) }
+    val segnalazioneState by vm.segnalazioneState.collectAsState()
+
+    var mostraNota         by remember { mutableStateOf(false) }
+    var mostraSelettore    by remember { mutableStateOf(false) }
+    var mostraCommenti     by remember { mutableStateOf(false) }
     var mostraAzioni       by remember { mutableStateOf(false) }
     var mostraSegnalazione by remember { mutableStateOf(false) }
 
@@ -76,6 +80,13 @@ fun RipassoScreen(nav: NavController) {
         14 to "14+ giorni fa",
         30 to "30+ giorni fa"
     )
+
+    // Automatically close the report sheet on success
+    LaunchedEffect(segnalazioneState) {
+        if (segnalazioneState is SegnalazioneUiState.Successo) {
+            mostraSegnalazione = false
+        }
+    }
 
     // ── Dialog filtro ─────────────────────────────────────────────────────────
     if (mostraSelettore) {
@@ -104,13 +115,23 @@ fun RipassoScreen(nav: NavController) {
         )
     }
 
-    // ── Nota bottom sheet ─────────────────────────────────────────────────────
     val pillola = vm.pilloleCorrente()
+
+    // ── Nota bottom sheet ─────────────────────────────────────────────────────
     if (mostraNota && pillola != null) {
         NotaBottomSheet(
             notaAttuale = pillola.nota,
             onSalva     = { vm.salvaNota(it) },
             onChiudi    = { mostraNota = false }
+        )
+    }
+
+    // ── Segnalazione bottom sheet ─────────────────────────────────────────────
+    if (mostraSegnalazione) {
+        SegnalazioneBottomSheet(
+            onInvia   = { tipo, testo -> vm.inviaSegnalazione(tipo, testo) },
+            onDismiss = { mostraSegnalazione = false },
+            isLoading = segnalazioneState is SegnalazioneUiState.Loading
         )
     }
 
@@ -133,15 +154,7 @@ fun RipassoScreen(nav: NavController) {
     }
 
     // ── Menu azioni (bottom sheet) ────────────────────────────────────────────
-    val cur = vm.pilloleCorrente()
-    if (mostraSegnalazione) {
-        SegnalazioneBottomSheet(
-            onInvia   = { tipo, testo -> vm.inviaSegnalazione(tipo, testo); mostraSegnalazione = false },
-            onDismiss = { mostraSegnalazione = false }
-        )
-    }
-
-    if (mostraAzioni && cur != null) {
+    if (mostraAzioni && pillola != null) {
         val sheetStateAzioni = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
             onDismissRequest = { mostraAzioni = false },
@@ -160,17 +173,20 @@ fun RipassoScreen(nav: NavController) {
                     modifier   = Modifier.padding(bottom = 16.dp)
                 )
 
-                // ── Segnala ─────────────────────────────────────────────────────
+                // ── Bookmark ─────────────────────────────────────────────────
                 OutlinedButton(
-                    onClick  = { mostraAzioni = false; mostraSegnalazione = true },
+                    onClick  = { mostraAzioni = false; vm.toggleBookmark() },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape    = RoundedCornerShape(14.dp),
-                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f))
+                    shape    = RoundedCornerShape(14.dp)
                 ) {
-                    Icon(Icons.Default.Flag, null, Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Segnala curiosità", fontWeight = FontWeight.SemiBold)
+                    Icon(
+                        imageVector = if (pillola.isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                        contentDescription = "Preferito",
+                        Modifier.size(20.dp),
+                        tint = if (pillola.isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (pillola.isBookmarked) "Rimuovi dai preferiti" else "Aggiungi ai preferiti", fontWeight = FontWeight.SemiBold)
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -183,11 +199,11 @@ fun RipassoScreen(nav: NavController) {
                 ) {
                     Icon(
                         Icons.Default.EditNote, null, Modifier.size(20.dp),
-                        tint = if (cur.nota.isNotBlank()) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        tint = if (pillola.nota.isNotBlank()) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text(if (cur.nota.isNotBlank()) "Modifica nota" else "Aggiungi nota")
+                    Text(if (pillola.nota.isNotBlank()) "Modifica nota" else "Aggiungi nota", fontWeight = FontWeight.SemiBold)
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -202,12 +218,24 @@ fun RipassoScreen(nav: NavController) {
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape    = RoundedCornerShape(14.dp)
                 ) {
-                    Icon(Icons.Default.ChatBubbleOutline, null, Modifier.size(20.dp))
+                    Icon(Icons.Default.ChatBubbleOutline, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     Spacer(Modifier.width(8.dp))
+                    Text("Commenti (${commentiState.commenti.size})", fontWeight = FontWeight.SemiBold)
+                }
 
-                    val count = commentiState.commenti.size
-                    val label = "Commenti ($count)"
-                    Text(label)
+                Spacer(Modifier.height(12.dp))
+
+                // ── Segnala ─────────────────────────────────────────────────────
+                OutlinedButton(
+                    onClick  = { mostraAzioni = false; mostraSegnalazione = true },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape    = RoundedCornerShape(14.dp),
+                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f)),
+                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Icon(Icons.Default.Flag, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Segnala curiosità", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -219,11 +247,7 @@ fun RipassoScreen(nav: NavController) {
             TopAppBar(
                 title = { Text("Ripasso") },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        if (nav.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
-                            nav.popBackStack()
-                        }
-                    }) {
+                    IconButton(onClick = { nav.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
                     }
                 },
@@ -232,8 +256,7 @@ fun RipassoScreen(nav: NavController) {
                         val label = opzioniGiorni.find { it.first == state.giorniSelezionati }?.second ?: "Filtra"
                         Text(label, color = MaterialTheme.colorScheme.primary)
                     }
-                    // Pulsante azioni (segnala/nota/commenti)
-                    if (!state.pillole.isEmpty()) {
+                    if (state.pillole.isNotEmpty()) {
                         IconButton(onClick = { mostraAzioni = true }) {
                             Icon(Icons.Default.MoreVert, "Azioni",
                                 tint = MaterialTheme.colorScheme.onBackground)
@@ -251,39 +274,80 @@ fun RipassoScreen(nav: NavController) {
             MaterialTheme.colorScheme.background
         ))
 
-        when {
-            state.isLoading ->
-                Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+        Box(Modifier.fillMaxSize()) {
+            when {
+                state.isLoading ->
+                    Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
 
-            state.pillole.isEmpty() ->
-                Column(
-                    Modifier.fillMaxSize().background(gradientBg).padding(pad),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text("📚", fontSize = 56.sp)
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        "Nessuna pillola da ripassare\ncon il filtro attuale.",
-                        style     = MaterialTheme.typography.bodyLarge,
-                        color     = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    TextButton(onClick = { mostraSelettore = true }) {
-                        Text("Cambia filtro", color = MaterialTheme.colorScheme.primary)
+                state.pillole.isEmpty() ->
+                    Column(
+                        Modifier.fillMaxSize().background(gradientBg).padding(pad),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text("📚", fontSize = 56.sp)
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "Nessuna pillola da ripassare\ncon il filtro attuale.",
+                            style     = MaterialTheme.typography.bodyLarge,
+                            color     = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        TextButton(onClick = { mostraSelettore = true }) {
+                            Text("Cambia filtro", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+
+                else -> PilloleCarousel(
+                    state         = state,
+                    gradientBg    = gradientBg,
+                    pad           = pad,
+                    onProssima    = { vm.prossima() },
+                    onPrecedente  = { vm.precedente() }
+                )
+            }
+
+            // ── Banner Notifiche Segnalazione ─────────────────────────────
+            when (val sState = segnalazioneState) {
+                is SegnalazioneUiState.Successo -> {
+                    LaunchedEffect(Unit) {
+                        kotlinx.coroutines.delay(3000)
+                        vm.dismissSegnalazione()
+                    }
+                    Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
+                        Surface(
+                            color = Success,
+                            shape = RoundedCornerShape(12.dp),
+                            shadowElevation = 6.dp
+                        ) {
+                            Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = "Success", tint = Color.White)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Segnalazione inviata. Grazie!", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
-
-            else -> PilloleCarousel(
-                state         = state,
-                gradientBg    = gradientBg,
-                pad           = pad,
-                onProssima    = { vm.prossima() },
-                onPrecedente  = { vm.precedente() }
-            )
+                is SegnalazioneUiState.Errore -> {
+                    LaunchedEffect(Unit) {
+                        kotlinx.coroutines.delay(3500)
+                        vm.dismissSegnalazione()
+                    }
+                    Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.error,
+                            shape = RoundedCornerShape(12.dp),
+                            shadowElevation = 6.dp
+                        ) {
+                            Text(sState.msg, color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp))
+                        }
+                    }
+                }
+                else -> {}
+            }
         }
     }
 }
@@ -299,15 +363,13 @@ private fun PilloleCarousel(
     onPrecedente: () -> Unit
 ) {
     // ── Swipe state ───────────────────────────────────────────────────────────
-    // offsetX è l'offset raw del drag; animatedOffset lo insegue con spring
     var rawOffset    by remember { mutableFloatStateOf(0f) }
     val animSpec     = spring<Float>(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
     val animOffset   by animateFloatAsState(targetValue = rawOffset, animationSpec = animSpec, label = "offset")
 
     val swipeThreshold = 100f
-
-    // Resetta l'offset quando cambia la pillola (indice)
     val indice = state.indiceCorrente
+
     LaunchedEffect(indice) { rawOffset = 0f }
 
     val cur           = state.pillole[indice]
@@ -316,7 +378,6 @@ private fun PilloleCarousel(
     val noteCardBg    = MaterialTheme.colorScheme.surfaceVariant
     val noteTextColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    // Rotazione proporzionale all'offset (effetto fisico)
     val rotation = (animOffset / 25f).coerceIn(-8f, 8f)
 
     Box(
@@ -324,7 +385,6 @@ private fun PilloleCarousel(
             .fillMaxSize()
             .background(gradientBg)
             .padding(pad)
-            // Cattura il drag sull'intera area
             .pointerInput(indice) {
                 detectHorizontalDragGestures(
                     onDragEnd = {
@@ -339,7 +399,6 @@ private fun PilloleCarousel(
                 )
             }
     ) {
-        // ── Barra progresso globale in cima (fuori dalla card) ────────────────
         LinearProgressIndicator(
             progress   = { (indice + 1f) / state.pillole.size },
             modifier   = Modifier
@@ -350,11 +409,8 @@ private fun PilloleCarousel(
             trackColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
         )
 
-        // ── "Peek" della card successiva (visibile sul bordo dx) ─────────────
-        // Appare solo se esiste una prossima e l'utente non sta swipando verso dx
         if (hasProssima) {
-            val nextPeekAlpha = ((animOffset / -80f).coerceIn(0f, 1f) * 0.0f + 1f) // sempre visibile
-            val nextPeekOffset = (animOffset * 0.12f)                               // segue leggermente il drag
+            val nextPeekOffset = (animOffset * 0.12f)
             Box(
                 Modifier
                     .align(Alignment.CenterEnd)
@@ -386,7 +442,6 @@ private fun PilloleCarousel(
             }
         }
 
-        // ── Card principale con swipe ─────────────────────────────────────────
         Column(
             Modifier
                 .fillMaxSize()
@@ -394,7 +449,6 @@ private fun PilloleCarousel(
                 .graphicsLayer(rotationZ = rotation)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Immagine categoria
             Image(
                 painter            = painterResource(id = categoryImage(cur.category)),
                 contentDescription = cur.category,
@@ -408,7 +462,6 @@ private fun PilloleCarousel(
             Column(Modifier.padding(horizontal = 24.dp)) {
                 Spacer(Modifier.height(16.dp))
 
-                // ── Header: categoria + contatore prominente ──────────────────
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -419,7 +472,6 @@ private fun PilloleCarousel(
                         label   = { Text(emojiCategoria(cur.category) + " " + cur.category) }
                     )
 
-                    // Contatore prominente con pill colorata
                     Surface(
                         shape = RoundedCornerShape(20.dp),
                         color = MaterialTheme.colorScheme.secondary
@@ -446,7 +498,6 @@ private fun PilloleCarousel(
 
                 Spacer(Modifier.height(10.dp))
 
-                // ── Titolo ────────────────────────────────────────────────────
                 Text(
                     cur.title,
                     style      = MaterialTheme.typography.headlineSmall,
@@ -455,7 +506,6 @@ private fun PilloleCarousel(
                 )
                 Spacer(Modifier.height(16.dp))
 
-                // ── Corpo ─────────────────────────────────────────────────────
                 Card(
                     Modifier.fillMaxWidth(),
                     shape     = RoundedCornerShape(18.dp),
@@ -471,7 +521,6 @@ private fun PilloleCarousel(
                     )
                 }
 
-                // ── Nota (se presente) ────────────────────────────────────────
                 if (cur.nota.isNotBlank()) {
                     Spacer(Modifier.height(12.dp))
                     Card(
@@ -489,7 +538,6 @@ private fun PilloleCarousel(
 
                 Spacer(Modifier.height(24.dp))
 
-                // ── Hint swipe ────────────────────────────────────────────────
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
@@ -522,7 +570,7 @@ private fun PilloleCarousel(
 
                 Spacer(Modifier.height(12.dp))
 
-                // ── Navigazione pulsanti (sempre visibili) ────────────────────
+                // ── Navigazione pulsanti ────────────────────
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)

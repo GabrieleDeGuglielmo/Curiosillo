@@ -7,14 +7,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -27,7 +29,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -154,8 +155,9 @@ fun AdminVotiScreen(nav: NavController) {
             sheetState       = sheetState
         ) {
             SegnalazioniDetailSheet(
-                info     = info,
+                info         = info,
                 onSegnaLetta = { id -> vm.segnaLetta(info.externalId, id) },
+                onModifica   = { nav.navigate("admin_curiosita/${info.externalId}"); aperta = null },
                 onChiudi     = { aperta = null }
             )
         }
@@ -166,12 +168,8 @@ fun AdminVotiScreen(nav: NavController) {
             TopAppBar(
                 title = { Text("Segnalazioni", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        if (nav.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
-                            nav.popBackStack()
-                        }
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
+                    IconButton(onClick = { nav.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, "Indietro")
                     }
                 },
                 actions = {
@@ -338,20 +336,15 @@ private fun SegnalazioneCard(
     val nonLette = info.segnalazioni.count { !it.letta }
     val hasNonLette = nonLette > 0
 
-    Card(
-        modifier  = Modifier.fillMaxWidth().clickable { onClick() },
-        shape     = RoundedCornerShape(16.dp),
-        colors    = CardDefaults.cardColors(
-            containerColor = if (hasNonLette)
-                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
-            else MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(if (hasNonLette) 3.dp else 1.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+            .clickable { onClick() }
+            .padding(16.dp)
     ) {
-        Row(
-            Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
                     highlight(info.titolo, query),
@@ -420,6 +413,7 @@ private fun SegnalazioneCard(
 private fun SegnalazioniDetailSheet(
     info:         SegnalazioneConInfo,
     onSegnaLetta: (String) -> Unit,
+    onModifica:   () -> Unit,
     onChiudi:     () -> Unit
 ) {
     val fmt = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.ITALY)
@@ -430,20 +424,38 @@ private fun SegnalazioniDetailSheet(
             .padding(horizontal = 20.dp)
             .padding(bottom = 32.dp)
     ) {
-        // Header
-        Text(
-            info.titolo,
-            style      = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            maxLines   = 2,
-            overflow   = TextOverflow.Ellipsis
-        )
-        Text(
-            info.externalId,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        // Header + pulsante modifica
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment     = Alignment.Top
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    info.titolo,
+                    style      = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines   = 2,
+                    overflow   = TextOverflow.Ellipsis
+                )
+                Text(
+                    info.externalId,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Button(
+                onClick = onModifica,
+                shape   = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+            ) {
+                Icon(Icons.Default.Edit, null, Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Modifica", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+        Spacer(Modifier.height(16.dp))
 
         val nonLette = info.segnalazioni.filter { !it.letta }
         val lette    = info.segnalazioni.filter { it.letta }

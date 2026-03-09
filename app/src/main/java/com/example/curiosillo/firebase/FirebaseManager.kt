@@ -5,6 +5,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -243,16 +244,20 @@ object FirebaseManager {
      */
     suspend fun inviaSegnalazione(externalId: String, tipo: String, testo: String): Result<Unit> = try {
         val currentUid = uid ?: "anonimo"
-        db.collection("segnalazioni")
-            .document(externalId)
-            .collection("lista")
-            .add(mapOf(
-                "tipo"     to tipo,
-                "testo"    to testo,
-                "uid"      to currentUid,
-                "creatoAt" to System.currentTimeMillis(),
-                "letta"    to false
-            )).await()
+        val parentRef = db.collection("segnalazioni").document(externalId)
+        // Aggiunge la segnalazione nella subcollection
+        parentRef.collection("lista").add(mapOf(
+            "tipo"     to tipo,
+            "testo"    to testo,
+            "uid"      to currentUid,
+            "creatoAt" to System.currentTimeMillis(),
+            "letta"    to false
+        )).await()
+        // Crea/aggiorna il documento padre con il contatore totale
+        parentRef.set(
+            mapOf("totale" to FieldValue.increment(1)),
+            SetOptions.merge()
+        ).await()
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
 
@@ -387,27 +392,36 @@ object FirebaseManager {
                 .filter { it.isNotBlank() && it != "anonimo" }
                 .distinct()
 
-            // Segna tutte le segnalazioni come lette (risolte)
-            val batch = db.batch()
-            segnalazioniSnap.documents.forEach { batch.update(it.reference, "letta", true) }
-            batch.commit().await()
-
-            // Notifica in-app per ogni segnalante
             val ora = System.currentTimeMillis()
+
+            // Invia notifiche e segna segnalazioni come lette in un unico batch
+            val batch = db.batch()
+
+            // Segna tutte le segnalazioni come lette
+            segnalazioniSnap.documents.forEach { batch.update(it.reference, "letta", true) }
+
+            // Aggiunge le notifiche al batch per ogni segnalante
             uidSegnalanti.forEach { uidUtente ->
-                db.collection("notifiche")
+                val notificaRef = db.collection("notifiche")
                     .document(uidUtente)
                     .collection("lista")
-                    .add(mapOf(
-                        "titolo"     to "Curiosità aggiornata ✏️",
-                        "corpo"      to "«$titoloCuriosita» è stata revisionata dopo la tua segnalazione. Grazie!",
-                        "letta"      to false,
-                        "creatoAt"   to ora,
-                        "externalId" to externalId,
-                        "tipo"       to "pillola"
-                    )).await()
+                    .document()
+                batch.set(notificaRef, mapOf(
+                    "titolo"     to "Curiosità aggiornata ✏️",
+                    "corpo"      to "«$titoloCuriosita» è stata revisionata dopo la tua segnalazione. Grazie!",
+                    "letta"      to false,
+                    "creatoAt"   to ora,
+                    "externalId" to externalId,
+                    "tipo"       to "pillola"
+                ))
             }
-        } catch (_: Exception) {}
+
+            // Commit atomico: o tutto va a buon fine o niente
+            batch.commit().await()
+        } catch (e: Exception) {
+            // Logga l'errore invece di inghiottirlo silenziosamente
+            android.util.Log.e("FirebaseManager", "notificaAggiornamento failed for $externalId", e)
+        }
     }
 
     // ── Notifiche in-app ──────────────────────────────────────────────────────

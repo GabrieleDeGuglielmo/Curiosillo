@@ -9,24 +9,20 @@ import com.example.curiosillo.domain.GamificationEngine
 import com.example.curiosillo.domain.RisultatoAzione
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.repository.CuriosityRepository
+import com.example.curiosillo.ui.screens.SegnalazioneHelper
+import com.example.curiosillo.ui.screens.SegnalazioneUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+// UI States
 sealed class CuriosityUiState {
     object Loading : CuriosityUiState()
     object Empty   : CuriosityUiState()
     data class Success(val curiosity: Curiosity, val readCount: Int) : CuriosityUiState()
     object Learned : CuriosityUiState()
-}
-
-sealed class SegnalazioneUiState {
-    object Idle     : SegnalazioneUiState()
-    object Loading  : SegnalazioneUiState()
-    object Successo : SegnalazioneUiState()
-    data class Errore(val msg: String) : SegnalazioneUiState()
 }
 
 class CuriosityViewModel(
@@ -43,6 +39,10 @@ class CuriosityViewModel(
 
     private val _commentiState = MutableStateFlow(CommentiUiState())
     val commentiState: StateFlow<CommentiUiState> = _commentiState.asStateFlow()
+
+    // Shared report state
+    private val _segnalazioneState = MutableStateFlow<SegnalazioneUiState>(SegnalazioneUiState.Idle)
+    val segnalazioneState: StateFlow<SegnalazioneUiState> = _segnalazioneState.asStateFlow()
 
     init { load() }
 
@@ -85,34 +85,30 @@ class CuriosityViewModel(
         }
     }
 
-    // ── Segnalazioni ─────────────────────────────────────────────────────────
-
-    private val _segnalazioneState = MutableStateFlow<SegnalazioneUiState>(SegnalazioneUiState.Idle)
-    val segnalazioneState: StateFlow<SegnalazioneUiState> = _segnalazioneState.asStateFlow()
-
-    fun inviaSegnalazione(tipo: String, testo: String) {
-        val s = _state.value as? CuriosityUiState.Success ?: return
-        val externalId = s.curiosity.externalId ?: return
-        viewModelScope.launch {
-            _segnalazioneState.value = SegnalazioneUiState.Loading
-            val result = FirebaseManager.inviaSegnalazione(externalId, tipo, testo)
-            _segnalazioneState.value = if (result.isSuccess)
-                SegnalazioneUiState.Successo
-            else
-                SegnalazioneUiState.Errore(result.exceptionOrNull()?.message ?: "Errore")
-        }
-    }
-
-    fun dismissSegnalazione() { _segnalazioneState.value = SegnalazioneUiState.Idle }
-
     fun toggleIgnora() {
         val s = _state.value as? CuriosityUiState.Success ?: return
         viewModelScope.launch {
             repo.toggleIgnora(s.curiosity)
-            // dopo aver ignorato, carica la prossima pillola
+            // After ignoring, load the next pill
             load()
         }
     }
+
+    // ── Reports (Segnalazioni) ──────────────────────────────────────────────────
+
+    fun inviaSegnalazione(tipo: String, testo: String) {
+        val s = _state.value as? CuriosityUiState.Success ?: return
+        val externalId = s.curiosity.externalId ?: return
+
+        // Use the shared helper to handle the logic
+        SegnalazioneHelper.invia(viewModelScope, _segnalazioneState, externalId, tipo, testo)
+    }
+
+    fun dismissSegnalazione() {
+        SegnalazioneHelper.dismiss(_segnalazioneState)
+    }
+
+    // ── Comments (Commenti) ─────────────────────────────────────────────────────
 
     fun caricaCommenti() {
         val s = _state.value as? CuriosityUiState.Success ?: return

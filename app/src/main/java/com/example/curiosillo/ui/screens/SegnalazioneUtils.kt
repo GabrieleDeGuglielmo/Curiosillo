@@ -14,6 +14,48 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.curiosillo.firebase.FirebaseManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+
+// ── Shared UI State for Reports ──────────────────────────────────────────────
+
+sealed class SegnalazioneUiState {
+    object Idle     : SegnalazioneUiState()
+    object Loading  : SegnalazioneUiState()
+    object Successo : SegnalazioneUiState()
+    data class Errore(val msg: String) : SegnalazioneUiState()
+}
+
+// ── Shared Helper Logic for ViewModels ───────────────────────────────────────
+
+object SegnalazioneHelper {
+
+    // Sends the report to Firebase and updates the state flow automatically
+    fun invia(
+        scope: CoroutineScope,
+        stateFlow: MutableStateFlow<SegnalazioneUiState>,
+        externalId: String,
+        tipo: String,
+        testo: String
+    ) {
+        scope.launch {
+            stateFlow.value = SegnalazioneUiState.Loading
+            val result = FirebaseManager.inviaSegnalazione(externalId, tipo, testo)
+            stateFlow.value = if (result.isSuccess) {
+                SegnalazioneUiState.Successo
+            } else {
+                SegnalazioneUiState.Errore(result.exceptionOrNull()?.message ?: "Errore")
+            }
+        }
+    }
+
+    // Resets the state back to Idle
+    fun dismiss(stateFlow: MutableStateFlow<SegnalazioneUiState>) {
+        stateFlow.value = SegnalazioneUiState.Idle
+    }
+}
 
 // ── Tipi di segnalazione ──────────────────────────────────────────────────────
 

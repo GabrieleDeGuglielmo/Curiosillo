@@ -49,7 +49,7 @@ import com.example.curiosillo.ui.theme.Success
 import com.example.curiosillo.viewmodel.CommentiUiState
 import com.example.curiosillo.viewmodel.CuriosityUiState
 import com.example.curiosillo.viewmodel.CuriosityViewModel
-import com.example.curiosillo.viewmodel.SegnalazioneUiState
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,21 +59,13 @@ fun CuriosityScreen(nav: NavController) {
     val vm: CuriosityViewModel = viewModel(
         factory = CuriosityViewModel.Factory(app.repository, app.categoryPrefs, app.gamificationEngine)
     )
-    val state    by vm.state.collectAsState()
-    val risultato by vm.risultatoAzione.collectAsState()
+    val state             by vm.state.collectAsState()
+    val risultato         by vm.risultatoAzione.collectAsState()
     val commentiState     by vm.commentiState.collectAsState()
     val segnalazioneState by vm.segnalazioneState.collectAsState()
 
-    // Banner segnalazione inviata
-    if (segnalazioneState is SegnalazioneUiState.Successo) {
-        LaunchedEffect(Unit) {
-            kotlinx.coroutines.delay(2500)
-            vm.dismissSegnalazione()
-        }
-    }
-
-    var badgeDaMostrare  by remember { mutableStateOf<BadgeSbloccato?>(null) }
-    var badgeQueue       by remember { mutableStateOf<List<BadgeSbloccato>>(emptyList()) }
+    var badgeDaMostrare    by remember { mutableStateOf<BadgeSbloccato?>(null) }
+    var badgeQueue         by remember { mutableStateOf<List<BadgeSbloccato>>(emptyList()) }
     var mostraCommenti     by remember { mutableStateOf(false) }
     var mostraDialogIgnora by remember { mutableStateOf(false) }
     var mostraFantastico   by remember { mutableStateOf(false) }
@@ -88,6 +80,7 @@ fun CuriosityScreen(nav: NavController) {
         }
     }
 
+    // Badge unlocked dialog
     badgeDaMostrare?.let { badge ->
         AlertDialog(
             onDismissRequest = {
@@ -118,7 +111,7 @@ fun CuriosityScreen(nav: NavController) {
         )
     }
 
-    // Dialog conferma "Non mi interessa"
+    // "Not interested" confirmation dialog
     if (mostraDialogIgnora) {
         AlertDialog(
             onDismissRequest = { mostraDialogIgnora = false },
@@ -139,14 +132,13 @@ fun CuriosityScreen(nav: NavController) {
         )
     }
 
-    // Bottom sheet commenti
+    // Comments bottom sheet
     if (mostraCommenti) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
         ModalBottomSheet(
             onDismissRequest = { mostraCommenti = false },
             sheetState = sheetState
         ) {
-            val s = state as? CuriosityUiState.Success
             CommentiSheet(
                 commentiState  = commentiState,
                 currentUid     = FirebaseManager.uid,
@@ -197,6 +189,7 @@ fun CuriosityScreen(nav: NavController) {
             MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
             MaterialTheme.colorScheme.background
         ))
+
         Box(Modifier.fillMaxSize()) {
             when (val s = state) {
                 is CuriosityUiState.Loading ->
@@ -210,7 +203,9 @@ fun CuriosityScreen(nav: NavController) {
                             style = MaterialTheme.typography.bodyLarge)
                     }
                 is CuriosityUiState.Success ->
-                    CuriosityContent(s, pad, gradientBg, commentiState = commentiState,
+                    CuriosityContent(s, pad, gradientBg,
+                        commentiState = commentiState,
+                        segnalazioneState = segnalazioneState,
                         onLearn      = { mostraFantastico = true; vm.markLearned() },
                         onBookmark   = { vm.toggleBookmark() },
                         onSalvaNota  = { vm.salvaNota(it) },
@@ -221,38 +216,44 @@ fun CuriosityScreen(nav: NavController) {
                 is CuriosityUiState.Learned -> LearnedContent(pad, gradientBg) { vm.load() }
             }
 
-            /* ── Overlay "Fantastico!" ─────────────────────────────────────────
-            if (mostraFantastico) {
-                LaunchedEffect(Unit) {
-                    kotlinx.coroutines.delay(1400)
-                    mostraFantastico = false
-                }
-                val pulse = rememberInfiniteTransition(label = "pulse")
-                val scale by pulse.animateFloat(
-                    initialValue  = 0.85f,
-                    targetValue   = 1.05f,
-                    animationSpec = infiniteRepeatable(
-                        tween(300, easing = FastOutSlowInEasing), RepeatMode.Reverse
-                    ),
-                    label = "scale"
-                )
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Surface(
-                        shape           = RoundedCornerShape(28.dp),
-                        color           = MaterialTheme.colorScheme.primary,
-                        shadowElevation = 20.dp,
-                        modifier        = Modifier.graphicsLayer(scaleX = scale, scaleY = scale)
-                    ) {
-                        Text(
-                            "🎉 Fantastico!",
-                            modifier   = Modifier.padding(horizontal = 40.dp, vertical = 22.dp),
-                            style      = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color      = Color.White
-                        )
+            // Overlay for report success or error notifications
+            when (val sState = segnalazioneState) {
+                is SegnalazioneUiState.Successo -> {
+                    LaunchedEffect(Unit) {
+                        kotlinx.coroutines.delay(3000)
+                        vm.dismissSegnalazione()
+                    }
+                    Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
+                        Surface(
+                            color = Success,
+                            shape = RoundedCornerShape(12.dp),
+                            shadowElevation = 6.dp
+                        ) {
+                            Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = "Success", tint = Color.White)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Segnalazione inviata. Grazie!", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
-            }*/
+                is SegnalazioneUiState.Errore -> {
+                    LaunchedEffect(Unit) {
+                        kotlinx.coroutines.delay(3500)
+                        vm.dismissSegnalazione()
+                    }
+                    Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.error,
+                            shape = RoundedCornerShape(12.dp),
+                            shadowElevation = 6.dp
+                        ) {
+                            Text(sState.msg, color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp))
+                        }
+                    }
+                }
+                else -> {}
+            }
         }
     }
 }
@@ -260,21 +261,29 @@ fun CuriosityScreen(nav: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CuriosityContent(
-    s:           CuriosityUiState.Success,
-    pad:         PaddingValues,
-    gradientBg:  Brush,
-    commentiState: CommentiUiState,
-    onLearn:     () -> Unit,
-    onBookmark:  () -> Unit,
-    onSalvaNota: (String) -> Unit,
-    onSegnala:   (tipo: String, testo: String) -> Unit,
-    onIgnora:    () -> Unit,
-    onCommenti:  () -> Unit
+    s:                 CuriosityUiState.Success,
+    pad:               PaddingValues,
+    gradientBg:        Brush,
+    commentiState:     CommentiUiState,
+    segnalazioneState: SegnalazioneUiState,
+    onLearn:           () -> Unit,
+    onBookmark:        () -> Unit,
+    onSalvaNota:       (String) -> Unit,
+    onSegnala:         (tipo: String, testo: String) -> Unit,
+    onIgnora:          () -> Unit,
+    onCommenti:        () -> Unit
 ) {
     var mostraSegnalazione by remember { mutableStateOf(false) }
-    var mostraNota by remember { mutableStateOf(false) }
-    val noteCardBg = MaterialTheme.colorScheme.surfaceVariant
-    val noteTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    var mostraNota         by remember { mutableStateOf(false) }
+    val noteCardBg         = MaterialTheme.colorScheme.surfaceVariant
+    val noteTextColor      = MaterialTheme.colorScheme.onSurfaceVariant
+
+    // Automatically close the sheet on success
+    LaunchedEffect(segnalazioneState) {
+        if (segnalazioneState is SegnalazioneUiState.Successo) {
+            mostraSegnalazione = false
+        }
+    }
 
     if (mostraNota) {
         NotaBottomSheet(
@@ -306,7 +315,7 @@ private fun CuriosityContent(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(
                         onClick = onIgnora,
-                        modifier = Modifier.height(34.dp), // Altezza ridotta per eleganza
+                        modifier = Modifier.height(34.dp), // Reduced height for elegance
                         border = BorderStroke(1.dp, DarkText),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                         shape = RoundedCornerShape(12.dp),
@@ -327,7 +336,7 @@ private fun CuriosityContent(
                         )
                     }
 
-                    // Nota
+                    // Note
                     IconButton(onClick = { mostraNota = true }) {
                         Icon(Icons.Default.EditNote, "Nota",
                             tint = if (s.curiosity.nota.isNotBlank())
@@ -383,18 +392,19 @@ private fun CuriosityContent(
             }
             Spacer(Modifier.height(16.dp))
 
-            // ── Like / Dislike / Non mi interessa / Commenti ──────────────────
+            // ── Actions: Report / Comments ──────────────────────────────────────
             Spacer(Modifier.height(16.dp))
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                // Segnala
+                // Report
                 if (mostraSegnalazione) {
                     SegnalazioneBottomSheet(
-                        onInvia   = { tipo, testo -> onSegnala(tipo, testo); mostraSegnalazione = false },
-                        onDismiss = { mostraSegnalazione = false }
+                        onInvia   = { tipo, testo -> onSegnala(tipo, testo) }, // State handles closure
+                        onDismiss = { mostraSegnalazione = false },
+                        isLoading = segnalazioneState is SegnalazioneUiState.Loading // Binds UI to state
                     )
                 }
                 OutlinedButton(
@@ -408,12 +418,13 @@ private fun CuriosityContent(
                         tint = Secondary)
                     Spacer(Modifier.width(5.dp))
                     Text("Segnala",
-                        style    = MaterialTheme.typography.labelMedium,
-                        color    = Secondary,
+                        style      = MaterialTheme.typography.labelMedium,
+                        color      = Secondary,
                         fontWeight = FontWeight.SemiBold)
                 }
                 Spacer(Modifier.weight(1f))
-                // Commenti
+
+                // Comments
                 OutlinedButton(onClick = onCommenti, shape = RoundedCornerShape(12.dp)) {
                     val count = commentiState.commenti.size
                     val label = "💬 Commenti ($count)"
@@ -489,7 +500,7 @@ fun CommentiSheet(
             fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
 
-        // Errore invio
+        // Send error
         commentiState.erroreInvio?.let { err ->
             Card(
                 Modifier.fillMaxWidth(),
@@ -504,7 +515,7 @@ fun CommentiSheet(
             Spacer(Modifier.height(8.dp))
         }
 
-        // Lista commenti
+        // Comments list
         if (commentiState.isLoading) {
             CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
         } else if (commentiState.commenti.isEmpty()) {
@@ -537,7 +548,7 @@ fun CommentiSheet(
                                 Spacer(Modifier.height(4.dp))
                                 Text(commento.testo, style = MaterialTheme.typography.bodyMedium)
                             }
-                            // Elimina solo il proprio commento
+                            // Delete only own comment
                             if (currentUid != null && currentUid == commento.uid) {
                                 IconButton(
                                     onClick  = { onElimina(commento.id) },
@@ -558,7 +569,7 @@ fun CommentiSheet(
         HorizontalDivider()
         Spacer(Modifier.height(12.dp))
 
-        // Campo inserimento
+        // Input field
         if (isLoggato) {
             OutlinedTextField(
                 value         = testo,

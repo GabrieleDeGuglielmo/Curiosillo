@@ -60,6 +60,10 @@ class MainActivity : ComponentActivity() {
                     composable("duello") { DuelloScreen(nav) }
                     composable("admin_voti")      { AdminVotiScreen(nav) }
                     composable("admin_curiosita") { AdminCuriositaScreen(nav) }
+                    composable("admin_curiosita/{externalId}") { back ->
+                        val externalId = back.arguments?.getString("externalId")
+                        AdminCuriositaScreen(nav, apriModificaId = externalId)
+                    }
                     composable("novita") { NovitaScreen(nav) }
                     composable("category_picker/{dest}") { back ->
                         val dest = back.arguments?.getString("dest") ?: "curiosity"
