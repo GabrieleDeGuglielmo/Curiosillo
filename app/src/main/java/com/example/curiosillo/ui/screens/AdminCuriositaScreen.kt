@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,12 +23,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,7 +37,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.firebase.FirebaseManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -64,8 +64,7 @@ class AdminCuriositaViewModel : ViewModel() {
     fun carica() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
-            val isAdmin = FirebaseManager.isAdmin()
-            if (!isAdmin) {
+            if (!FirebaseManager.isAdmin()) {
                 _state.value = AdminCuriositaUiState(isLoading = false, isAdmin = false)
                 return@launch
             }
@@ -101,11 +100,7 @@ class AdminCuriositaViewModel : ViewModel() {
     fun importaJson(json: String) {
         viewModelScope.launch {
             try {
-                val lista = parseJsonBulk(json)
-                if (lista.isEmpty()) {
-                    _state.value = _state.value.copy(errore = "Nessuna curiosità trovata nel JSON.")
-                    return@launch
-                }
+                val lista = parseJson(json)
                 val result = FirebaseManager.importaBulk(lista)
                 if (result.isSuccess) {
                     _state.value = _state.value.copy(
@@ -123,36 +118,24 @@ class AdminCuriositaViewModel : ViewModel() {
     fun dismissMessaggio() { _state.value = _state.value.copy(messaggio = null) }
     fun dismissErrore()    { _state.value = _state.value.copy(errore = null) }
 
-    /**
-     * Accetta sia il formato Gist originale che il formato app:
-     *
-     * Gist:  risposta_corretta / risposte_errate  (snake_case)
-     * App:   rispostaCorretta  / risposteErrate   (camelCase)
-     *
-     * Il JSON può essere l'intero oggetto { "version": N, "curiosita": [...] }
-     * oppure direttamente un array [...].
-     */
-    private fun parseJsonBulk(json: String): List<FirebaseManager.CuriositaRemota> {
-        // Accetta sia array diretto che oggetto con chiave "curiosita"
-        val array = try {
-            JSONArray(json)
-        } catch (_: Exception) {
-            org.json.JSONObject(json).getJSONArray("curiosita")
+    private fun parseJson(json: String): List<FirebaseManager.CuriositaRemota> {
+        val array = if (json.trim().startsWith("[")) JSONArray(json)
+        else {
+            val obj = org.json.JSONObject(json)
+            obj.getJSONArray("curiosita")
         }
 
         return (0 until array.length()).map { i ->
             val obj     = array.getJSONObject(i)
             val quizObj = obj.optJSONObject("quiz")
 
-            // Supporta sia snake_case (Gist) che camelCase (formato app)
-            val rispostaCorretta = quizObj?.let {
-                it.optString("rispostaCorretta").ifBlank { it.optString("risposta_corretta") }
-            }?.ifBlank { null }
-
-            val risposteErrate = quizObj?.let { q ->
-                val arr = q.optJSONArray("risposteErrate")
-                    ?: q.optJSONArray("risposte_errate")
-                arr?.let { (0 until it.length()).map { j -> it.getString(j) } }
+            val rispostaCorretta = quizObj?.optString("rispostaCorretta")
+                ?: quizObj?.optString("risposta_corretta")
+            
+            val risposteErrate = quizObj?.optJSONArray("risposteErrate")?.let { arr ->
+                (0 until arr.length()).map { arr.getString(it) }
+            } ?: quizObj?.optJSONArray("risposte_errate")?.let { arr ->
+                (0 until arr.length()).map { arr.getString(it) }
             }
 
             FirebaseManager.CuriositaRemota(
@@ -173,7 +156,7 @@ class AdminCuriositaViewModel : ViewModel() {
 
     class Factory : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(c: Class<T>): T = AdminCuriositaViewModel() as T
+        override fun <T : ViewModel> create(modelClass: Class<T>): T = AdminCuriositaViewModel() as T
     }
 }
 
@@ -185,14 +168,14 @@ fun AdminCuriositaScreen(nav: NavController, apriModificaId: String? = null) {
     val vm: AdminCuriositaViewModel = viewModel(factory = AdminCuriositaViewModel.Factory())
     val state  by vm.state.collectAsState()
     val ctx    = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     var showForm      by remember { mutableStateOf(false) }
-    var showImport    by remember { mutableStateOf(false) }
     var editingItem   by remember { mutableStateOf<FirebaseManager.CuriositaRemota?>(null) }
     var deleteTarget  by remember { mutableStateOf<String?>(null) }
     var query         by remember { mutableStateOf("") }
+    var isMigrating   by remember { mutableStateOf(false) }
 
-    // Se arriviamo con un externalId da aprire direttamente, pre-apriamo il form di modifica
     LaunchedEffect(apriModificaId, state.curiosita) {
         if (apriModificaId != null && state.curiosita.isNotEmpty()) {
             val target = state.curiosita.find { it.externalId == apriModificaId }
@@ -203,18 +186,17 @@ fun AdminCuriositaScreen(nav: NavController, apriModificaId: String? = null) {
         }
     }
 
-    // File picker per JSON
-    var jsonDaImportare by remember { mutableStateOf("") }
-    val filePicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+    val jsonLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
-        uri ?: return@rememberLauncherForActivityResult
-        try {
-            val stream = ctx.contentResolver.openInputStream(uri)
-            jsonDaImportare = stream?.bufferedReader()?.readText() ?: ""
+        uri?.let {
+            val stream = ctx.contentResolver.openInputStream(it)
+            val text = stream?.bufferedReader()?.readText() ?: ""
             stream?.close()
-            showImport = true
-        } catch (_: Exception) {}
+            if (text.isNotBlank()) {
+                vm.importaJson(text)
+            }
+        }
     }
 
     val gradientBg = Brush.verticalGradient(listOf(
@@ -222,15 +204,13 @@ fun AdminCuriositaScreen(nav: NavController, apriModificaId: String? = null) {
         MaterialTheme.colorScheme.background
     ))
 
-    // Snackbar messaggi
     state.messaggio?.let {
         LaunchedEffect(it) {
-            kotlinx.coroutines.delay(2500)
+            kotlinx.coroutines.delay(3000)
             vm.dismissMessaggio()
         }
     }
 
-    // Dialog conferma eliminazione
     deleteTarget?.let { exId ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
@@ -246,7 +226,6 @@ fun AdminCuriositaScreen(nav: NavController, apriModificaId: String? = null) {
         )
     }
 
-    // Dialog errore
     state.errore?.let {
         AlertDialog(
             onDismissRequest = { vm.dismissErrore() },
@@ -256,51 +235,40 @@ fun AdminCuriositaScreen(nav: NavController, apriModificaId: String? = null) {
         )
     }
 
-    // Dialog import JSON
-    if (showImport && jsonDaImportare.isNotBlank()) {
-        AlertDialog(
-            onDismissRequest = { showImport = false },
-            title = { Text("Importa JSON", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-            text  = {
-                Text("Il file contiene del testo JSON. Vuoi importare le curiosità?\nVerranno aggiunte o aggiornate su Firestore.",
-                    textAlign = TextAlign.Center)
-            },
-            confirmButton = {
-                Button(onClick = { vm.importaJson(jsonDaImportare); showImport = false; jsonDaImportare = "" }) {
-                    Text("Importa")
-                }
-            },
-            dismissButton = { OutlinedButton(onClick = { showImport = false; jsonDaImportare = "" }) { Text("Annulla") } }
-        )
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Gestione curiosità") },
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, "Indietro")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
                     }
                 },
                 actions = {
-                    // Import da file JSON
-                    IconButton(onClick = { filePicker.launch("application/json") }) {
-                        Icon(Icons.Default.Upload, "Importa JSON")
+                    IconButton(onClick = {
+                        scope.launch {
+                            isMigrating = true
+                            FirebaseManager.eseguiMigrazioneQuizPiatta()
+                            vm.carica()
+                            isMigrating = false
+                        }
+                    }, enabled = !isMigrating) {
+                        if (isMigrating) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        else Icon(Icons.Default.Refresh, "Migra")
                     }
-                    // Nuova curiosità
+                    IconButton(onClick = { jsonLauncher.launch(arrayOf("application/json")) }) {
+                        Icon(Icons.Default.FileUpload, "Importa JSON")
+                    }
                     IconButton(onClick = { editingItem = null; showForm = true }) {
-                        Icon(Icons.Default.Add, "Aggiungi")
+                        Icon(Icons.Default.Add, "Nuova")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                }
             )
         },
         containerColor = Color.Transparent
     ) { pad ->
         Box(Modifier.fillMaxSize().background(gradientBg).padding(pad)) {
 
-            // Messaggio successo
             state.messaggio?.let { msg ->
                 Surface(
                     modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
@@ -314,7 +282,14 @@ fun AdminCuriositaScreen(nav: NavController, apriModificaId: String? = null) {
 
             when {
                 state.isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
-                !state.isAdmin  -> AccessoNegatoContent()
+                !state.isAdmin  -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("🚫", fontSize = 64.sp)
+                        Spacer(Modifier.height(16.dp))
+                        Text("Accesso Negato", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Text("Non hai i permessi per accedere a questa sezione.", textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 32.dp))
+                    }
+                }
                 else -> {
                     val filtrate = remember(state.curiosita, query) {
                         if (query.isBlank()) state.curiosita
@@ -333,7 +308,6 @@ fun AdminCuriositaScreen(nav: NavController, apriModificaId: String? = null) {
                         contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // ── Barra di ricerca ──────────────────────────────────
                         item {
                             OutlinedTextField(
                                 value         = query,
@@ -360,7 +334,6 @@ fun AdminCuriositaScreen(nav: NavController, apriModificaId: String? = null) {
                             )
                         }
 
-                        // ── Lista filtrata ────────────────────────────────────
                         if (filtrate.isEmpty()) {
                             item {
                                 Box(
@@ -368,7 +341,7 @@ fun AdminCuriositaScreen(nav: NavController, apriModificaId: String? = null) {
                                     Alignment.Center
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("🔍", fontSize = 40.sp)
+                                        Text("🔎", fontSize = 48.sp)
                                         Spacer(Modifier.height(12.dp))
                                         Text(
                                             "Nessun risultato per \"$query\"",
@@ -395,7 +368,6 @@ fun AdminCuriositaScreen(nav: NavController, apriModificaId: String? = null) {
         }
     }
 
-    // Bottom sheet form aggiungi/modifica
     if (showForm) {
         CuriositaFormSheet(
             iniziale       = editingItem,
@@ -406,8 +378,7 @@ fun AdminCuriositaScreen(nav: NavController, apriModificaId: String? = null) {
     }
 }
 
-// ── Highlight testo ricerca ───────────────────────────────────────────────────
-
+@Composable
 private fun buildHighlightedText(text: String, query: String): AnnotatedString {
     if (query.isBlank()) return AnnotatedString(text)
     return buildAnnotatedString {
@@ -429,8 +400,6 @@ private fun buildHighlightedText(text: String, query: String): AnnotatedString {
     }
 }
 
-// ── Card curiosità ────────────────────────────────────────────────────────────
-
 @Composable
 private fun CuriositaAdminCard(
     c:          FirebaseManager.CuriositaRemota,
@@ -451,7 +420,6 @@ private fun CuriositaAdminCard(
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Emoji con cerchio colorato
             Box(
                 Modifier
                     .size(44.dp)
@@ -493,7 +461,6 @@ private fun CuriositaAdminCard(
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
                     )
                 }
-                // Anteprima corpo se il match è nel testo
                 if (query.isNotBlank() && c.corpo.lowercase().contains(query.trim().lowercase())) {
                     val idx   = c.corpo.lowercase().indexOf(query.trim().lowercase())
                     val start = maxOf(0, idx - 20)
@@ -511,7 +478,6 @@ private fun CuriositaAdminCard(
                     )
                 }
             }
-            // Solo elimina — modifica è il click sulla riga
             IconButton(onClick = onElimina) {
                 Icon(Icons.Default.Delete, "Elimina", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
             }
@@ -519,46 +485,16 @@ private fun CuriositaAdminCard(
     }
 }
 
-// ── Categorie disponibili ─────────────────────────────────────────────────────
+// ── Form Sheet ───────────────────────────────────────────────────────────
 
-val CATEGORIE_DISPONIBILI = listOf(
-    "Scienza", "Animali", "Storia", "Sport", "Arte", "Tecnologia",
-    "Natura", "Cibo", "Geografia", "Musica", "Cinema", "Letteratura",
-    "Lingua", "Moda", "Vita quotidiana"
-)
+private val CATEGORIE_DISPONIBILI = listOf("Scienza", "Storia", "Spazio", "Animali", "Tecnologia", "Cibo", "Curiosità", "Sport", "Arte", "Geografia")
 
-// ── Helpers validazione ───────────────────────────────────────────────────────
+private fun isEmoji(s: String): Boolean = s.isNotEmpty() && s.length <= 8
 
-private fun isEmoji(s: String): Boolean {
-    val trimmed = s.trim()
-    if (trimmed.isEmpty()) return false
-    // Controlla che la stringa sia composta solo da code point emoji/modificatori
-    val it = trimmed.codePoints().iterator()
-    while (it.hasNext()) {
-        val cp = it.nextInt()
-        val type = Character.getType(cp)
-        val isEmojiLike = type == Character.OTHER_SYMBOL.toInt()           // So - emoji base
-                || type == Character.MODIFIER_SYMBOL.toInt()                   // Sk
-                || type == Character.NON_SPACING_MARK.toInt()                  // Mn - varianti
-                || cp == 0x200D                                                // ZWJ
-                || cp in 0x1F1E6..0x1F1FF                                     // flag letters
-                || cp in 0xFE00..0xFE0F                                        // variation selectors
-                || cp in 0x1F3FB..0x1F3FF                                      // skin tones
-                || cp == 0x20E3                                                 // combining enclosing keycap
-        if (!isEmojiLike) return false
-    }
-    return true
+private fun generaId(tutte: List<FirebaseManager.CuriositaRemota>): String {
+    val maxId = tutte.mapNotNull { it.externalId.removePrefix("c").toIntOrNull() }.maxOrNull() ?: 0
+    return "c" + (maxId + 1).toString().padStart(3, '0')
 }
-
-private fun generaId(tutteCuriosita: List<FirebaseManager.CuriositaRemota>): String {
-    // Estrae il numero da ID nel formato "cNNN", prende il massimo e incrementa
-    val maxN = tutteCuriosita
-        .mapNotNull { it.externalId.removePrefix("c").toIntOrNull() }
-        .maxOrNull() ?: 0
-    return "c${maxN + 1}"
-}
-
-// ── Form aggiungi/modifica ────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -570,8 +506,6 @@ private fun CuriositaFormSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val isModifica = iniziale != null
-
-    // ID: immutabile in modifica, calcolato una volta sola in creazione
     val externalId = remember { iniziale?.externalId ?: generaId(tutteCuriosita) }
 
     var titolo           by remember { mutableStateOf(iniziale?.titolo           ?: "") }
@@ -588,232 +522,61 @@ private fun CuriositaFormSheet(
     var tentato by remember { mutableStateOf(false) }
     var mostraCatDropdown by remember { mutableStateOf(false) }
 
-    // ── Errori di validazione ─────────────────────────────────────────────────
-    val errEmoji     = emoji.isBlank() || !isEmoji(emoji)
-    val errTitolo    = titolo.isBlank()
-    val errCorpo     = corpo.isBlank()
-    val errCategoria = categoria.isBlank() || !CATEGORIE_DISPONIBILI.any {
-        it.equals(categoria.trim(), ignoreCase = true) }
-    // Quiz: o tutti i campi quiz compilati, o nessuno
-    val hasQuizParziale = listOf(domanda, rispostaCorretta, errata1, errata2, errata3, spiegazione)
-        .any { it.isNotBlank() } &&
-            listOf(domanda, rispostaCorretta, errata1, errata2, errata3, spiegazione)
-                .any { it.isBlank() }
-    val errDomanda          = hasQuizParziale && domanda.isBlank()
-    val errRispostaCorretta = hasQuizParziale && rispostaCorretta.isBlank()
-    val errErrata1          = hasQuizParziale && errata1.isBlank()
-    val errErrata2          = hasQuizParziale && errata2.isBlank()
-    val errErrata3          = hasQuizParziale && errata3.isBlank()
-    val errSpiegazione      = hasQuizParziale && spiegazione.isBlank()
-
-    val campiValidi = !errEmoji && !errTitolo && !errCorpo && !errCategoria && !hasQuizParziale
+    val campiValidi = titolo.isNotBlank() && corpo.isNotBlank() && categoria.isNotBlank() && emoji.isNotBlank()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState       = sheetState
     ) {
         Column(
-            Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 40.dp)
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp).padding(bottom = 32.dp)
         ) {
-            Text(
-                if (isModifica) "Modifica curiosità" else "Nuova curiosità",
-                style      = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier   = Modifier.padding(bottom = 16.dp)
-            )
-
-            // ── ID (non modificabile) ─────────────────────────────────────────
-            OutlinedTextField(
-                value         = externalId,
-                onValueChange = {},
-                label         = { Text("ID univoco") },
-                enabled       = false,
-                singleLine    = true,
-                modifier      = Modifier.fillMaxWidth(),
-                colors        = OutlinedTextFieldDefaults.colors(
-                    disabledTextColor         = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    disabledBorderColor       = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
-                    disabledLabelColor        = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                    disabledTrailingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                ),
-                trailingIcon = { Icon(Icons.Default.Lock, null,
-                    Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)) }
-            )
-            Spacer(Modifier.height(10.dp))
-
-            // ── Emoji ─────────────────────────────────────────────────────────
-            OutlinedTextField(
-                value         = emoji,
-                onValueChange = { if (it.length <= 8) emoji = it },
-                label         = { Text("Emoji") },
-                singleLine    = true,
-                modifier      = Modifier.fillMaxWidth(),
-                isError       = tentato && errEmoji,
-                supportingText = if (tentato && errEmoji) {
-                    { Text("Inserisci una sola emoji valida") }
-                } else null
-            )
-            Spacer(Modifier.height(10.dp))
-
-            // ── Titolo ────────────────────────────────────────────────────────
-            OutlinedTextField(
-                value         = titolo,
-                onValueChange = { titolo = it },
-                label         = { Text("Titolo") },
-                singleLine    = true,
-                modifier      = Modifier.fillMaxWidth(),
-                isError       = tentato && errTitolo,
-                supportingText = if (tentato && errTitolo) {
-                    { Text("Il titolo è obbligatorio") }
-                } else null
-            )
-            Spacer(Modifier.height(10.dp))
-
-            // ── Categoria (dropdown) ──────────────────────────────────────────
-            ExposedDropdownMenuBox(
-                expanded         = mostraCatDropdown,
-                onExpandedChange = { mostraCatDropdown = it }
-            ) {
-                OutlinedTextField(
-                    value             = categoria,
-                    onValueChange     = {},
-                    readOnly          = true,
-                    label             = { Text("Categoria") },
-                    trailingIcon      = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = mostraCatDropdown) },
-                    modifier          = Modifier.fillMaxWidth().menuAnchor(),
-                    isError           = tentato && errCategoria,
-                    supportingText    = if (tentato && errCategoria) {
-                        { Text("Seleziona una categoria dalla lista") }
-                    } else null
-                )
-                ExposedDropdownMenu(
-                    expanded         = mostraCatDropdown,
-                    onDismissRequest = { mostraCatDropdown = false }
-                ) {
+            Text(if (isModifica) "Modifica curiosità" else "Nuova curiosità", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(16.dp))
+            
+            OutlinedTextField(value = externalId, onValueChange = {}, label = { Text("ID univoco") }, enabled = false, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = emoji, onValueChange = { emoji = it }, label = { Text("Emoji") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = titolo, onValueChange = { titolo = it }, label = { Text("Titolo") }, modifier = Modifier.fillMaxWidth())
+            
+            ExposedDropdownMenuBox(expanded = mostraCatDropdown, onExpandedChange = { mostraCatDropdown = it }) {
+                OutlinedTextField(value = categoria, onValueChange = {}, readOnly = true, label = { Text("Categoria") }, 
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = mostraCatDropdown) }, 
+                    modifier = Modifier.fillMaxWidth().menuAnchor())
+                ExposedDropdownMenu(expanded = mostraCatDropdown, onDismissRequest = { mostraCatDropdown = false }) {
                     CATEGORIE_DISPONIBILI.forEach { cat ->
-                        DropdownMenuItem(
-                            text    = { Text(cat) },
-                            onClick = { categoria = cat; mostraCatDropdown = false }
-                        )
+                        DropdownMenuItem(text = { Text(cat) }, onClick = { categoria = cat; mostraCatDropdown = false })
                     }
                 }
             }
-            Spacer(Modifier.height(10.dp))
-
-            // ── Corpo ─────────────────────────────────────────────────────────
-            OutlinedTextField(
-                value         = corpo,
-                onValueChange = { corpo = it },
-                label         = { Text("Testo curiosità") },
-                minLines      = 4,
-                modifier      = Modifier.fillMaxWidth(),
-                isError       = tentato && errCorpo,
-                supportingText = if (tentato && errCorpo) {
-                    { Text("Il testo della curiosità è obbligatorio") }
-                } else null
-            )
-
-            // ── Quiz ──────────────────────────────────────────────────────────
-            Spacer(Modifier.height(20.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(12.dp))
-            Text(
-                "Quiz",
-                style      = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color      = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-            if (tentato && hasQuizParziale) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Compila tutti i campi del quiz oppure lasciali tutti vuoti.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-            Spacer(Modifier.height(10.dp))
-            OutlinedTextField(
-                value          = domanda,
-                onValueChange  = { domanda = it },
-                label          = { Text("Domanda") },
-                singleLine     = true,
-                modifier       = Modifier.fillMaxWidth(),
-                isError        = tentato && errDomanda,
-                supportingText = if (tentato && errDomanda) { { Text("Campo obbligatorio") } } else null
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value          = rispostaCorretta,
-                onValueChange  = { rispostaCorretta = it },
-                label          = { Text("Risposta corretta") },
-                singleLine     = true,
-                modifier       = Modifier.fillMaxWidth(),
-                isError        = tentato && errRispostaCorretta,
-                supportingText = if (tentato && errRispostaCorretta) { { Text("Campo obbligatorio") } } else null
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = errata1, onValueChange = { errata1 = it },
-                label = { Text("Risposta errata 1") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                isError = tentato && errErrata1,
-                supportingText = if (tentato && errErrata1) { { Text("Campo obbligatorio") } } else null
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = errata2, onValueChange = { errata2 = it },
-                label = { Text("Risposta errata 2") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                isError = tentato && errErrata2,
-                supportingText = if (tentato && errErrata2) { { Text("Campo obbligatorio") } } else null
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = errata3, onValueChange = { errata3 = it },
-                label = { Text("Risposta errata 3") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                isError = tentato && errErrata3,
-                supportingText = if (tentato && errErrata3) { { Text("Campo obbligatorio") } } else null
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value          = spiegazione,
-                onValueChange  = { spiegazione = it },
-                label          = { Text("Spiegazione risposta") },
-                minLines       = 2,
-                modifier       = Modifier.fillMaxWidth(),
-                isError        = tentato && errSpiegazione,
-                supportingText = if (tentato && errSpiegazione) { { Text("Campo obbligatorio") } } else null
-            )
+            
+            OutlinedTextField(value = corpo, onValueChange = { corpo = it }, label = { Text("Testo") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+            
+            Spacer(Modifier.height(16.dp))
+            Text("Quiz", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            OutlinedTextField(value = domanda, onValueChange = { domanda = it }, label = { Text("Domanda") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = rispostaCorretta, onValueChange = { rispostaCorretta = it }, label = { Text("Risposta corretta") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = errata1, onValueChange = { errata1 = it }, label = { Text("Errata 1") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = errata2, onValueChange = { errata2 = it }, label = { Text("Errata 2") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = errata3, onValueChange = { errata3 = it }, label = { Text("Errata 3") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = spiegazione, onValueChange = { spiegazione = it }, label = { Text("Spiegazione") }, modifier = Modifier.fillMaxWidth())
 
             Spacer(Modifier.height(24.dp))
             Button(
                 onClick = {
                     tentato = true
-                    if (!campiValidi) return@Button
-                    onSalva(FirebaseManager.CuriositaRemota(
-                        externalId       = externalId,
-                        titolo           = titolo.trim(),
-                        corpo            = corpo.trim(),
-                        categoria        = categoria.trim(),
-                        emoji            = emoji.trim(),
-                        domanda          = domanda.trim().ifBlank { null },
-                        rispostaCorretta = rispostaCorretta.trim().ifBlank { null },
-                        risposteErrate   = listOf(errata1, errata2, errata3)
-                            .map { it.trim() }.filter { it.isNotBlank() }.ifEmpty { null },
-                        spiegazione      = spiegazione.trim().ifBlank { null }
-                    ))
+                    if (campiValidi) {
+                        onSalva(FirebaseManager.CuriositaRemota(
+                            externalId = externalId, titolo = titolo, corpo = corpo, categoria = categoria, emoji = emoji,
+                            domanda = domanda.ifBlank { null }, rispostaCorretta = rispostaCorretta.ifBlank { null },
+                            risposteErrate = listOf(errata1, errata2, errata3).filter { it.isNotBlank() }.ifEmpty { null },
+                            spiegazione = spiegazione.ifBlank { null }
+                        ))
+                    }
                 },
                 modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape    = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(14.dp)
             ) {
-                Text(
-                    if (isModifica) "Aggiorna" else "Pubblica",
-                    fontWeight = FontWeight.Bold,
-                    style      = MaterialTheme.typography.titleMedium
-                )
+                Text(if (isModifica) "Aggiorna" else "Pubblica", fontWeight = FontWeight.Bold)
             }
         }
     }

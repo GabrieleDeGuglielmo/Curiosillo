@@ -33,18 +33,15 @@ object FirebaseManager {
 
     suspend fun registraEmail(email: String, password: String, username: String): Result<FirebaseUser> = try {
         val cleanUsername = username.trim()
-        // Verifica se lo username è già occupato
         if (isUsernameOccupato(cleanUsername)) {
             throw Exception("Username già in uso")
         }
         val result = auth.createUserWithEmailAndPassword(email, password).await()
         val user   = result.user!!
-        // Imposta lo username su Auth Profile
         val profileUpdates = userProfileChangeRequest {
             displayName = cleanUsername
         }
         user.updateProfile(profileUpdates).await()
-        // Crea il documento profilo su Firestore
         creaProfiloSeNonEsiste(user.uid, cleanUsername, email)
         Result.success(user)
     } catch (e: Exception) {
@@ -56,7 +53,6 @@ object FirebaseManager {
         val result     = auth.signInWithCredential(credential).await()
         val user       = result.user!!
         val isNuovo    = result.additionalUserInfo?.isNewUser ?: false
-        // Non creiamo il profilo qui se è nuovo, lo faremo dopo la conferma dello username
         Result.success(Pair(user, isNuovo))
     } catch (e: Exception) {
         Result.failure(e)
@@ -66,10 +62,6 @@ object FirebaseManager {
 
     // ── Profilo ───────────────────────────────────────────────────────────────
 
-    /** 
-     * Verifica se uno username esiste già.
-     * Cerca direttamente in users/{uid}/data/profile dove username è un campo.
-     */
     suspend fun isUsernameOccupato(username: String): Boolean {
         val target = username.trim()
         if (target.isBlank()) return false
@@ -82,7 +74,6 @@ object FirebaseManager {
                 .get().await()
 
             val altri = snapshot.documents.filter { doc ->
-                // users/{uid}/data/profile -> parent.parent is users/{uid}
                 doc.reference.parent.parent?.id != currentUid
             }
             altri.isNotEmpty()
@@ -94,8 +85,6 @@ object FirebaseManager {
 
     suspend fun creaProfiloSeNonEsiste(uid: String, username: String, email: String) {
         val cleanNick = username.trim()
-
-        // Imposta anche il displayName su Firebase Auth se non già presente o diverso
         auth.currentUser?.let { user ->
             if (user.displayName != cleanNick) {
                 val profileUpdates = userProfileChangeRequest {
@@ -105,7 +94,6 @@ object FirebaseManager {
             }
         }
 
-        // Crea il profilo utente su Firestore
         db.collection("users").document(uid)
             .collection("data").document("profile")
             .set(mapOf(
@@ -170,7 +158,6 @@ object FirebaseManager {
         Result.failure(e)
     }
 
-    // Elimina tutti i documenti Firestore dell'utente
     suspend fun eliminaDatiUtente(uid: String) {
         val ref = db.collection("users").document(uid).collection("data")
         val docs = ref.get().await()
@@ -178,16 +165,10 @@ object FirebaseManager {
         db.collection("users").document(uid).delete().await()
     }
 
-    // Cancella l'account Firebase Auth
     suspend fun eliminaAccount() {
         auth.currentUser?.delete()?.await()
     }
 
-    /**
-     * Cerca tutti i commenti dell'utente su Firestore e li anonimizza:
-     * rimuove uid e sostituisce autore con "Utente eliminato".
-     * Usa una collection group query su "lista".
-     */
     suspend fun anonimizzaCommentiUtente(uid: String) {
         try {
             val snapshot = db.collectionGroup("lista")
@@ -317,15 +298,9 @@ object FirebaseManager {
 
     // ── Voti (like/dislike) ───────────────────────────────────────────────────
 
-    /**
-     * Invia una segnalazione per una curiosità.
-     * Path: segnalazioni/{externalId}/lista/{id}
-     *   → campi: tipo, testo, uid, creatoAt
-     */
     suspend fun inviaSegnalazione(externalId: String, tipo: String, testo: String): Result<Unit> = try {
         val currentUid = uid ?: "anonimo"
         val parentRef = db.collection("segnalazioni").document(externalId)
-        // Aggiunge la segnalazione nella subcollection
         parentRef.collection("lista").add(mapOf(
             "tipo"     to tipo,
             "testo"    to testo,
@@ -333,25 +308,18 @@ object FirebaseManager {
             "creatoAt" to System.currentTimeMillis(),
             "letta"    to false
         )).await()
-        // Crea/aggiorna il documento padre con il contatore totale
         parentRef.set(
             mapOf("totale" to FieldValue.increment(1)),
             SetOptions.merge()
         ).await()
-
-        // Notifica gli admin della nuova segnalazione
         notificaAdminNuovaSegnalazione(externalId, tipo)
-
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
 
     private suspend fun notificaAdminNuovaSegnalazione(externalId: String, tipo: String) {
         try {
-            // Recupera il titolo della curiosità per la notifica
             val curiositaDoc = db.collection("curiosita").document(externalId).get().await()
             val titoloCuriosita = curiositaDoc.getString("titolo") ?: externalId
-
-            // Trova tutti gli admin
             val adminSnap = db.collection("users")
                 .whereEqualTo("isAdmin", true)
                 .get().await()
@@ -372,14 +340,13 @@ object FirebaseManager {
                     "letta"      to false,
                     "creatoAt"   to ora,
                     "externalId" to externalId,
-                    "tipo"       to "segnalazione_admin" // Tipo specifico per distinguere
+                    "tipo"       to "segnalazione_admin"
                 ))
             }
             batch.commit().await()
         } catch (_: Exception) {}
     }
 
-    /** Carica tutte le segnalazioni — usato dalla schermata admin */
     suspend fun caricaTutteSegnalazioni(): List<SegnalazioneConTitolo> = try {
         val docs = db.collection("segnalazioni").get().await()
         docs.map { doc ->
@@ -418,23 +385,11 @@ object FirebaseManager {
         } catch (_: Exception) {}
     }
 
-    data class SegnalazioneConTitolo(
-        val externalId: String,
-        val totale:     Long
-    )
-
-    data class SegnalazioneItem(
-        val id:       String,
-        val tipo:     String,
-        val testo:    String,
-        val uid:      String,
-        val creatoAt: Long,
-        val letta:    Boolean
-    )
+    data class SegnalazioneConTitolo(val externalId: String, val totale: Long)
+    data class SegnalazioneItem(val id: String, val tipo: String, val testo: String, val uid: String, val creatoAt: Long, val letta: Boolean)
 
     // ── Admin ─────────────────────────────────────────────────────────────────
 
-    /** Controlla se l'utente corrente ha il campo isAdmin: true su Firestore */
     suspend fun isAdmin(): Boolean {
         val currentUid = uid ?: return false
         return try {
@@ -446,45 +401,36 @@ object FirebaseManager {
     // ── Admin: gestione curiosità ─────────────────────────────────────────────
 
     data class CuriositaRemota(
-        val externalId:      String,
-        val titolo:          String,
-        val corpo:           String,
-        val categoria:       String,
-        val emoji:           String,
-        val domanda:         String?       = null,
-        val rispostaCorretta: String?      = null,
-        val risposteErrate:  List<String>? = null,
-        val spiegazione:     String?       = null
+        val externalId:       String,
+        val titolo:           String,
+        val corpo:            String,
+        val categoria:        String,
+        val emoji:            String,
+        val domanda:          String?       = null,
+        val rispostaCorretta: String?       = null,
+        val risposteErrate:   List<String>? = null,
+        val spiegazione:      String?       = null
     )
 
-    /** Aggiunge o sovrascrive una curiosità su Firestore.
-     *  Se era una MODIFICA (documento già esistente) e aveva dislike:
-     *  - azzera i dislike nel contatore
-     *  - elimina il voto -1 per ogni utente che aveva messo dislike
-     *  - crea una notifica in-app per ognuno di loro */
+    /** Nuova versione PIATTA: salva tutto in un unico documento */
     suspend fun salvaCuriosita(c: CuriositaRemota): Result<Unit> = try {
         val docRef = db.collection("curiosita").document(c.externalId)
-
-        // Controlla se è una modifica (documento già esiste)
         val esistente = docRef.get().await().exists()
 
-        docRef.set(mapOf(
+        val data = mutableMapOf<String, Any?>(
             "titolo"    to c.titolo,
             "corpo"     to c.corpo,
             "categoria" to c.categoria,
-            "emoji"     to c.emoji
-        )).await()
+            "emoji"     to c.emoji,
+            // Campi quiz integrati
+            "domanda"          to c.domanda,
+            "rispostaCorretta" to c.rispostaCorretta,
+            "risposteErrate"   to c.risposteErrate,
+            "spiegazione"      to c.spiegazione
+        )
 
-        if (c.domanda != null && c.rispostaCorretta != null) {
-            docRef.collection("quiz").document("domanda").set(mapOf(
-                "domanda"          to c.domanda,
-                "rispostaCorretta" to c.rispostaCorretta,
-                "risposteErrate"   to (c.risposteErrate ?: emptyList<String>()),
-                "spiegazione"      to (c.spiegazione ?: "")
-            )).await()
-        }
+        docRef.set(data, SetOptions.merge()).await()
 
-        // Se è una modifica, notifica gli utenti che avevano segnalato la pillola
         if (esistente) {
             notificaAggiornamento(c.externalId, c.titolo)
         }
@@ -493,7 +439,6 @@ object FirebaseManager {
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
 
-    /** Quando una pillola viene aggiornata, notifica chi l'aveva segnalata. */
     private suspend fun notificaAggiornamento(externalId: String, titoloCuriosita: String) {
         try {
             val segnalazioniSnap = db.collection("segnalazioni")
@@ -503,27 +448,13 @@ object FirebaseManager {
                 .get().await()
 
             if (segnalazioniSnap.isEmpty) return
-
-            // Raccogli uid unici dei segnalanti
-            val uidSegnalanti = segnalazioniSnap.documents
-                .mapNotNull { it.getString("uid") }
-                .filter { it.isNotBlank() && it != "anonimo" }
-                .distinct()
-
+            val uidSegnalanti = segnalazioniSnap.documents.mapNotNull { it.getString("uid") }.filter { it.isNotBlank() && it != "anonimo" }.distinct()
             val ora = System.currentTimeMillis()
-
-            // Invia notifiche e segna segnalazioni come lette in un unico batch
             val batch = db.batch()
-
-            // Segna tutte le segnalazioni come lette
             segnalazioniSnap.documents.forEach { batch.update(it.reference, "letta", true) }
 
-            // Aggiunge le notifiche al batch per ogni segnalante
             uidSegnalanti.forEach { uidUtente ->
-                val notificaRef = db.collection("notifiche")
-                    .document(uidUtente)
-                    .collection("lista")
-                    .document()
+                val notificaRef = db.collection("notifiche").document(uidUtente).collection("lista").document()
                 batch.set(notificaRef, mapOf(
                     "titolo"     to "Curiosità aggiornata ✏️",
                     "corpo"      to "«$titoloCuriosita» è stata revisionata dopo la tua segnalazione. Grazie!",
@@ -533,42 +464,28 @@ object FirebaseManager {
                     "tipo"       to "pillola"
                 ))
             }
-
-            // Commit atomico: o tutto va a buon fine o niente
             batch.commit().await()
         } catch (e: Exception) {
-            // Logga l'errore invece di inghiottirlo silenziosamente
-            android.util.Log.e("FirebaseManager", "notificaAggiornamento failed for $externalId", e)
+            android.util.Log.e("FirebaseManager", "notificaAggiornamento failed", e)
         }
     }
 
     // ── Notifiche in-app ──────────────────────────────────────────────────────
 
-    data class NotificaInApp(
-        val id:          String,
-        val titolo:      String,
-        val corpo:       String,
-        val creatoAt:    Long,
-        val externalId:  String?,
-        val tipo:        String = "pillola"   // "pillola" | "broadcast"
-    )
+    data class NotificaInApp(val id: String, val titolo: String, val corpo: String, val creatoAt: Long, val externalId: String?, val tipo: String = "pillola")
 
     suspend fun caricaNotifichePendenti(): List<NotificaInApp> {
         val currentUid = uid ?: return emptyList()
         return try {
-            db.collection("notifiche")
-                .document(currentUid)
-                .collection("lista")
-                .whereEqualTo("letta", false)
-                .get().await()
+            db.collection("notifiche").document(currentUid).collection("lista").whereEqualTo("letta", false).get().await()
                 .documents.mapNotNull { doc ->
                     NotificaInApp(
                         id         = doc.id,
-                        titolo     = doc.getString("titolo")     ?: return@mapNotNull null,
-                        corpo      = doc.getString("corpo")      ?: "",
-                        creatoAt   = doc.getLong("creatoAt")     ?: 0L,
+                        titolo     = doc.getString("titolo") ?: return@mapNotNull null,
+                        corpo      = doc.getString("corpo") ?: "",
+                        creatoAt   = doc.getLong("creatoAt") ?: 0L,
                         externalId = doc.getString("externalId"),
-                        tipo       = doc.getString("tipo")       ?: "pillola"
+                        tipo       = doc.getString("tipo") ?: "pillola"
                     )
                 }.sortedByDescending { it.creatoAt }
         } catch (_: Exception) { emptyList() }
@@ -576,13 +493,7 @@ object FirebaseManager {
 
     suspend fun segnaNotificaLetta(notificaId: String) {
         val currentUid = uid ?: return
-        try {
-            db.collection("notifiche")
-                .document(currentUid)
-                .collection("lista")
-                .document(notificaId)
-                .update("letta", true).await()
-        } catch (_: Exception) {}
+        try { db.collection("notifiche").document(currentUid).collection("lista").document(notificaId).update("letta", true).await() } catch (_: Exception) {}
     }
 
     suspend fun segnaNotificheTutteLette(notifiche: List<NotificaInApp>) {
@@ -591,95 +502,60 @@ object FirebaseManager {
         try {
             val batch = db.batch()
             notifiche.forEach { n ->
-                val ref = db.collection("notifiche")
-                    .document(currentUid)
-                    .collection("lista")
-                    .document(n.id)
+                val ref = db.collection("notifiche").document(currentUid).collection("lista").document(n.id)
                 batch.update(ref, "letta", true)
             }
             batch.commit().await()
         } catch (_: Exception) {}
     }
 
-    /** Import bulk: lista di curiosità → Firestore in batch */
     suspend fun importaBulk(lista: List<CuriositaRemota>): Result<Int> = try {
-        // Firestore batch limit: 500 operazioni per batch
         lista.chunked(200).forEach { chunk ->
             val batch = db.batch()
             chunk.forEach { c ->
                 val docRef = db.collection("curiosita").document(c.externalId)
                 batch.set(docRef, mapOf(
-                    "titolo"    to c.titolo,
-                    "corpo"     to c.corpo,
-                    "categoria" to c.categoria,
-                    "emoji"     to c.emoji
+                    "titolo"           to c.titolo,
+                    "corpo"            to c.corpo,
+                    "categoria"        to c.categoria,
+                    "emoji"            to c.emoji,
+                    "domanda"          to c.domanda,
+                    "rispostaCorretta" to c.rispostaCorretta,
+                    "risposteErrate"   to c.risposteErrate,
+                    "spiegazione"      to c.spiegazione
                 ))
             }
             batch.commit().await()
-
-            // Quiz separati (non entrano nel batch per via delle subcollection)
-            chunk.forEach { c ->
-                if (c.domanda != null && c.rispostaCorretta != null) {
-                    db.collection("curiosita").document(c.externalId)
-                        .collection("quiz").document("domanda")
-                        .set(mapOf(
-                            "domanda"          to c.domanda,
-                            "rispostaCorretta" to c.rispostaCorretta,
-                            "risposteErrate"   to (c.risposteErrate ?: emptyList<String>()),
-                            "spiegazione"      to (c.spiegazione ?: "")
-                        )).await()
-                }
-            }
         }
         incrementaVersione()
         Result.success(lista.size)
     } catch (e: Exception) { Result.failure(e) }
 
-    /** Elimina una curiosità da Firestore */
     suspend fun eliminaCuriosita(externalId: String): Result<Unit> = try {
-        val docRef = db.collection("curiosita").document(externalId)
-        // Elimina il quiz se presente
-        val quizDoc = docRef.collection("quiz").document("domanda").get().await()
-        if (quizDoc.exists()) docRef.collection("quiz").document("domanda").delete().await()
-        docRef.delete().await()
+        db.collection("curiosita").document(externalId).delete().await()
         incrementaVersione()
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
 
-    /** Carica tutte le curiosità da Firestore (solo per admin) */
+    /** Caricamento PIATTO: molto più veloce */
     suspend fun caricaTutteLeCuriositaRemote(): List<CuriositaRemota> = try {
-        val snap = db.collection("curiosita")
-            .whereNotEqualTo("__name__", "_meta_")
-            .get().await()
-
+        val snap = db.collection("curiosita").whereNotEqualTo("__name__", "_meta_").get().await()
         val docs = snap.documents.filter { it.id != "_meta_" }
 
-        // Recupera tutti i quiz in parallelo instead of sequentially
-        coroutineScope {
-            docs.map { doc ->
-                async {
-                    val titolo = doc.getString("titolo") ?: return@async null
-                    val quizDoc = try {
-                        db.collection("curiosita").document(doc.id)
-                            .collection("quiz").document("domanda").get().await()
-                    } catch (_: Exception) { null }
-
-                    @Suppress("UNCHECKED_CAST")
-                    val risposteErrate = quizDoc?.get("risposteErrate") as? List<String>
-
-                    CuriositaRemota(
-                        externalId       = doc.id,
-                        titolo           = titolo,
-                        corpo            = doc.getString("corpo")     ?: "",
-                        categoria        = doc.getString("categoria") ?: "",
-                        emoji            = doc.getString("emoji")     ?: "",
-                        domanda          = quizDoc?.getString("domanda"),
-                        rispostaCorretta = quizDoc?.getString("rispostaCorretta"),
-                        risposteErrate   = risposteErrate,
-                        spiegazione      = quizDoc?.getString("spiegazione")
-                    )
-                }
-            }.awaitAll().filterNotNull()
+        docs.map { doc ->
+            @Suppress("UNCHECKED_CAST")
+            val risposteErrate = doc.get("risposteErrate") as? List<String>
+            CuriositaRemota(
+                externalId       = doc.id,
+                titolo           = doc.getString("titolo") ?: "",
+                corpo            = doc.getString("corpo") ?: "",
+                categoria        = doc.getString("categoria") ?: "",
+                emoji            = doc.getString("emoji") ?: "",
+                domanda          = doc.getString("domanda"),
+                rispostaCorretta = doc.getString("rispostaCorretta"),
+                risposteErrate   = risposteErrate,
+                spiegazione      = doc.getString("spiegazione")
+            )
         }
     } catch (_: Exception) { emptyList() }
 
@@ -687,42 +563,58 @@ object FirebaseManager {
         try {
             val metaRef = db.collection("curiosita").document("_meta_")
             db.runTransaction { tx ->
-                val snap    = tx.get(metaRef)
+                val snap = tx.get(metaRef)
                 val current = snap.getLong("versione") ?: 0L
                 tx.set(metaRef, mapOf("versione" to current + 1))
             }.await()
         } catch (_: Exception) {}
     }
 
-    // ── Broadcast admin → tutti gli utenti ───────────────────────────────────
-
-    suspend fun inviaBroadcast(titolo: String, corpo: String): Result<Unit> {
-        return try {
-            val ora         = System.currentTimeMillis()
-            val broadcastId = "b$ora"
-
-            val utenti = db.collection("users").get().await().documents.map { it.id }
-            if (utenti.isEmpty()) return Result.failure(Exception("Nessun utente trovato"))
-
-            utenti.chunked(400).forEach { chunk ->
-                val batch = db.batch()
-                chunk.forEach { uidUtente ->
-                    val ref = db.collection("notifiche")
-                        .document(uidUtente)
-                        .collection("lista")
-                        .document(broadcastId)
-                    batch.set(ref, mapOf(
-                        "titolo"     to titolo,
-                        "corpo"      to corpo,
-                        "letta"      to false,
-                        "creatoAt"   to ora,
-                        "externalId" to null,
-                        "tipo"       to "broadcast"
-                    ))
-                }
-                batch.commit().await()
+    suspend fun inviaBroadcast(titolo: String, corpo: String): Result<Unit> = try {
+        val ora = System.currentTimeMillis()
+        val broadcastId = "b$ora"
+        val utenti = db.collection("users").get().await().documents.map { it.id }
+        if (utenti.isEmpty()) throw Exception("Nessun utente")
+        utenti.chunked(400).forEach { chunk ->
+            val batch = db.batch()
+            chunk.forEach { uidUtente ->
+                val ref = db.collection("notifiche").document(uidUtente).collection("lista").document(broadcastId)
+                batch.set(ref, mapOf("titolo" to titolo, "corpo" to corpo, "letta" to false, "creatoAt" to ora, "externalId" to null, "tipo" to "broadcast"))
             }
-            Result.success(Unit)
-        } catch (e: Exception) { Result.failure(e) }
+            batch.commit().await()
+        }
+        Result.success(Unit)
+    } catch (e: Exception) { Result.failure(e) }
+
+    /** SCRIPT DI MIGRAZIONE: sposta i quiz dalle subcollection al documento principale */
+    suspend fun eseguiMigrazioneQuizPiatta() {
+        try {
+            val snap = db.collection("curiosita").get().await()
+            val docs = snap.documents.filter { it.id != "_meta_" }
+
+            coroutineScope {
+                docs.forEach { doc ->
+                    async {
+                        // Se non ha ancora il campo "domanda", proviamo a prenderlo dalla subcollection
+                        if (doc.getString("domanda") == null) {
+                            val quizDoc = db.collection("curiosita").document(doc.id)
+                                .collection("quiz").document("domanda").get().await()
+                            
+                            if (quizDoc.exists()) {
+                                db.collection("curiosita").document(doc.id).update(mapOf(
+                                    "domanda"          to quizDoc.getString("domanda"),
+                                    "rispostaCorretta" to quizDoc.getString("rispostaCorretta"),
+                                    "risposteErrate"   to quizDoc.get("risposteErrate"),
+                                    "spiegazione"      to quizDoc.getString("spiegazione")
+                                )).await()
+                                Log.d("Migration", "Migrato quiz per ${doc.id}")
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("Migration", "Errore migrazione: ${e.message}")
+        }
     }
 }

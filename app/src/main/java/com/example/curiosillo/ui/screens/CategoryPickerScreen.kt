@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,20 +41,14 @@ fun CategoryPickerScreen(nav: NavController, destinazione: String) {
     LaunchedEffect(Unit) { vm.resetCategorie() }
 
     // Statistiche completamento per categoria (lette/totali)
-    // Usa getPilloleLette() per lette e getPerRipasso(0) per totali (già lette = tutte le imparate)
     val completamento = remember { mutableStateOf<Map<String, Pair<Int, Int>>>(emptyMap()) }
     LaunchedEffect(Unit) {
-        val lette    = app.repository.getPilloleLette()
-        val lettePerCat = lette.groupBy { it.category }.mapValues { (_, lista) ->
-            // (lette, lette) — totale reale richiederebbe una query aggiuntiva non ancora disponibile
-            // mostriamo solo le lette come numero assoluto
-            Pair(lista.size, lista.size)
-        }
-        // Carica anche le non lette per avere il totale
+        val lette         = app.repository.getPilloleLette()
         val tutteImparate = app.repository.getTutteLeCuriosita()
         val tuttePerCat   = tutteImparate.groupBy { it.category }
         val letteSet      = lette.map { it.id }.toSet()
-        completamento.value = tuttePerCat.mapValues { (cat, lista) ->
+        
+        completamento.value = tuttePerCat.mapValues { (_, lista) ->
             Pair(lista.count { it.id in letteSet }, lista.size)
         }
     }
@@ -170,8 +163,9 @@ private fun CategoriaCard(
                         trackColor = if (attiva) Color.White.copy(alpha = 0.3f) else colore.copy(alpha = 0.2f)
                     )
                     Spacer(Modifier.height(2.dp))
+                    val perc = (pct * 100).toInt()
                     Text(
-                        "$lette/$totali lette",
+                        "$perc%",
                         style    = MaterialTheme.typography.labelSmall,
                         color    = testoColore.copy(alpha = 0.7f),
                         fontSize = 9.sp

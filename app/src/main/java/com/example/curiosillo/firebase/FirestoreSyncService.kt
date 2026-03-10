@@ -9,15 +9,7 @@ import kotlinx.coroutines.tasks.await
 
 /**
  * Sincronizza le curiosità da Firestore → Room locale.
- *
- * Struttura Firestore:
- *   curiosita/{externalId}          → documento curiosità
- *     .titolo, .corpo, .categoria, .emoji, .versione (Long)
- *   curiosita/{externalId}/quiz/domanda → subdocument quiz (opzionale)
- *     .domanda, .rispostaCorretta, .risposteErrate (List<String>), .spiegazione
- *
- * Strategia MERGE: stessi principi del vecchio ContentSyncService.
- * La versione globale è salvata in un documento speciale "meta/versione".
+ * Versione OTTIMIZZATA: scarica tutto in un'unica chiamata (pillola + quiz integrato).
  */
 class FirestoreSyncService(
     private val repo:         CuriosityRepository,
@@ -33,18 +25,15 @@ class FirestoreSyncService(
 
     suspend fun sync(): SyncResult {
         return try {
-            // 1. Leggi versione remota
             val metaDoc      = db.collection("curiosita").document("_meta_").get().await()
             val versioneRemota = metaDoc.getLong("versione") ?: 1L
             val versioneLocale = contentPrefs.getContentVersion()
 
             val dbVuoto = repo.totaleCuriosità() == 0
-
             if (!dbVuoto && versioneRemota <= versioneLocale) {
                 return SyncResult.NessunaModifica
             }
 
-            // 2. Scarica tutte le curiosità
             val snapshot = db.collection("curiosita")
                 .whereNotEqualTo("__name__", "_meta_")
                 .get().await()
@@ -61,101 +50,63 @@ class FirestoreSyncService(
                 val categoria = doc.getString("categoria") ?: ""
                 val emoji     = doc.getString("emoji")     ?: ""
 
+                // Dati quiz integrati nel documento
+                val domanda          = doc.getString("domanda")
+                val rispostaCorretta = doc.getString("rispostaCorretta")
+                @Suppress("UNCHECKED_CAST")
+                val risposteErrate   = doc.get("risposteErrate") as? List<String>
+                val spiegazione      = doc.getString("spiegazione")
+
                 val esistente = repo.getByExternalId(externalId)
 
                 if (esistente == null) {
-                    val nuovaCuriosita = Curiosity(
-                        externalId   = externalId,
-                        title        = titolo,
-                        body         = corpo,
-                        category     = categoria,
-                        emoji        = emoji,
-                        isRead       = false,
-                        isBookmarked = false,
-                        nota         = ""
-                    )
-                    val newId = repo.insertCuriosita(nuovaCuriosita)
-                    sincronizzaQuiz(externalId, newId.toInt(), categoria)
+                    val curId = repo.insertCuriosita(Curiosity(
+                        externalId = externalId, title = titolo, body = corpo,
+                        category = categoria, emoji = emoji
+                    ))
+                    
+                    if (domanda != null && rispostaCorretta != null) {
+                        repo.insertQuizQuestion(QuizQuestion(
+                            curiosityId   = curId.toInt(),
+                            questionText  = domanda,
+                            correctAnswer = rispostaCorretta,
+                            wrongAnswer1  = risposteErrate?.getOrElse(0) { "" } ?: "",
+                            wrongAnswer2  = risposteErrate?.getOrElse(1) { "" } ?: "",
+                            wrongAnswer3  = risposteErrate?.getOrElse(2) { "" } ?: "",
+                            explanation   = spiegazione ?: "",
+                            category      = categoria
+                        ))
+                    }
                     nuove++
                 } else {
                     repo.updateCuriosita(esistente.copy(
-                        title    = titolo,
-                        body     = corpo,
-                        category = categoria,
-                        emoji    = emoji
+                        title = titolo, body = corpo, category = categoria, emoji = emoji
                     ))
-                    aggiornaQuiz(externalId, esistente.id, categoria)
+                    
+                    if (domanda != null && rispostaCorretta != null) {
+                        val qEsistente = repo.getQuizByCuriosityId(esistente.id)
+                        val qNuovo = QuizQuestion(
+                            id            = qEsistente?.id ?: 0,
+                            curiosityId   = esistente.id,
+                            questionText  = domanda,
+                            correctAnswer = rispostaCorretta,
+                            wrongAnswer1  = risposteErrate?.getOrElse(0) { "" } ?: "",
+                            wrongAnswer2  = risposteErrate?.getOrElse(1) { "" } ?: "",
+                            wrongAnswer3  = risposteErrate?.getOrElse(2) { "" } ?: "",
+                            explanation   = spiegazione ?: "",
+                            category      = categoria
+                        )
+                        if (qEsistente != null) repo.updateQuizQuestion(qNuovo)
+                        else repo.insertQuizQuestion(qNuovo)
+                    }
                     aggiornate++
                 }
             }
 
             contentPrefs.setContentVersion(versioneRemota.toInt())
             SyncResult.Success(nuove, aggiornate)
-
         } catch (e: Exception) {
-            SyncResult.Errore(e.message ?: "Errore sconosciuto")
+            SyncResult.Errore(e.message ?: "Errore sync")
         }
-    }
-
-    private suspend fun sincronizzaQuiz(externalId: String, curiosityId: Int, categoria: String) {
-        try {
-            val quizDoc = db.collection("curiosita").document(externalId)
-                .collection("quiz").document("domanda").get().await()
-            if (!quizDoc.exists()) return
-
-            val domanda         = quizDoc.getString("domanda")         ?: return
-            val rispostaCorretta = quizDoc.getString("rispostaCorretta") ?: return
-            @Suppress("UNCHECKED_CAST")
-            val risposteErrate  = quizDoc.get("risposteErrate") as? List<String> ?: emptyList()
-            val spiegazione     = quizDoc.getString("spiegazione") ?: ""
-
-            repo.insertQuizQuestion(QuizQuestion(
-                curiosityId   = curiosityId,
-                questionText  = domanda,
-                correctAnswer = rispostaCorretta,
-                wrongAnswer1  = risposteErrate.getOrElse(0) { "" },
-                wrongAnswer2  = risposteErrate.getOrElse(1) { "" },
-                wrongAnswer3  = risposteErrate.getOrElse(2) { "" },
-                explanation   = spiegazione,
-                category      = categoria
-            ))
-        } catch (_: Exception) {}
-    }
-
-    private suspend fun aggiornaQuiz(externalId: String, curiosityId: Int, categoria: String) {
-        try {
-            val quizDoc = db.collection("curiosita").document(externalId)
-                .collection("quiz").document("domanda").get().await()
-            if (!quizDoc.exists()) return
-
-            val domanda         = quizDoc.getString("domanda")         ?: return
-            val rispostaCorretta = quizDoc.getString("rispostaCorretta") ?: return
-            @Suppress("UNCHECKED_CAST")
-            val risposteErrate  = quizDoc.get("risposteErrate") as? List<String> ?: emptyList()
-            val spiegazione     = quizDoc.getString("spiegazione") ?: ""
-
-            val quizEsistente = repo.getQuizByCuriosityId(curiosityId)
-            if (quizEsistente != null) {
-                repo.updateQuizQuestion(quizEsistente.copy(
-                    questionText  = domanda,
-                    correctAnswer = rispostaCorretta,
-                    wrongAnswer1  = risposteErrate.getOrElse(0) { "" },
-                    wrongAnswer2  = risposteErrate.getOrElse(1) { "" },
-                    wrongAnswer3  = risposteErrate.getOrElse(2) { "" },
-                    explanation   = spiegazione
-                ))
-            } else {
-                repo.insertQuizQuestion(QuizQuestion(
-                    curiosityId   = curiosityId,
-                    questionText  = domanda,
-                    correctAnswer = rispostaCorretta,
-                    wrongAnswer1  = risposteErrate.getOrElse(0) { "" },
-                    wrongAnswer2  = risposteErrate.getOrElse(1) { "" },
-                    wrongAnswer3  = risposteErrate.getOrElse(2) { "" },
-                    explanation   = spiegazione,
-                    category      = categoria
-                ))
-            }
-        } catch (_: Exception) {}
     }
 }

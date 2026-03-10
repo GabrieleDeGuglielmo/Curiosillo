@@ -15,6 +15,7 @@ import com.example.curiosillo.network.ChangelogService
 import com.example.curiosillo.network.FirestoreSyncService
 import com.example.curiosillo.network.VersioneChangelog
 import com.example.curiosillo.repository.CuriosityRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,7 +34,6 @@ data class HomeUiState(
     val changelogDaMostrare: List<VersioneChangelog>?             = null,
     val changelogCompleto:   List<VersioneChangelog>              = emptyList(),
     val isOffline:           Boolean                              = false,
-    // Notifiche: caricate in background, mostrate dalla campanella (non popup automatico)
     val notifiche:           List<FirebaseManager.NotificaInApp>  = emptyList()
 )
 
@@ -56,12 +56,7 @@ class HomeViewModel(
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             _state.value = _state.value.copy(isOffline = false)
-            viewModelScope.launch {
-                syncContenuti()
-                checkAggiornamentoApp()
-                caricaChangelog()
-                caricaNotifiche()
-            }
+            refreshDatiCloud()
         }
         override fun onLost(network: Network) {
             _state.value = _state.value.copy(isOffline = true)
@@ -69,19 +64,24 @@ class HomeViewModel(
     }
 
     init {
-        // Controlla stato iniziale connessione
         val isConnected = connectivityManager.activeNetwork
             ?.let { connectivityManager.getNetworkCapabilities(it) }
             ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
         _state.value = _state.value.copy(isOffline = !isConnected)
 
-        // Registra callback
         val request = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
         connectivityManager.registerNetworkCallback(request, networkCallback)
 
-        if (isConnected) {
+        // All'avvio proviamo sempre a sincronizzare, anche con un piccolo delay 
+        // per dare tempo alla connessione di stabilizzarsi
+        refreshDatiCloud()
+    }
+
+    private fun refreshDatiCloud() {
+        viewModelScope.launch {
+            delay(500) // Piccolo delay di sicurezza
             syncContenuti()
             checkAggiornamentoApp()
             caricaChangelog()
@@ -95,6 +95,7 @@ class HomeViewModel(
     }
 
     fun syncContenuti() {
+        if (_state.value.isOffline) return
         viewModelScope.launch {
             _state.value = _state.value.copy(syncInCorso = true, syncMessaggio = null)
             val result = syncService.sync()
@@ -158,8 +159,6 @@ class HomeViewModel(
     fun dismissAggiornamento()  { _state.value = _state.value.copy(aggiornamentoApp = null) }
     fun dismissSyncMessaggio()  { _state.value = _state.value.copy(syncMessaggio = null) }
 
-    // ── Notifiche (campanella) ────────────────────────────────────────────────
-
     fun caricaNotifiche() {
         viewModelScope.launch {
             val notifiche = FirebaseManager.caricaNotifichePendenti()
@@ -183,7 +182,6 @@ class HomeViewModel(
         }
     }
 
-    // dismissNotifiche kept for compatibility (same as segnaNotificheTutteLette)
     fun dismissNotifiche() = segnaNotificheTutteLette()
 
     class Factory(
