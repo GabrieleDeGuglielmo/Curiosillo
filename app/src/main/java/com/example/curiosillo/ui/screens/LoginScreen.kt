@@ -59,7 +59,6 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
     val vm: AuthViewModel = viewModel(
         factory = AuthViewModel.Factory(app.repository, app.gamificationPrefs, ctx)
     )
-    // HomeViewModel usato solo per il check aggiornamenti
     val homeVm: HomeViewModel = viewModel(
         factory = HomeViewModel.Factory(app.repository, app.contentPrefs, ctx)
     )
@@ -67,11 +66,18 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
     val state     by vm.state.collectAsState()
     val homeState by homeVm.state.collectAsState()
 
+    var showGoogleUsernameDialog by remember { mutableStateOf(false) }
+    var googleUsernameInput by remember { mutableStateOf("") }
+
     // Naviga alla home dopo login riuscito
     LaunchedEffect(state) {
         if (state is AuthUiState.Successo) {
             onLoginSuccesso()
             vm.resetStato()
+        }
+        if (state is AuthUiState.RichiedeUsername) {
+            googleUsernameInput = (state as AuthUiState.RichiedeUsername).suggestedUsername
+            showGoogleUsernameDialog = true
         }
     }
 
@@ -99,6 +105,70 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
     var mostraPassword    by remember { mutableStateOf(false) }
     var showRecuperoDialog by remember { mutableStateOf(false) }
     var emailRecupero     by remember { mutableStateOf("") }
+
+    // ── Dialog per impostare lo username dopo Google ──────────────────────────
+    if (showGoogleUsernameDialog && state is AuthUiState.RichiedeUsername) {
+        val s = state as AuthUiState.RichiedeUsername
+        
+        var checkJob by remember { mutableStateOf<Job?>(null) }
+        var isChecking by remember { mutableStateOf(false) }
+        var isAvail by remember { mutableStateOf<Boolean?>(null) }
+
+        AlertDialog(
+            onDismissRequest = { /* obbligatorio scegliere */ },
+            title = { Text("Scegli il tuo username", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("Benvenuto! Come vorresti farti chiamare su Curiosillo?", 
+                        Modifier.padding(bottom = 16.dp), color = MaterialTheme.colorScheme.onSurface.copy(0.7f))
+                    
+                    OutlinedTextField(
+                        value = googleUsernameInput,
+                        onValueChange = { v ->
+                            if (v.length <= 20) {
+                                googleUsernameInput = v
+                                isAvail = null
+                                checkJob?.cancel()
+                                if (v.trim().length >= 3) {
+                                    isChecking = true
+                                    checkJob = coroutineScope.launch {
+                                        delay(600)
+                                        isAvail = !FirebaseManager.isUsernameOccupato(v.trim())
+                                        isChecking = false
+                                    }
+                                }
+                            }
+                        },
+                        label = { Text("Username") },
+                        trailingIcon = {
+                            if (isChecking) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                            else if (isAvail == true) Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50))
+                            else if (isAvail == false) Icon(Icons.Default.Cancel, null, tint = MaterialTheme.colorScheme.error)
+                        },
+                        isError = isAvail == false,
+                        supportingText = {
+                            if (isAvail == false) Text("Già in uso", color = MaterialTheme.colorScheme.error)
+                            else Text("${googleUsernameInput.length}/20")
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        vm.completaRegistrazioneGoogle(s.user, googleUsernameInput)
+                        showGoogleUsernameDialog = false
+                    },
+                    enabled = googleUsernameInput.trim().length >= 3 && isAvail == true && !isChecking
+                ) {
+                    Text("Conferma")
+                }
+            }
+        )
+    }
 
     // ── Dialog recupero password ──────────────────────────────────────────────
     if (showRecuperoDialog) {

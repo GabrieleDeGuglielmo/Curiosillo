@@ -52,20 +52,13 @@ object FirebaseManager {
         Result.failure(e)
     }
 
-    suspend fun loginGoogle(idToken: String): Result<FirebaseUser> = try {
+    suspend fun loginGoogle(idToken: String): Result<Pair<FirebaseUser, Boolean>> = try {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         val result     = auth.signInWithCredential(credential).await()
         val user       = result.user!!
         val isNuovo    = result.additionalUserInfo?.isNewUser ?: false
-        if (isNuovo) {
-            var username = (user.displayName ?: "Curioso").trim()
-            // Se lo username Google è occupato, aggiungiamo un suffisso casuale
-            if (isUsernameOccupato(username)) {
-                username += "_${System.currentTimeMillis().toString().takeLast(4)}"
-            }
-            creaProfiloSeNonEsiste(user.uid, username, user.email ?: "")
-        }
-        Result.success(user)
+        // Non creiamo il profilo qui se è nuovo, lo faremo dopo la conferma dello username
+        Result.success(Pair(user, isNuovo))
     } catch (e: Exception) {
         Result.failure(e)
     }
@@ -100,10 +93,20 @@ object FirebaseManager {
         }
     }
 
-    private suspend fun creaProfiloSeNonEsiste(uid: String, username: String, email: String) {
+    suspend fun creaProfiloSeNonEsiste(uid: String, username: String, email: String) {
         val cleanNick = username.trim()
 
-        // Crea il profilo utente
+        // Imposta anche il displayName su Firebase Auth se non già presente o diverso
+        auth.currentUser?.let { user ->
+            if (user.displayName != cleanNick) {
+                val profileUpdates = userProfileChangeRequest {
+                    displayName = cleanNick
+                }
+                user.updateProfile(profileUpdates).await()
+            }
+        }
+
+        // Crea il profilo utente su Firestore
         db.collection("users").document(uid)
             .collection("data").document("profile")
             .set(mapOf(

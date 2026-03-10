@@ -22,6 +22,7 @@ sealed class AuthUiState {
     object Loading                           : AuthUiState()
     object EmailRecuperoInviata              : AuthUiState()
     data class Successo(val user: FirebaseUser, val isNuovoUtente: Boolean) : AuthUiState()
+    data class RichiedeUsername(val user: FirebaseUser, val suggestedUsername: String) : AuthUiState()
     data class Errore(val messaggio: String) : AuthUiState()
 }
 
@@ -96,13 +97,31 @@ class AuthViewModel(
             _state.value = AuthUiState.Loading
             val result = FirebaseManager.loginGoogle(idToken)
             result.fold(
-                onSuccess = { user ->
-                    sincronizzaDopoLogin(user, isNuovo = false)
+                onSuccess = { pair ->
+                    val user    = pair.first
+                    val isNuovo = pair.second
+                    if (isNuovo) {
+                        _state.value = AuthUiState.RichiedeUsername(user, user.displayName ?: "")
+                    } else {
+                        sincronizzaDopoLogin(user, isNuovo = false)
+                    }
                 },
                 onFailure = {
                     _state.value = AuthUiState.Errore(messaggioErrore(it.message))
                 }
             )
+        }
+    }
+
+    fun completaRegistrazioneGoogle(user: FirebaseUser, username: String) {
+        viewModelScope.launch {
+            _state.value = AuthUiState.Loading
+            try {
+                FirebaseManager.creaProfiloSeNonEsiste(user.uid, username, user.email ?: "")
+                sincronizzaDopoLogin(user, isNuovo = true)
+            } catch (e: Exception) {
+                _state.value = AuthUiState.Errore(messaggioErrore(e.message))
+            }
         }
     }
 
