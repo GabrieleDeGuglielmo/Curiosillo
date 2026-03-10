@@ -1,9 +1,11 @@
 package com.example.curiosillo.firebase
 
+import android.util.Log
 import com.example.curiosillo.data.BadgeSbloccato
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.userProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.SetOptions
@@ -31,10 +33,20 @@ object FirebaseManager {
     }
 
     suspend fun registraEmail(email: String, password: String, username: String): Result<FirebaseUser> = try {
+        val cleanUsername = username.trim()
+        // Verifica se lo username è già occupato
+        if (isUsernameOccupato(cleanUsername)) {
+            throw Exception("Username già in uso")
+        }
         val result = auth.createUserWithEmailAndPassword(email, password).await()
         val user   = result.user!!
+        // Imposta lo username su Auth Profile
+        val profileUpdates = userProfileChangeRequest {
+            displayName = cleanUsername
+        }
+        user.updateProfile(profileUpdates).await()
         // Crea il documento profilo su Firestore
-        creaProfiloSeNonEsiste(user.uid, username, email)
+        creaProfiloSeNonEsiste(user.uid, cleanUsername, email)
         Result.success(user)
     } catch (e: Exception) {
         Result.failure(e)
@@ -46,7 +58,12 @@ object FirebaseManager {
         val user       = result.user!!
         val isNuovo    = result.additionalUserInfo?.isNewUser ?: false
         if (isNuovo) {
-            creaProfiloSeNonEsiste(user.uid, user.displayName ?: "Curioso", user.email ?: "")
+            var username = (user.displayName ?: "Curioso").trim()
+            // Se lo username Google è occupato, aggiungiamo un suffisso casuale
+            if (isUsernameOccupato(username)) {
+                username += "_${System.currentTimeMillis().toString().takeLast(4)}"
+            }
+            creaProfiloSeNonEsiste(user.uid, username, user.email ?: "")
         }
         Result.success(user)
     } catch (e: Exception) {
@@ -57,11 +74,40 @@ object FirebaseManager {
 
     // ── Profilo ───────────────────────────────────────────────────────────────
 
+    /** 
+     * Verifica se uno username esiste già.
+     * Cerca direttamente in users/{uid}/data/profile dove username è un campo.
+     */
+    suspend fun isUsernameOccupato(username: String): Boolean {
+        val target = username.trim()
+        if (target.isBlank()) return false
+        val currentUid = uid
+
+        return try {
+            val snapshot = db.collectionGroup("data")
+                .whereEqualTo("username", target)
+                .limit(2)
+                .get().await()
+
+            val altri = snapshot.documents.filter { doc ->
+                // users/{uid}/data/profile -> parent.parent is users/{uid}
+                doc.reference.parent.parent?.id != currentUid
+            }
+            altri.isNotEmpty()
+        } catch (e: Exception) {
+            Log.e("FirebaseManager", "Errore isUsernameOccupato: ${e.message}")
+            false
+        }
+    }
+
     private suspend fun creaProfiloSeNonEsiste(uid: String, username: String, email: String) {
+        val cleanNick = username.trim()
+
+        // Crea il profilo utente
         db.collection("users").document(uid)
             .collection("data").document("profile")
             .set(mapOf(
-                "username"       to username,
+                "username"       to cleanNick,
                 "email"          to email,
                 "xp"             to 0,
                 "streakCorrente" to 0,
@@ -69,6 +115,7 @@ object FirebaseManager {
                 "ultimoAccesso"  to -1L
             ), SetOptions.merge()).await()
     }
+
     suspend fun caricaProfilo(uid: String): Map<String, Any>? = try {
         val doc = db.collection("users").document(uid)
             .collection("data").document("profile").get().await()
@@ -81,6 +128,37 @@ object FirebaseManager {
                 .collection("data").document("profile")
                 .set(dati, SetOptions.merge()).await()
         } catch (_: Exception) {}
+    }
+
+    suspend fun cambiaUsername(nuovoUsername: String): Result<Unit> = try {
+        val user = auth.currentUser ?: throw Exception("Utente non loggato")
+        val cleanNick = nuovoUsername.trim()
+
+        if (isUsernameOccupato(cleanNick)) {
+            throw Exception("Username già in uso")
+        }
+
+        val profileUpdates = userProfileChangeRequest {
+            displayName = cleanNick
+        }
+        user.updateProfile(profileUpdates).await()
+        aggiornaProfilo(user.uid, mapOf("username" to cleanNick))
+
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    suspend fun cambiaPassword(nuovaPassword: String): Result<Unit> = try {
+        val user = auth.currentUser ?: throw Exception("Utente non loggato")
+        user.updatePassword(nuovaPassword).await()
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    fun isGoogleUser(): Boolean {
+        return auth.currentUser?.providerData?.any { it.providerId == "google.com" } ?: false
     }
 
     suspend fun recuperaPassword(email: String): Result<Unit> = try {

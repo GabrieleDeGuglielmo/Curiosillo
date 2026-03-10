@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
                             }
                         })
                     }
+                    composable("edit_profile") { EditProfileScreen(nav) }
                     composable("admin_broadcast") { AdminBroadcastScreen(nav) }
                     composable("preferiti")  { BookmarkScreen(nav) }
                     composable("ripasso")    { RipassoScreen(nav) }

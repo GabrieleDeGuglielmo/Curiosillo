@@ -26,16 +26,16 @@ sealed class DuelloUiState {
     data class InAttesa(
         val duelloId:  String,
         val codice:    String,
-        val mioNick:   String
+        val mioUser:   String
     ) : DuelloUiState()
     data class InCountdown(
         val secondiRimasti: Int,   // 3..1
-        val mioNick:        String
+        val mioUser:        String
     ) : DuelloUiState()
     data class InCorso(
         val duello:          DuelloStato,
         val mioUid:          String,
-        val mioNick:         String,
+        val mioUser:         String,
         val indiceCorrente:  Int,
         val rispostaData:    String?,
         val secondiRimasti:  Int,
@@ -44,7 +44,7 @@ sealed class DuelloUiState {
     data class Pausa(
         val duello:         DuelloStato,
         val mioUid:         String,
-        val mioNick:        String,
+        val mioUser:        String,
         val indiceCorrente: Int,
         val miaRisposta:    String?,   // null = non ha risposto in tempo
         val rispostaCorretta: String,
@@ -56,8 +56,8 @@ sealed class DuelloUiState {
         val mioUid:      String,
         val mioPunteggio: Int,
         val avvPunteggio: Int,
-        val mioNick:     String,
-        val avvNick:     String
+        val mioUser:     String,
+        val avvUser:     String
     ) : DuelloUiState()
     data class Errore(val messaggio: String) : DuelloUiState()
 }
@@ -78,9 +78,9 @@ class DuelloViewModel(
     private var duelloId:    String = ""
     private var domande:     List<QuizQuestion> = emptyList()
     private var mioUid:      String = ""
-    private var mioNick:     String = ""
+    private var mioUser:     String = ""
 
-    private fun getNickname(): String {
+    private fun getUsername(): String {
         val user = FirebaseManager.utenteCorrente
         return user?.displayName?.takeIf { it.isNotBlank() }
             ?: user?.email?.substringBefore("@")?.takeIf { it.isNotBlank() }
@@ -101,15 +101,15 @@ class DuelloViewModel(
 
     fun creaStanza() {
         mioUid  = getMioUid()
-        mioNick = getNickname()
+        mioUser = getUsername()
         viewModelScope.launch {
             _state.value = DuelloUiState.Loading
             try {
                 domande  = caricaDomande()
-                duelloId = duelloRepo.creaDuello(mioUid, mioNick, domande)
+                duelloId = duelloRepo.creaDuello(mioUid, mioUser, domande)
                 // Ottieni il codice dal documento appena creato
                 val codice = ottieniCodice(duelloId)
-                _state.value = DuelloUiState.InAttesa(duelloId, codice, mioNick)
+                _state.value = DuelloUiState.InAttesa(duelloId, codice, mioUser)
                 osservaPerAvversario(duelloId)
             } catch (e: Exception) {
                 _state.value = DuelloUiState.Errore("Errore creazione stanza: ${e.message}")
@@ -155,10 +155,10 @@ class DuelloViewModel(
 
     fun uniscitiConCodice(codice: String) {
         mioUid  = getMioUid()
-        mioNick = getNickname()
+        mioUser = getUsername()
         viewModelScope.launch {
             _state.value = DuelloUiState.Loading
-            val result = duelloRepo.uniscitiConCodice(codice, mioUid, mioNick)
+            val result = duelloRepo.uniscitiConCodice(codice, mioUid, mioUser)
             result.fold(
                 onSuccess = { id ->
                     duelloId = id
@@ -184,16 +184,16 @@ class DuelloViewModel(
 
     fun cercaAvversarioCasuale() {
         mioUid  = getMioUid()
-        mioNick = getNickname()
+        mioUser = getUsername()
         viewModelScope.launch {
             _state.value = DuelloUiState.Loading
             try {
                 domande = caricaDomande()
-                duelloRepo.cercaAvversarioCasuale(mioUid, mioNick, domande).collect { result ->
+                duelloRepo.cercaAvversarioCasuale(mioUid, mioUser, domande).collect { result ->
                     when (result) {
                         is MatchmakingResult.InAttesa -> {
                             duelloId     = result.duelloId
-                            _state.value = DuelloUiState.InAttesa(result.duelloId, "", mioNick)
+                            _state.value = DuelloUiState.InAttesa(result.duelloId, "", mioUser)
                             // Listener già attivo nel repository — osserva per aggiornamenti in partita
                             osservaJob?.cancel()
                             osservaJob = viewModelScope.launch {
@@ -243,13 +243,13 @@ class DuelloViewModel(
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
             for (s in 3 downTo 1) {
-                _state.value = DuelloUiState.InCountdown(secondiRimasti = s, mioNick = mioNick)
+                _state.value = DuelloUiState.InCountdown(secondiRimasti = s, mioUser = mioUser)
                 delay(1000)
             }
             _state.value = DuelloUiState.InCorso(
                 duello          = stato,
                 mioUid          = mioUid,
-                mioNick         = mioNick,
+                mioUser         = mioUser,
                 indiceCorrente  = 0,
                 rispostaData    = null,
                 secondiRimasti  = 10,
@@ -323,7 +323,7 @@ class DuelloViewModel(
                 _state.value = DuelloUiState.Pausa(
                     duello           = cur.duello,
                     mioUid           = cur.mioUid,
-                    mioNick          = cur.mioNick,
+                    mioUser          = cur.mioUser,
                     indiceCorrente   = cur.indiceCorrente,
                     miaRisposta      = miaRisposta,
                     rispostaCorretta = rispostaCorretta,
@@ -358,7 +358,7 @@ class DuelloViewModel(
             _state.value = DuelloUiState.InCorso(
                 duello          = pausa.duello,
                 mioUid          = pausa.mioUid,
-                mioNick         = pausa.mioNick,
+                mioUser         = pausa.mioUser,
                 indiceCorrente  = prossimo,
                 rispostaData    = null,
                 secondiRimasti  = 10,
@@ -372,14 +372,14 @@ class DuelloViewModel(
         timerJob?.cancel()
         osservaJob?.cancel()
         val avvUid  = stato.avversarioUid(mioUid) ?: ""
-        val avvNick = stato.giocatori[avvUid]?.nickname ?: "Avversario"
+        val avvUser = stato.giocatori[avvUid]?.username ?: "Avversario"
         _state.value = DuelloUiState.Risultati(
             duello       = stato,
             mioUid       = mioUid,
             mioPunteggio = stato.punteggio(mioUid),
             avvPunteggio = stato.punteggio(avvUid),
-            mioNick      = mioNick,
-            avvNick      = avvNick
+            mioUser      = mioUser,
+            avvUser      = avvUser
         )
     }
 

@@ -27,6 +27,7 @@ data class ProfileUiState(
     val username:            String               = "",
     val email:               String               = "",
     val isLoggato:           Boolean              = false,
+    val isGoogleUser:        Boolean              = false,
     val isEliminazioneInCorso: Boolean            = false,
     val isLoading:           Boolean              = true
 )
@@ -69,8 +70,29 @@ class ProfileViewModel(
                 username          = username,
                 email             = user?.email ?: "",
                 isLoggato         = user != null,
+                isGoogleUser      = FirebaseManager.isGoogleUser(),
                 isLoading         = false
             )
+        }
+    }
+
+    fun cambiaUsername(nuovoUser: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            val res = FirebaseManager.cambiaUsername(nuovoUser)
+            if (res.isSuccess) {
+                _state.value = _state.value.copy(username = nuovoUser)
+                onSuccess()
+            } else {
+                onError(res.exceptionOrNull()?.message ?: "Errore nel cambio username")
+            }
+        }
+    }
+
+    fun cambiaPassword(nuovaPass: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            val res = FirebaseManager.cambiaPassword(nuovaPass)
+            if (res.isSuccess) onSuccess()
+            else onError(res.exceptionOrNull()?.message ?: "Errore nel cambio password")
         }
     }
 

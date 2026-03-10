@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Bookmark
@@ -31,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -143,7 +141,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     icon  = Icons.Default.ManageAccounts,
                     tint  = Error,
                     label = "Account",
-                    sub   = "Resetta progressi, esci o elimina account"
+                    sub   = "Opzioni account"
                 ) {
                     showAccountSheet = true
                 }
@@ -231,6 +229,22 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 20.dp)
                 )
+
+                // Modifica Profilo
+                AzioneItem(
+                    icon  = Icons.Default.Edit,
+                    tint  = MaterialTheme.colorScheme.primary,
+                    label = "Modifica profilo",
+                    sub   = "Cambia il tuo username o password"
+                ) {
+                    scope.launch { accountSheetState.hide() }.invokeOnCompletion {
+                        showAccountSheet = false
+                        nav.navigate("edit_profile")
+                    }
+                }
+
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
                 AzioneItem(
                     icon  = Icons.Default.RestartAlt,
                     tint  = Error,

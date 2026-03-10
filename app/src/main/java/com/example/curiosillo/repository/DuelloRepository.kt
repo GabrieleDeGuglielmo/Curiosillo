@@ -45,7 +45,7 @@ class DuelloRepository {
     @Suppress("UNCHECKED_CAST")
     private fun mapToGiocatore(m: Map<String, Any>): DuelloGiocatore = DuelloGiocatore(
         uid        = m["uid"]        as? String ?: "",
-        nickname   = m["nickname"]   as? String ?: "",
+        username   = m["username"]   as? String ?: "",
         risposte   = (m["risposte"]  as? Map<String, String>) ?: emptyMap(),
         completato = m["completato"] as? Boolean ?: false
     )
@@ -79,14 +79,14 @@ class DuelloRepository {
 
     suspend fun creaDuello(
         uid: String,
-        nickname: String,
+        username: String,
         domande: List<QuizQuestion>
     ): String {
         val codice    = generaCodice()
         val docRef    = duelli.document()
         val giocatore = mapOf(
             "uid"        to uid,
-            "nickname"   to nickname,
+            "username"   to username,
             "risposte"   to emptyMap<String, String>(),
             "completato" to false
         )
@@ -115,7 +115,7 @@ class DuelloRepository {
     suspend fun uniscitiConCodice(
         codice: String,
         uid: String,
-        nickname: String
+        username: String
     ): Result<String> {
         return try {
             val query = duelli
@@ -132,7 +132,7 @@ class DuelloRepository {
                     val doc = query.documents.first()
                     val giocatore = mapOf(
                         "uid"        to uid,
-                        "nickname"   to nickname,
+                        "username"   to username,
                         "risposte"   to emptyMap<String, String>(),
                         "completato" to false
                     )
@@ -158,7 +158,7 @@ class DuelloRepository {
 
     suspend fun cercaAvversarioCasuale(
         uid: String,
-        nickname: String,
+        username: String,
         domande: List<QuizQuestion>
     ): Flow<MatchmakingResult> = callbackFlow {
 
@@ -169,7 +169,7 @@ class DuelloRepository {
             // ── Secondo utente: trova avversario ──────────────────────────────
             val avvDoc      = codaSnap.documents.first()
             val avvUid      = avvDoc.getString("uid")      ?: ""
-            val avvNick     = avvDoc.getString("nickname") ?: "Anonimo"
+            val avvUsername = avvDoc.getString("username") ?: "Anonimo"
             val avvDuelloId = avvDoc.getString("duelloId") ?: ""
 
             try {
@@ -179,7 +179,7 @@ class DuelloRepository {
                 // Aggiorna il duello già creato dal primo utente
                 val nostroGiocatore = mapOf(
                     "uid"        to uid,
-                    "nickname"   to nickname,
+                    "username"   to username,
                     "risposte"   to emptyMap<String, String>(),
                     "completato" to false
                 )
@@ -193,15 +193,15 @@ class DuelloRepository {
 
             } catch (_: Exception) {
                 // Gara persa con un terzo utente — vai in coda
-                val duelloId = creaDuello(uid, nickname, domande)
-                mettitiInCoda(uid, nickname, duelloId)
+                val duelloId = creaDuello(uid, username, domande)
+                mettitiInCoda(uid, username, duelloId)
                 trySend(MatchmakingResult.InAttesa(duelloId))
                 osservaInCorso(duelloId) { trySend(MatchmakingResult.Trovato(it)); close() }
             }
 
         } else {
             // ── Primo utente: crea duello, avvia listener, poi vai in coda ────
-            val duelloId = creaDuello(uid, nickname, domande)
+            val duelloId = creaDuello(uid, username, domande)
 
             // IMPORTANTE: listener attivo PRIMA di scrivere in coda
             var listenerRef: ListenerRegistration? = null
@@ -213,7 +213,7 @@ class DuelloRepository {
                 }
             }
 
-            mettitiInCoda(uid, nickname, duelloId)
+            mettitiInCoda(uid, username, duelloId)
             trySend(MatchmakingResult.InAttesa(duelloId))
 
             awaitClose {
@@ -236,10 +236,10 @@ class DuelloRepository {
         }
     }
 
-    private suspend fun mettitiInCoda(uid: String, nickname: String, duelloId: String) {
+    private suspend fun mettitiInCoda(uid: String, username: String, duelloId: String) {
         coda.document(uid).set(mapOf(
             "uid"      to uid,
-            "nickname" to nickname,
+            "username" to username,
             "duelloId" to duelloId,
             "entratAt" to System.currentTimeMillis()
         )).await()

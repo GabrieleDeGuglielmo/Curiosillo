@@ -10,7 +10,7 @@ package com.example.curiosillo.data
  */
 data class DuelloGiocatore(
     val uid:        String = "",
-    val nickname:   String = "",
+    val username:   String = "",
     val risposte:   Map<String, String> = emptyMap(), // domandaIndex → risposta scelta
     val completato: Boolean = false
 )

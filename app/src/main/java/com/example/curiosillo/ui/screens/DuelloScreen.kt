@@ -371,7 +371,7 @@ private fun PartitaContent(
 ) {
     val domanda     = stato.duello.domande.getOrNull(stato.indiceCorrente) ?: return
     val avvUid      = stato.duello.avversarioUid(stato.mioUid)
-    val avvNick     = avvUid?.let { stato.duello.giocatori[it]?.nickname } ?: "Avversario"
+    val avvUser     = avvUid?.let { stato.duello.giocatori[it]?.username } ?: "Avversario"
     val avvRisposto = stato.risposteCorrentiAvversario > stato.indiceCorrente
 
     val seed     = (stato.duello.id + stato.indiceCorrente).hashCode().toLong()
@@ -409,7 +409,7 @@ private fun PartitaContent(
             verticalAlignment     = Alignment.CenterVertically
         ) {
             PunteggioChip(
-                nick      = stato.mioNick,
+                user      = stato.mioUser,
                 punteggio = stato.duello.punteggio(stato.mioUid),
                 isMe      = true
             )
@@ -424,7 +424,7 @@ private fun PartitaContent(
                 Text("${stato.secondiRimasti}", fontSize = 22.sp, color = timerColor)
             }
             PunteggioChip(
-                nick      = avvNick,
+                user      = avvUser,
                 punteggio = stato.duello.punteggio(avvUid ?: ""),
                 isMe      = false
             )
@@ -438,7 +438,7 @@ private fun PartitaContent(
                     color = MaterialTheme.colorScheme.secondaryContainer
                 ) {
                     Text(
-                        "✓ $avvNick ha risposto",
+                        "✓ $avvUser ha risposto",
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         style    = MaterialTheme.typography.labelSmall,
                         color    = MaterialTheme.colorScheme.onSecondaryContainer
@@ -503,7 +503,7 @@ private fun PartitaContent(
 }
 
 @Composable
-private fun PunteggioChip(nick: String, punteggio: Int, isMe: Boolean) {
+private fun PunteggioChip(user: String, punteggio: Int, isMe: Boolean) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = if (isMe) MaterialTheme.colorScheme.primaryContainer
@@ -514,7 +514,7 @@ private fun PunteggioChip(nick: String, punteggio: Int, isMe: Boolean) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                nick,
+                user,
                 style      = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color      = if (isMe) MaterialTheme.colorScheme.onPrimaryContainer
@@ -671,7 +671,7 @@ private fun RisultatiContent(
         ) {
             RisultatoCard(
                 modifier  = Modifier.weight(1f),
-                nick      = stato.mioNick,
+                user      = stato.mioUser,
                 punteggio = stato.mioPunteggio,
                 totale    = stato.duello.domande.size,
                 isMe      = true,
@@ -679,7 +679,7 @@ private fun RisultatiContent(
             )
             RisultatoCard(
                 modifier  = Modifier.weight(1f),
-                nick      = stato.avvNick,
+                user      = stato.avvUser,
                 punteggio = stato.avvPunteggio,
                 totale    = stato.duello.domande.size,
                 isMe      = false,
@@ -713,7 +713,7 @@ private fun RisultatiContent(
 @Composable
 private fun RisultatoCard(
     modifier:  Modifier,
-    nick:      String,
+    user:      String,
     punteggio: Int,
     totale:    Int,
     isMe:      Boolean,
@@ -735,7 +735,7 @@ private fun RisultatoCard(
             if (haVinto) Text("🏆", fontSize = 24.sp)
             Spacer(Modifier.height(4.dp))
             Text(
-                nick,
+                user,
                 style      = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color      = if (haVinto) Color.White

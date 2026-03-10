@@ -138,6 +138,7 @@ class AuthViewModel(
         "badly formatted" in raw                 -> "Email non valida"
         "at least 6 characters" in raw           -> "La password deve avere almeno 6 caratteri"
         "network error" in raw.lowercase()       -> "Errore di rete — controlla la connessione"
+        "Username già in uso" in raw             -> "Username già in uso"
         else                                     -> "Errore: $raw"
     }
 

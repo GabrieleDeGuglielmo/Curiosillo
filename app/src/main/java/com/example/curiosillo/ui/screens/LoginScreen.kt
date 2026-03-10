@@ -17,12 +17,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.example.curiosillo.firebase.FirebaseManager
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -44,6 +49,7 @@ import com.example.curiosillo.viewmodel.AuthViewModel
 import com.example.curiosillo.viewmodel.HomeViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(onLoginSuccesso: () -> Unit) {
@@ -85,7 +91,11 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
     var isRegistrazione   by remember { mutableStateOf(false) }
     var email             by remember { mutableStateOf("") }
     var password          by remember { mutableStateOf("") }
-    var username          by remember { mutableStateOf("") }
+    val coroutineScope         = rememberCoroutineScope()
+    var username              by remember { mutableStateOf("") }
+    var usernameDisponibile   by remember { mutableStateOf<Boolean?>(null) }
+    var usernameCheckLoading  by remember { mutableStateOf(false) }
+    var usernameCheckJob      by remember { mutableStateOf<Job?>(null) }
     var mostraPassword    by remember { mutableStateOf(false) }
     var showRecuperoDialog by remember { mutableStateOf(false) }
     var emailRecupero     by remember { mutableStateOf("") }
@@ -250,12 +260,41 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             AnimatedVisibility(visible = isRegistrazione) {
                 OutlinedTextField(
                     value         = username,
-                    onValueChange = { username = it },
+                    onValueChange = { v ->
+                        username = v
+                        usernameDisponibile = null
+                        usernameCheckJob?.cancel()
+                        if (v.trim().length >= 3) {
+                            usernameCheckLoading = true
+                            usernameCheckJob = coroutineScope.launch {
+                                delay(600)
+                                usernameDisponibile = !FirebaseManager.isUsernameOccupato(v.trim())
+                                usernameCheckLoading = false
+                            }
+                        } else {
+                            usernameCheckLoading = false
+                        }
+                    },
                     label         = { Text("Username") },
                     leadingIcon   = { Icon(Icons.Default.Person, null) },
+                    trailingIcon  = {
+                        when {
+                            usernameCheckLoading -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                            usernameDisponibile == true  -> Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50))
+                            usernameDisponibile == false -> Icon(Icons.Default.Cancel, null, tint = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    isError       = usernameDisponibile == false,
+                    supportingText = {
+                        when {
+                            usernameDisponibile == false -> Text("Username già in uso", color = MaterialTheme.colorScheme.error)
+                            usernameDisponibile == true  -> Text("Username disponibile", color = Color(0xFF4CAF50))
+                            username.trim().isNotEmpty() && username.trim().length < 3 -> Text("Minimo 3 caratteri")
+                        }
+                    },
                     singleLine    = true,
                     shape         = RoundedCornerShape(14.dp),
-                    modifier      = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                    modifier      = Modifier.fillMaxWidth().padding(bottom = 4.dp)
                 )
             }
 
@@ -319,7 +358,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                 },
                 enabled  = state !is AuthUiState.Loading &&
                         email.isNotBlank() && password.isNotBlank() &&
-                        (!isRegistrazione || username.isNotBlank()),
+                        (!isRegistrazione || (username.isNotBlank() && usernameDisponibile != false && !usernameCheckLoading)),
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape    = RoundedCornerShape(14.dp)
             ) {
