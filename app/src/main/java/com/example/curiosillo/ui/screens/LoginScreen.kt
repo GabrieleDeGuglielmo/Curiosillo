@@ -92,7 +92,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
     var email             by remember { mutableStateOf("") }
     var password          by remember { mutableStateOf("") }
     val coroutineScope         = rememberCoroutineScope()
-    var username              by remember { mutableStateOf("") }
+    var usernameInput         by remember { mutableStateOf("") }
     var usernameDisponibile   by remember { mutableStateOf<Boolean?>(null) }
     var usernameCheckLoading  by remember { mutableStateOf(false) }
     var usernameCheckJob      by remember { mutableStateOf<Job?>(null) }
@@ -259,20 +259,23 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             // Username (solo registrazione)
             AnimatedVisibility(visible = isRegistrazione) {
                 OutlinedTextField(
-                    value         = username,
+                    value         = usernameInput,
                     onValueChange = { v ->
-                        username = v
-                        usernameDisponibile = null
-                        usernameCheckJob?.cancel()
-                        if (v.trim().length >= 3) {
-                            usernameCheckLoading = true
-                            usernameCheckJob = coroutineScope.launch {
-                                delay(600)
-                                usernameDisponibile = !FirebaseManager.isUsernameOccupato(v.trim())
+                        if (v.length <= 20) {
+                            usernameInput = v
+                            usernameDisponibile = null
+                            usernameCheckJob?.cancel()
+                            val trimmed = v.trim()
+                            if (trimmed.length >= 3) {
+                                usernameCheckLoading = true
+                                usernameCheckJob = coroutineScope.launch {
+                                    delay(600)
+                                    usernameDisponibile = !FirebaseManager.isUsernameOccupato(trimmed)
+                                    usernameCheckLoading = false
+                                }
+                            } else {
                                 usernameCheckLoading = false
                             }
-                        } else {
-                            usernameCheckLoading = false
                         }
                     },
                     label         = { Text("Username") },
@@ -286,10 +289,14 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                     },
                     isError       = usernameDisponibile == false,
                     supportingText = {
-                        when {
-                            usernameDisponibile == false -> Text("Username già in uso", color = MaterialTheme.colorScheme.error)
-                            usernameDisponibile == true  -> Text("Username disponibile", color = Color(0xFF4CAF50))
-                            username.trim().isNotEmpty() && username.trim().length < 3 -> Text("Minimo 3 caratteri")
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            when {
+                                usernameDisponibile == false -> Text("Username già in uso", color = MaterialTheme.colorScheme.error)
+                                usernameDisponibile == true  -> Text("Username disponibile", color = Color(0xFF4CAF50))
+                                usernameInput.trim().isNotEmpty() && usernameInput.trim().length < 3 -> Text("Minimo 3 caratteri")
+                                else -> Spacer(Modifier.weight(1f))
+                            }
+                            Text("${usernameInput.length}/20")
                         }
                     },
                     singleLine    = true,
@@ -353,12 +360,12 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             // Pulsante principale
             Button(
                 onClick  = {
-                    if (isRegistrazione) vm.registraEmail(email, password, username)
+                    if (isRegistrazione) vm.registraEmail(email, password, usernameInput)
                     else vm.loginEmail(email, password)
                 },
                 enabled  = state !is AuthUiState.Loading &&
                         email.isNotBlank() && password.isNotBlank() &&
-                        (!isRegistrazione || (username.isNotBlank() && usernameDisponibile != false && !usernameCheckLoading)),
+                        (!isRegistrazione || (usernameInput.isNotBlank() && usernameDisponibile != false && !usernameCheckLoading)),
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape    = RoundedCornerShape(14.dp)
             ) {

@@ -101,21 +101,23 @@ fun EditProfileScreen(nav: NavController) {
                 OutlinedTextField(
                     value = usernameInput,
                     onValueChange = { v ->
-                        usernameInput = v
-                        errorMsg = null
-                        successMsg = null
-                        usernameDisponibile = null
-                        usernameCheckJob?.cancel()
-                        val trimmed = v.trim()
-                        if (trimmed.length >= 3 && trimmed != state.username) {
-                            usernameCheckLoading = true
-                            usernameCheckJob = coroutineScope.launch {
-                                delay(600)
-                                usernameDisponibile = !FirebaseManager.isUsernameOccupato(trimmed)
+                        if (v.length <= 20) {
+                            usernameInput = v
+                            errorMsg = null
+                            successMsg = null
+                            usernameDisponibile = null
+                            usernameCheckJob?.cancel()
+                            val trimmed = v.trim()
+                            if (trimmed.length >= 3 && trimmed != state.username) {
+                                usernameCheckLoading = true
+                                usernameCheckJob = coroutineScope.launch {
+                                    delay(600)
+                                    usernameDisponibile = !FirebaseManager.isUsernameOccupato(trimmed)
+                                    usernameCheckLoading = false
+                                }
+                            } else {
                                 usernameCheckLoading = false
                             }
-                        } else {
-                            usernameCheckLoading = false
                         }
                     },
                     label = { Text("Username") },
@@ -128,10 +130,14 @@ fun EditProfileScreen(nav: NavController) {
                     },
                     isError = usernameDisponibile == false,
                     supportingText = {
-                        when {
-                            usernameDisponibile == false -> Text("Username già in uso", color = MaterialTheme.colorScheme.error)
-                            usernameDisponibile == true  -> Text("Username disponibile", color = MaterialTheme.colorScheme.primary)
-                            usernameInput.trim().isNotEmpty() && usernameInput.trim().length < 3 -> Text("Minimo 3 caratteri")
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            when {
+                                usernameDisponibile == false -> Text("Username già in uso", color = MaterialTheme.colorScheme.error)
+                                usernameDisponibile == true  -> Text("Username disponibile", color = MaterialTheme.colorScheme.primary)
+                                usernameInput.trim().isNotEmpty() && usernameInput.trim().length < 3 -> Text("Minimo 3 caratteri")
+                                else -> Spacer(Modifier.weight(1f))
+                            }
+                            Text("${usernameInput.length}/20")
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
