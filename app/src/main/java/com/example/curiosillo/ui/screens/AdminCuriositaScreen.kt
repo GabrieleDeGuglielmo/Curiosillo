@@ -129,14 +129,25 @@ class AdminCuriositaViewModel : ViewModel() {
             val obj     = array.getJSONObject(i)
             val quizObj = obj.optJSONObject("quiz")
 
+            // Supporta sia formato flat che annidato per compatibilità
+            val domanda = quizObj?.optString("domanda") ?: obj.optString("domanda")
+            
             val rispostaCorretta = quizObj?.optString("rispostaCorretta")
                 ?: quizObj?.optString("risposta_corretta")
+                ?: obj.optString("rispostaCorretta")
+                ?: obj.optString("risposta_corretta")
             
             val risposteErrate = quizObj?.optJSONArray("risposteErrate")?.let { arr ->
                 (0 until arr.length()).map { arr.getString(it) }
             } ?: quizObj?.optJSONArray("risposte_errate")?.let { arr ->
                 (0 until arr.length()).map { arr.getString(it) }
+            } ?: obj.optJSONArray("risposteErrate")?.let { arr ->
+                (0 until arr.length()).map { arr.getString(it) }
+            } ?: obj.optJSONArray("risposte_errate")?.let { arr ->
+                (0 until arr.length()).map { arr.getString(it) }
             }
+
+            val spiegazione = quizObj?.optString("spiegazione") ?: obj.optString("spiegazione")
 
             FirebaseManager.CuriositaRemota(
                 externalId       = obj.getString("id"),
@@ -144,12 +155,10 @@ class AdminCuriositaViewModel : ViewModel() {
                 corpo            = obj.getString("corpo"),
                 categoria        = obj.optString("categoria", ""),
                 emoji            = obj.optString("emoji", ""),
-                domanda          = quizObj?.optString("domanda")?.ifBlank { null },
-                rispostaCorretta = rispostaCorretta,
+                domanda          = domanda.ifBlank { null },
+                rispostaCorretta = rispostaCorretta.ifBlank { null },
                 risposteErrate   = risposteErrate,
-                spiegazione      = quizObj?.let {
-                    it.optString("spiegazione").ifBlank { null }
-                }
+                spiegazione      = spiegazione.ifBlank { null }
             )
         }
     }
@@ -168,13 +177,11 @@ fun AdminCuriositaScreen(nav: NavController, apriModificaId: String? = null) {
     val vm: AdminCuriositaViewModel = viewModel(factory = AdminCuriositaViewModel.Factory())
     val state  by vm.state.collectAsState()
     val ctx    = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     var showForm      by remember { mutableStateOf(false) }
     var editingItem   by remember { mutableStateOf<FirebaseManager.CuriositaRemota?>(null) }
     var deleteTarget  by remember { mutableStateOf<String?>(null) }
     var query         by remember { mutableStateOf("") }
-    var isMigrating   by remember { mutableStateOf(false) }
 
     LaunchedEffect(apriModificaId, state.curiosita) {
         if (apriModificaId != null && state.curiosita.isNotEmpty()) {
@@ -245,17 +252,6 @@ fun AdminCuriositaScreen(nav: NavController, apriModificaId: String? = null) {
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        scope.launch {
-                            isMigrating = true
-                            FirebaseManager.eseguiMigrazioneQuizPiatta()
-                            vm.carica()
-                            isMigrating = false
-                        }
-                    }, enabled = !isMigrating) {
-                        if (isMigrating) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                        else Icon(Icons.Default.Refresh, "Migra")
-                    }
                     IconButton(onClick = { jsonLauncher.launch(arrayOf("application/json")) }) {
                         Icon(Icons.Default.FileUpload, "Importa JSON")
                     }
@@ -519,9 +515,6 @@ private fun CuriositaFormSheet(
     var errata3          by remember { mutableStateOf(iniziale?.risposteErrate?.getOrElse(2) { "" } ?: "") }
     var spiegazione      by remember { mutableStateOf(iniziale?.spiegazione      ?: "") }
 
-    var tentato by remember { mutableStateOf(false) }
-    var mostraCatDropdown by remember { mutableStateOf(false) }
-
     val campiValidi = titolo.isNotBlank() && corpo.isNotBlank() && categoria.isNotBlank() && emoji.isNotBlank()
 
     ModalBottomSheet(
@@ -538,6 +531,7 @@ private fun CuriositaFormSheet(
             OutlinedTextField(value = emoji, onValueChange = { emoji = it }, label = { Text("Emoji") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = titolo, onValueChange = { titolo = it }, label = { Text("Titolo") }, modifier = Modifier.fillMaxWidth())
             
+            var mostraCatDropdown by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(expanded = mostraCatDropdown, onExpandedChange = { mostraCatDropdown = it }) {
                 OutlinedTextField(value = categoria, onValueChange = {}, readOnly = true, label = { Text("Categoria") }, 
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = mostraCatDropdown) }, 
@@ -563,7 +557,6 @@ private fun CuriositaFormSheet(
             Spacer(Modifier.height(24.dp))
             Button(
                 onClick = {
-                    tentato = true
                     if (campiValidi) {
                         onSalva(FirebaseManager.CuriositaRemota(
                             externalId = externalId, titolo = titolo, corpo = corpo, categoria = categoria, emoji = emoji,
