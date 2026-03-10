@@ -13,13 +13,13 @@
 Curiosillo offers a rich set of features to keep your curiosity sparked:
 
 * **📅 Daily Curiosities:** Discover a new fact every day, tailored to your favorite categories.
-* **🧠 AI Deep Dive:** Ask **Google Gemini** to expand on any curiosity with extra context and anecdotes.
+* **🧠 AI Deep Dive:** Ask **Curiosillo** to expand on any curiosity with extra context and anecdotes.
 * **⚔️ Duels:** Challenge other users in real-time multiple-choice quiz battles.
 * **🔥 Gamification:** Stay motivated with daily streaks, flame indicators, and a points system.
 * **📚 Review Mode:** Revisit previously read curiosities using time-based filters.
 * **📝 Bookmarks & Notes:** Save your favorites and attach personal reflections.
 * **💬 Community:** Engage with other users through the integrated comments system.
-* **🛡️ Admin & Reporting:** Flag inaccurate content for moderation via the dedicated admin panel.
+* **🛡️ Admin & Reporting:** Flag inaccurate content for moderation and then the admins will procede to edit them.
 
 ---
 
@@ -27,16 +27,16 @@ Curiosillo offers a rich set of features to keep your curiosity sparked:
 
 The app is built using modern Android development best practices:
 
-| Layer | Technology |
-| :--- | :--- |
-| **UI Framework** | Jetpack Compose + Material 3 |
-| **Architecture** | MVVM + StateFlow |
-| **Local Database** | Room |
+| Layer | Technology                          |
+| :--- |:------------------------------------|
+| **UI Framework** | Jetpack Compose + Material 3        |
+| **Architecture** | MVVM + StateFlow                    |
+| **Local Database** | Room                                |
 | **Backend** | Firebase (Auth, Firestore, Storage) |
-| **AI Engine** | Google Gemini 1.5 Flash |
-| **Navigation** | Navigation Compose |
-| **Image Loading** | Coil |
-| **Build System** | Kotlin DSL + KSP |
+| **AI Engine** | Google Gemini 2.5 Flash lite        |
+| **Navigation** | Navigation Compose                  |
+| **Image Loading** | Coil                                |
+| **Build System** | Kotlin DSL + KSP                    |
 
 ---
 
