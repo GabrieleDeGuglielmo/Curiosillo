@@ -2,7 +2,7 @@
 
 [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android)](https://www.android.com)
 [![Tech Stack](https://img.shields.io/badge/Tech-Jetpack%20Compose-4285F4?logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
-[![AI Powered](https://img.shields.io/badge/AI-Gemini%202.5%20Flash-lite-8E75B2?logo=google-gemini)](https://deepmind.google/technologies/gemini/)
+[![AI Powered](https://img.shields.io/badge/AI-Gemini%202.5%20Flash%20Lite-8E75B2?logo=google-gemini)](https://deepmind.google/technologies/gemini/)
 
 **Curiosillo** is an Android edutainment app designed to make learning a daily habit—fun, effortless, and bite-sized. Explore wonders across science, history, nature, technology, and more.
 
