@@ -1,7 +1,6 @@
 package com.example.curiosillo.firebase
 
 import android.util.Log
-import com.example.curiosillo.data.BadgeSbloccato
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
