@@ -59,7 +59,12 @@ fun HomeScreen(nav: NavController) {
     val app = ctx.applicationContext as CuriosityApplication
 
     val homeVm: HomeViewModel = viewModel(
-        factory = HomeViewModel.Factory(app.repository, app.contentPrefs, ctx)
+        factory = HomeViewModel.Factory(
+            repo         = app.repository,
+            contentPrefs = app.contentPrefs,
+            context      = ctx,
+            dbRoom       = app.database
+        )
     )
     val homeState by homeVm.state.collectAsState()
 
@@ -250,7 +255,7 @@ fun HomeScreen(nav: NavController) {
                     modifier = Modifier.padding(bottom = if (isSmallScreen) 12.dp else 20.dp))
 
                 MenuCard(Icons.Default.EmojiObjects, "Scopri una Curiosità",
-                    "Leggi e impara qualcosa di sorprendente", MaterialTheme.colorScheme.primary) {
+                    "Leggi e impara something di sorprendente", MaterialTheme.colorScheme.primary) {
                     nav.navigate("category_picker/curiosity") }
                 Spacer(Modifier.height(12.dp))
                 MenuCard(Icons.Default.Quiz, "Fai un Quiz",

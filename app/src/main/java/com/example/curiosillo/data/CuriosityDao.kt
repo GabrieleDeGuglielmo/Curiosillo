@@ -66,6 +66,12 @@ interface CuriosityDao {
     @Query("SELECT * FROM curiosity WHERE externalId = :externalId LIMIT 1")
     suspend fun getByExternalId(externalId: String): Curiosity?
 
+    @Query("DELETE FROM curiosity WHERE externalId NOT IN (:ids) AND externalId IS NOT NULL")
+    suspend fun deleteMissing(ids: List<String>)
+
+    @Query("DELETE FROM curiosity WHERE externalId = :externalId")
+    suspend fun deleteByExternalId(externalId: String)
+
     // ── Scrittura ─────────────────────────────────────────────────────────────
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)

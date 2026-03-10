@@ -8,6 +8,7 @@ import android.net.NetworkRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.curiosillo.data.AppDatabase
 import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.network.AppUpdateService
@@ -40,13 +41,14 @@ data class HomeUiState(
 class HomeViewModel(
     private val repo:         CuriosityRepository,
     private val contentPrefs: ContentPreferences,
-    private val context:      Context
+    private val context:      Context,
+    private val dbRoom:       AppDatabase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
 
-    private val syncService      = FirestoreSyncService(repo, contentPrefs)
+    private val syncService      = FirestoreSyncService(repo, contentPrefs, dbRoom)
     private val updateService    = AppUpdateService()
     private val changelogService = ChangelogService()
 
@@ -81,7 +83,10 @@ class HomeViewModel(
 
     private fun refreshDatiCloud() {
         viewModelScope.launch {
-            delay(500) // Piccolo delay di sicurezza
+            // Se il DB è vuoto, non serve aspettare la propagazione degli indici
+            val dbVuoto = repo.totaleCuriosità() == 0
+            if (!dbVuoto) delay(1500)
+            
             syncContenuti()
             checkAggiornamentoApp()
             caricaChangelog()
@@ -187,10 +192,11 @@ class HomeViewModel(
     class Factory(
         private val repo:         CuriosityRepository,
         private val contentPrefs: ContentPreferences,
-        private val context:      Context
+        private val context:      Context,
+        private val dbRoom:       AppDatabase
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(c: Class<T>): T =
-            HomeViewModel(repo, contentPrefs, context) as T
+            HomeViewModel(repo, contentPrefs, context, dbRoom) as T
     }
 }

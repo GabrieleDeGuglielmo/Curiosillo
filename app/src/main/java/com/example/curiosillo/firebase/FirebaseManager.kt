@@ -268,9 +268,45 @@ object FirebaseManager {
         }
     } catch (e: Exception) { emptyList() }
 
+    /** Carica TUTTI i commenti usando collectionGroup("lista") filtrato per path.
+     *  Funziona anche se il documento padre non ha campi propri. */
+    suspend fun caricaTuttiICommentiModerazione(): List<Pair<String, List<Commento>>> = try {
+        val snapshot = db.collectionGroup("lista").get().await()
+        Log.d("CommentiAdmin", "collectionGroup lista: \${snapshot.size()} documenti totali")
+
+        snapshot.documents
+            .filter { doc ->
+                // Il path e' commenti/{externalId}/lista/{commentoId}
+                val segments = doc.reference.path.split("/")
+                segments.size == 4 && segments[0] == "commenti"
+            }
+            .groupBy { doc -> doc.reference.parent.parent!!.id }
+            .map { (exId, docs) ->
+                val commenti = docs.map { doc ->
+                    Commento(
+                        id        = doc.id,
+                        testo     = doc.getString("testo") ?: "",
+                        autore    = doc.getString("autore") ?: "Anonimo",
+                        uid       = doc.getString("uid") ?: "",
+                        timestamp = doc.getLong("timestamp") ?: 0L
+                    )
+                }.sortedByDescending { it.timestamp }
+                Log.d("CommentiAdmin", "\$exId: \${commenti.size} commenti")
+                exId to commenti
+            }
+    } catch (e: Exception) {
+        Log.e("CommentiAdmin", "Errore caricaTuttiICommentiModerazione: \${e.message}")
+        emptyList()
+    }
+
     suspend fun aggiungiCommento(externalId: String, testo: String): Result<Unit> = try {
         val autore = auth.currentUser?.displayName?.takeIf { it.isNotBlank() } ?: "Anonimo"
         val uid    = auth.currentUser?.uid ?: ""
+
+        // Assicuriamoci che il documento padre esista esplicitamente
+        db.collection("commenti").document(externalId)
+            .set(mapOf("lastUpdate" to System.currentTimeMillis()), SetOptions.merge()).await()
+
         db.collection("commenti")
             .document(externalId)
             .collection("lista")
@@ -296,7 +332,7 @@ object FirebaseManager {
         Result.failure(e)
     }
 
-    // ── Voti (like/dislike) ───────────────────────────────────────────────────
+    // ── Segnalazioni ──────────────────────────────────────────────────────────
 
     suspend fun inviaSegnalazione(externalId: String, tipo: String, testo: String): Result<Unit> = try {
         val currentUid = uid ?: "anonimo"
@@ -412,7 +448,6 @@ object FirebaseManager {
         val spiegazione:      String?       = null
     )
 
-    /** Nuova versione PIATTA: salva tutto in un unico documento */
     suspend fun salvaCuriosita(c: CuriositaRemota): Result<Unit> = try {
         val docRef = db.collection("curiosita").document(c.externalId)
         val esistente = docRef.get().await().exists()
@@ -422,7 +457,6 @@ object FirebaseManager {
             "corpo"     to c.corpo,
             "categoria" to c.categoria,
             "emoji"     to c.emoji,
-            // Campi quiz integrati
             "domanda"          to c.domanda,
             "rispostaCorretta" to c.rispostaCorretta,
             "risposteErrate"   to c.risposteErrate,
@@ -599,7 +633,7 @@ object FirebaseManager {
                         if (doc.getString("domanda") == null) {
                             val quizDoc = db.collection("curiosita").document(doc.id)
                                 .collection("quiz").document("domanda").get().await()
-                            
+
                             if (quizDoc.exists()) {
                                 db.collection("curiosita").document(doc.id).update(mapOf(
                                     "domanda"          to quizDoc.getString("domanda"),

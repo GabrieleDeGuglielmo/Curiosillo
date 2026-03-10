@@ -2,7 +2,6 @@ package com.example.curiosillo.ui.screens
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -50,6 +49,7 @@ import com.example.curiosillo.viewmodel.HomeViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.launch
+import androidx.core.net.toUri
 
 @Composable
 fun LoginScreen(onLoginSuccesso: () -> Unit) {
@@ -60,7 +60,12 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
         factory = AuthViewModel.Factory(app.repository, app.gamificationPrefs, ctx)
     )
     val homeVm: HomeViewModel = viewModel(
-        factory = HomeViewModel.Factory(app.repository, app.contentPrefs, ctx)
+        factory = HomeViewModel.Factory(
+            repo         = app.repository,
+            contentPrefs = app.contentPrefs,
+            context      = ctx,
+            dbRoom       = app.database
+        )
     )
 
     val state     by vm.state.collectAsState()
@@ -267,8 +272,8 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             },
             confirmButton = {
                 Button(onClick = {
-                    val url = if (info.downloadUrl.isNotEmpty()) info.downloadUrl else info.releaseUrl
-                    ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    val url = info.downloadUrl.ifEmpty { info.releaseUrl }
+                    ctx.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                     homeVm.dismissAggiornamento()
                 }) { Text("Scarica") }
             },

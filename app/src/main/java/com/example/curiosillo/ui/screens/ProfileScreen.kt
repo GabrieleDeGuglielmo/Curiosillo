@@ -9,10 +9,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Info
@@ -22,7 +24,6 @@ import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -179,6 +180,18 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     scope.launch { adminSheetState.hide() }.invokeOnCompletion {
                         showAdminSheet = false
                         nav.navigate("admin_voti")
+                    }
+                }
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                AzioneItem(
+                    icon  = Icons.AutoMirrored.Filled.Comment,
+                    tint  = Color(0xFF7B2D8B),
+                    label = "Moderazione commenti",
+                    sub   = "Controlla ed elimina i commenti degli utenti"
+                ) {
+                    scope.launch { adminSheetState.hide() }.invokeOnCompletion {
+                        showAdminSheet = false
+                        nav.navigate("admin_commenti")
                     }
                 }
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))

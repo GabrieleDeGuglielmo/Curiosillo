@@ -2,6 +2,13 @@ package com.example.curiosillo.ui.screens
 
 import androidx.compose.ui.graphics.Color
 
+val LISTA_CATEGORIE = listOf(
+    "Scienza", "Storia", "Animali", "Tecnologia",
+    "Cibo", "Sport", "Arte", "Geografia", "Natura", 
+    "Musica", "Cinema", "Letteratura", "Lingua", "Moda", 
+    "Vita quotidiana"
+).sorted()
+
 fun emojiCategoria(categoria: String): String = when (categoria.lowercase()) {
     "scienza"         -> "🔬"
     "animali"         -> "🐾"

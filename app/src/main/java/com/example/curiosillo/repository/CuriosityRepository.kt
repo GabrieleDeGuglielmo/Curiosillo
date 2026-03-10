@@ -70,6 +70,9 @@ class CuriosityRepository(private val db: AppDatabase) {
     suspend fun getByExternalId(externalId: String): Curiosity? =
         curDao.getByExternalId(externalId)
 
+    suspend fun deleteMissing(remoteIds: List<String>) =
+        curDao.deleteMissing(remoteIds)
+
     suspend fun insertCuriosita(c: Curiosity): Long = curDao.insert(c)
 
     suspend fun updateCuriosita(c: Curiosity) = curDao.update(c)

@@ -483,10 +483,6 @@ private fun CuriositaAdminCard(
 
 // ── Form Sheet ───────────────────────────────────────────────────────────
 
-private val CATEGORIE_DISPONIBILI = listOf("Scienza", "Storia", "Spazio", "Animali", "Tecnologia", "Cibo", "Curiosità", "Sport", "Arte", "Geografia")
-
-private fun isEmoji(s: String): Boolean = s.isNotEmpty() && s.length <= 8
-
 private fun generaId(tutte: List<FirebaseManager.CuriositaRemota>): String {
     val maxId = tutte.mapNotNull { it.externalId.removePrefix("c").toIntOrNull() }.maxOrNull() ?: 0
     return "c" + (maxId + 1).toString().padStart(3, '0')
@@ -537,8 +533,16 @@ private fun CuriositaFormSheet(
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = mostraCatDropdown) }, 
                     modifier = Modifier.fillMaxWidth().menuAnchor())
                 ExposedDropdownMenu(expanded = mostraCatDropdown, onDismissRequest = { mostraCatDropdown = false }) {
-                    CATEGORIE_DISPONIBILI.forEach { cat ->
-                        DropdownMenuItem(text = { Text(cat) }, onClick = { categoria = cat; mostraCatDropdown = false })
+                    LISTA_CATEGORIE.forEach { cat ->
+                        DropdownMenuItem(
+                            text    = { Text(cat) }, 
+                            leadingIcon = { Text(emojiCategoria(cat)) },
+                            onClick = { 
+                                categoria = cat
+                                if (emoji.isBlank()) emoji = emojiCategoria(cat)
+                                mostraCatDropdown = false 
+                            }
+                        )
                     }
                 }
             }

@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
                     composable("pillole_nascoste") { PilloleNascosteScreen(nav) }
                     composable("duello") { DuelloScreen(nav) }
                     composable("admin_voti")      { AdminVotiScreen(nav) }
+                    composable("admin_commenti")  { AdminCommentiScreen(nav) }
                     composable("admin_curiosita") { AdminCuriositaScreen(nav) }
                     composable("admin_curiosita/{externalId}") { back ->
                         val externalId = back.arguments?.getString("externalId")

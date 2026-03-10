@@ -1,5 +1,7 @@
 package com.example.curiosillo.firebase
 
+import com.example.curiosillo.data.BadgeCatalogo
+import com.example.curiosillo.data.BadgeSbloccato
 import com.example.curiosillo.data.GamificationPreferences
 import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.flow.first
@@ -81,16 +83,34 @@ class SyncManager(
         val streakLocale   = gamifPrefs.streakCorrente.first()
         val streakMaxLocale = gamifPrefs.streakMassima.first()
 
-        // Applica solo se il cloud ha dati più avanzati
+        // 1. Applica XP se cloud > locale
         if (xpCloud > xpLocale) {
             val delta = xpCloud - xpLocale
             gamifPrefs.aggiungiXp(delta)
         }
-        // streak: non sovrascriviamo la streak locale attiva
-        // (potrebbe essere già avanzata nella sessione corrente)
+        
+        // 2. Badge: Scarica dal cloud e inserisci nel DB locale se mancano
+        val badgeCloud = FirebaseManager.caricaBadge(uid)
+        val badgeLocaliIds = repo.idBadgeSbloccati()
+        
+        badgeCloud.forEach { id ->
+            if (id !in badgeLocaliIds) {
+                val def = BadgeCatalogo.trovaPerId(id)
+                if (def != null) {
+                    repo.sbloccaBadge(BadgeSbloccato(
+                        id          = def.id,
+                        nome        = def.nome,
+                        descrizione = def.descrizione,
+                        icona       = def.icona
+                        // sbloccatoAt usa il default ora attuale
+                    ))
+                }
+            }
+        }
+        
+        // streak: gestiamo caso solo al primo avvio su nuovo dispositivo se necessario
         if (streakMaxCloud > streakMaxLocale) {
-            // reset e reimpostazione non è disponibile direttamente —
-            // gestiamo questo caso solo al primo avvio su nuovo dispositivo
+            // gamifPrefs non ha un setter diretto per streakMassima, ma potremmo implementarlo
         }
     }
 }
