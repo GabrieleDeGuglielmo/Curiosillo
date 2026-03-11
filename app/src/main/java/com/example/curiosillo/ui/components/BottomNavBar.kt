@@ -4,9 +4,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -47,17 +52,30 @@ fun CuriosilloBottomBar(nav: NavController) {
     val backStack by nav.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
 
+    // Altezza adattiva: base 68dp + padding sistema (gesture bar / tasti)
+    val screenHeightDp = LocalConfiguration.current.screenHeightDp
+    val barHeight      = when {
+        screenHeightDp < 640 -> 76.dp   // schermi piccoli
+        else                 -> 89.dp   // schermi normali/grandi
+    }
+    val fabOffset      = when {
+        screenHeightDp < 640 -> (-32).dp
+        else                 -> (-36).dp
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight(),
         contentAlignment = Alignment.BottomCenter
     ) {
-        // 1. La barra di navigazione alta 95.dp
+        // 1. La barra di navigazione con padding per gesture/nav bar di sistema
         NavigationBar(
             containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 12.dp,
-            modifier = Modifier.height(95.dp)
+            modifier = Modifier
+                .height(barHeight)
+                .navigationBarsPadding()
         ) {
             navItems.forEachIndexed { index, item ->
                 val isSelected = currentRoute == item.route
@@ -126,7 +144,7 @@ fun CuriosilloBottomBar(nav: NavController) {
             contentColor   = if (isHomeSelected) Color.White
             else MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier
-                .offset(y = (-38).dp)
+                .offset(y = fabOffset)
                 .size(68.dp)
         ) {
             Icon(
