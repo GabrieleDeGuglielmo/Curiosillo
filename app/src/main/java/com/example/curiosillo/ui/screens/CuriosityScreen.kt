@@ -1,30 +1,19 @@
 package com.example.curiosillo.ui.screens
 
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.ChatBubbleOutline
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,11 +26,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
+import com.example.curiosillo.R
 import com.example.curiosillo.data.BadgeSbloccato
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.ui.categoryImage
@@ -51,17 +42,14 @@ import com.example.curiosillo.viewmodel.CommentiUiState
 import com.example.curiosillo.viewmodel.CuriosityUiState
 import com.example.curiosillo.viewmodel.CuriosityViewModel
 import com.example.curiosillo.viewmodel.GeminiUiState
-import com.example.curiosillo.viewmodel.FirebaseHelper
-import com.example.curiosillo.viewmodel.GeminiHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CuriosityScreen(nav: NavController) {
-    val ctx   = LocalContext.current
-    val app   = ctx.applicationContext as CuriosityApplication
+    val ctx = LocalContext.current
+    val app = ctx.applicationContext as CuriosityApplication
     val vm: CuriosityViewModel = viewModel(
         factory = CuriosityViewModel.Factory(app.repository, app.categoryPrefs, app.gamificationEngine, app.geminiPrefs)
     )
@@ -77,6 +65,7 @@ fun CuriosityScreen(nav: NavController) {
     var badgeQueue         by remember { mutableStateOf<List<BadgeSbloccato>>(emptyList()) }
     var mostraCommenti     by remember { mutableStateOf(false) }
     var mostraDialogIgnora by remember { mutableStateOf(false) }
+    var mostraAvvenutaAzioneIgnora by remember { mutableStateOf(false) }
     var mostraAzioni       by remember { mutableStateOf(false) }
     var mostraGemini       by remember { mutableStateOf(false) }
     var triggerSegnala     by remember { mutableStateOf(false) }
@@ -91,6 +80,25 @@ fun CuriosityScreen(nav: NavController) {
         }
     }
 
+    // --- Dialogs ---
+
+    // Success dialog after hiding
+    if (mostraAvvenutaAzioneIgnora) {
+        AlertDialog(
+            onDismissRequest = { mostraAvvenutaAzioneIgnora = false },
+            icon  = { Text("✨", fontSize = 42.sp) },
+            title = { Text("Pillola nascosta", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            text  = { Text("Questa curiosità non ti verrà più riproposta.\n\nLa trovi nella sezione \"Pillole nascoste\" del tuo profilo.", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth()) },
+            confirmButton = {
+                Button(
+                    onClick = { mostraAvvenutaAzioneIgnora = false },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) { Text("Ho capito", fontWeight = FontWeight.Bold) }
+            }
+        )
+    }
+
     // Badge unlocked dialog
     badgeDaMostrare?.let { badge ->
         AlertDialog(
@@ -98,20 +106,12 @@ fun CuriosityScreen(nav: NavController) {
                 val r = badgeQueue.drop(1); badgeQueue = r; badgeDaMostrare = r.firstOrNull()
             },
             icon  = { Text(badge.icona, fontSize = 48.sp) },
-            title = {
-                Text("Badge sbloccato!",
-                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-            },
+            title = { Text("Badge sbloccato!", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
             text  = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(badge.nome, style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        textAlign  = TextAlign.Center,
-                        modifier   = Modifier.fillMaxWidth())
+                    Text(badge.nome, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(6.dp))
-                    Text(badge.descrizione, textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
-                        color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    Text(badge.descrizione, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
             },
             confirmButton = {
@@ -122,31 +122,20 @@ fun CuriosityScreen(nav: NavController) {
         )
     }
 
-    // "Not interested" confirmation dialog
+    // Confirm hide dialog
     if (mostraDialogIgnora) {
         AlertDialog(
             onDismissRequest = { mostraDialogIgnora = false },
             icon  = { Text("🙈", fontSize = 42.sp) },
-            title = {
-                Text(
-                    "Vuoi nascondere questa pillola?",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            text  = {
-                Text(
-                    "Non la vedrai più nei quiz o durante la lettura giornaliera.\n\nPotrai ripristinarla in qualsiasi momento dalle impostazioni del profilo.",
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
+            title = { Text("Vuoi nascondere questa pillola?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            text  = { Text("Non la vedrai più nei quiz o durante la lettura giornaliera.\n\nPotrai ripristinarla in qualsiasi momento dal profilo.", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth()) },
             confirmButton = {
                 Button(
-                    onClick = { mostraDialogIgnora = false; vm.toggleIgnora() },
+                    onClick = { 
+                        mostraDialogIgnora = false
+                        vm.toggleIgnora()
+                        mostraAvvenutaAzioneIgnora = true
+                    },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -157,23 +146,18 @@ fun CuriosityScreen(nav: NavController) {
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = { mostraDialogIgnora = false },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                ) {
+                TextButton(onClick = { mostraDialogIgnora = false }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                     Text("Annulla", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
             }
         )
     }
 
-    // Comments bottom sheet
+    // --- Sheets ---
+
     if (mostraCommenti) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-        ModalBottomSheet(
-            onDismissRequest = { mostraCommenti = false },
-            sheetState = sheetState
-        ) {
+        ModalBottomSheet(onDismissRequest = { mostraCommenti = false }, sheetState = sheetState) {
             CommentiSheet(
                 commentiState  = commentiState,
                 currentUid     = FirebaseManager.uid,
@@ -185,64 +169,28 @@ fun CuriosityScreen(nav: NavController) {
         }
     }
 
-    // Gemini Bottom Sheet
     if (mostraGemini) {
         val sheetStateGemini = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-        ModalBottomSheet(
-            onDismissRequest = { 
-                mostraGemini = false 
-            },
-            sheetState = sheetStateGemini
-        ) {
+        ModalBottomSheet(onDismissRequest = { mostraGemini = false }, sheetState = sheetStateGemini) {
             GeminiSheet(geminiState)
         }
     }
 
-    // Actions Menu (Bottom Sheet)
     if (mostraAzioni && state is CuriosityUiState.Success) {
         val pillola = (state as CuriosityUiState.Success).curiosity
         val sheetStateAzioni = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        
         val animateChiudiAzioni: () -> Unit = {
-            coroutineScope.launch { 
-                sheetStateAzioni.hide() 
-            }.invokeOnCompletion {
-                mostraAzioni = false
-            }
+            coroutineScope.launch { sheetStateAzioni.hide() }.invokeOnCompletion { mostraAzioni = false }
         }
 
-        ModalBottomSheet(
-            onDismissRequest = { mostraAzioni = false },
-            sheetState       = sheetStateAzioni
-        ) {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 32.dp)
-            ) {
-                Text(
-                    "Azioni",
-                    style      = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier   = Modifier.padding(bottom = 16.dp)
-                )
-
-                // Condividi
+        ModalBottomSheet(onDismissRequest = { mostraAzioni = false }, sheetState = sheetStateAzioni) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
+                Text("Azioni", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp))
                 OutlinedButton(
                     onClick = {
                         animateChiudiAzioni()
-                        val testo = buildString {
-                            append("📚 ${pillola.title}\n\n")
-                            append(pillola.body)
-                            append("\n\n— Categoria: ${pillola.category}")
-                            append("\nScoperto con Curiosillo 🎓")
-                        }
-                        ctx.startActivity(Intent.createChooser(
-                            Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, testo)
-                            }, "Condividi pillola"))
+                        val testo = "📚 ${pillola.title}\n\n${pillola.body}\n\n— Categoria: ${pillola.category}\nScoperto con Curiosillo 🎓"
+                        ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, testo) }, "Condividi pillola"))
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape    = RoundedCornerShape(14.dp)
@@ -251,17 +199,11 @@ fun CuriosityScreen(nav: NavController) {
                     Spacer(Modifier.width(8.dp))
                     Text("Condividi pillola", fontWeight = FontWeight.SemiBold)
                 }
-
                 Spacer(Modifier.height(12.dp))
-
-                // Nascondi
                 OutlinedButton(
                     onClick = {
                         animateChiudiAzioni()
-                        coroutineScope.launch {
-                            delay(300)
-                            mostraDialogIgnora = true
-                        }
+                        coroutineScope.launch { delay(300); mostraDialogIgnora = true }
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape    = RoundedCornerShape(14.dp)
@@ -270,17 +212,11 @@ fun CuriosityScreen(nav: NavController) {
                     Spacer(Modifier.width(8.dp))
                     Text("Nascondi (Non mi interessa)", fontWeight = FontWeight.SemiBold)
                 }
-
                 Spacer(Modifier.height(12.dp))
-
-                // Segnala
                 OutlinedButton(
                     onClick = {
                         animateChiudiAzioni()
-                        coroutineScope.launch {
-                            delay(300)
-                            triggerSegnala = true
-                        }
+                        coroutineScope.launch { delay(300); triggerSegnala = true }
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape    = RoundedCornerShape(14.dp),
@@ -299,20 +235,15 @@ fun CuriosityScreen(nav: NavController) {
         topBar = {
             TopAppBar(
                 title = { Text("Pillola") },
-                navigationIcon = {
-                    IconButton({ nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro") }
-                },
+                navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro") } },
                 actions = {
                     if (state is CuriosityUiState.Success) {
                         IconButton(onClick = { mostraAzioni = true }) {
-                            Icon(Icons.Default.MoreVert, "Azioni",
-                                tint = MaterialTheme.colorScheme.onBackground)
+                            Icon(Icons.Default.MoreVert, "Azioni", tint = MaterialTheme.colorScheme.onBackground)
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
         containerColor = Color.Transparent
@@ -324,16 +255,10 @@ fun CuriosityScreen(nav: NavController) {
 
         Box(Modifier.fillMaxSize()) {
             when (val s = state) {
-                is CuriosityUiState.Loading ->
-                    Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                is CuriosityUiState.Empty ->
-                    Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
-                        Text("Nessuna curiosità disponibile!\nTorna presto.",
-                            Modifier.padding(24.dp), textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyLarge)
-                    }
+                is CuriosityUiState.Loading -> Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) { CircularProgressIndicator() }
+                is CuriosityUiState.Empty -> Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
+                    Text("Nessuna curiosità disponibile!\nTorna presto.", Modifier.padding(24.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
+                }
                 is CuriosityUiState.Success -> {
                     CuriosityContent(s, pad, gradientBg,
                         commentiState = commentiState,
@@ -351,21 +276,13 @@ fun CuriosityScreen(nav: NavController) {
                 is CuriosityUiState.Learned -> LearnedContent(pad, gradientBg) { vm.load() }
             }
 
-            // Overlay for report success or error notifications
             when (val sState = segnalazioneState) {
                 is SegnalazioneUiState.Successo -> {
-                    LaunchedEffect(Unit) {
-                        delay(3000)
-                        vm.dismissSegnalazione()
-                    }
+                    LaunchedEffect(Unit) { delay(3000); vm.dismissSegnalazione() }
                     Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
-                        Surface(
-                            color = Success,
-                            shape = RoundedCornerShape(12.dp),
-                            shadowElevation = 6.dp
-                        ) {
+                        Surface(color = Success, shape = RoundedCornerShape(12.dp), shadowElevation = 6.dp) {
                             Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = "Success", tint = Color.White)
+                                Icon(Icons.Default.CheckCircle, null, tint = Color.White)
                                 Spacer(Modifier.width(8.dp))
                                 Text("Segnalazione inviata. Grazie!", color = Color.White, fontWeight = FontWeight.Bold)
                             }
@@ -373,16 +290,9 @@ fun CuriosityScreen(nav: NavController) {
                     }
                 }
                 is SegnalazioneUiState.Errore -> {
-                    LaunchedEffect(Unit) {
-                        delay(3500)
-                        vm.dismissSegnalazione()
-                    }
+                    LaunchedEffect(Unit) { delay(3500); vm.dismissSegnalazione() }
                     Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.error,
-                            shape = RoundedCornerShape(12.dp),
-                            shadowElevation = 6.dp
-                        ) {
+                        Surface(color = MaterialTheme.colorScheme.error, shape = RoundedCornerShape(12.dp), shadowElevation = 6.dp) {
                             Text(sState.msg, color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp))
                         }
                     }
@@ -412,172 +322,74 @@ private fun CuriosityContent(
 ) {
     var mostraSegnalazione by remember { mutableStateOf(false) }
     var mostraNota         by remember { mutableStateOf(false) }
-    val noteCardBg         = MaterialTheme.colorScheme.surfaceVariant
-    val noteTextColor      = MaterialTheme.colorScheme.onSurfaceVariant
 
-    // Reazione al trigger esterno del menu a 3 puntini
-    LaunchedEffect(triggerSegnalaExternally) {
-        if (triggerSegnalaExternally) {
-            mostraSegnalazione = true
-            onSegnalaReset()
-        }
-    }
-
-    // Automatically close the sheet on success
-    LaunchedEffect(segnalazioneState) {
-        if (segnalazioneState is SegnalazioneUiState.Successo) {
-            mostraSegnalazione = false
-        }
-    }
+    LaunchedEffect(triggerSegnalaExternally) { if (triggerSegnalaExternally) { mostraSegnalazione = true; onSegnalaReset() } }
+    LaunchedEffect(segnalazioneState) { if (segnalazioneState is SegnalazioneUiState.Successo) mostraSegnalazione = false }
 
     if (mostraNota) {
-        NotaBottomSheet(
-            notaAttuale = s.curiosity.nota,
-            onSalva     = onSalvaNota,
-            onChiudi    = { mostraNota = false }
-        )
+        NotaBottomSheet(notaAttuale = s.curiosity.nota, onSalva = onSalvaNota, onChiudi = { mostraNota = false })
     }
 
     Column(Modifier.fillMaxSize().background(gradientBg).padding(pad).verticalScroll(rememberScrollState())) {
         Image(
             painter            = painterResource(id = categoryImage(s.curiosity.category)),
             contentDescription = s.curiosity.category,
-            modifier           = Modifier
-                .fillMaxWidth().height(220.dp)
-                .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)),
+            modifier           = Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)),
             contentScale = ContentScale.Crop
         )
         Column(Modifier.padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(16.dp))
-            Row(
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier              = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
-            ) {
-                SuggestionChip(onClick = {},
-                    label = { Text(emojiCategoria(s.curiosity.category) + " " + s.curiosity.category) })
-
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+                SuggestionChip(onClick = {}, label = { Text(emojiCategoria(s.curiosity.category) + " " + s.curiosity.category) })
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Note
                     IconButton(onClick = { mostraNota = true }) {
-                        Icon(Icons.Default.EditNote, "Nota",
-                            tint = if (s.curiosity.nota.isNotBlank())
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
+                        Icon(Icons.Default.EditNote, "Nota", tint = if (s.curiosity.nota.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
                     }
-                    // Bookmark
-                    IconToggleButton(checked = s.curiosity.isBookmarked,
-                        onCheckedChange = { onBookmark() }) {
-                        Icon(
-                            imageVector = if (s.curiosity.isBookmarked)
-                                Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                            contentDescription = "Salva",
-                            tint = if (s.curiosity.isBookmarked)
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                        )
+                    IconToggleButton(checked = s.curiosity.isBookmarked, onCheckedChange = { onBookmark() }) {
+                        Icon(imageVector = if (s.curiosity.isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder, contentDescription = "Salva", tint = if (s.curiosity.isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
                     }
                 }
             }
 
             if (s.curiosity.nota.isNotBlank()) {
-                Card(Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    shape     = RoundedCornerShape(12.dp),
-                    colors    = CardDefaults.cardColors(containerColor = noteCardBg),
-                    elevation = CardDefaults.cardElevation(0.dp)
-                ) {
+                Card(Modifier.fillMaxWidth().padding(bottom = 8.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
                         Text("📝 ", fontSize = 14.sp)
-                        Text(s.curiosity.nota, style = MaterialTheme.typography.bodySmall,
-                            color = noteTextColor)
+                        Text(s.curiosity.nota, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
 
             Spacer(Modifier.height(10.dp))
-            Text(s.curiosity.title,
-                style      = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                textAlign  = TextAlign.Center,
-                color      = MaterialTheme.colorScheme.onBackground)
+            Text(s.curiosity.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onBackground)
             Spacer(Modifier.height(20.dp))
 
-            Card(Modifier.fillMaxWidth(),
-                shape     = RoundedCornerShape(18.dp),
-                colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(4.dp)
-            ) {
-                Text(s.curiosity.body, Modifier.padding(20.dp),
-                    style      = MaterialTheme.typography.bodyLarge,
-                    lineHeight = 27.sp,
-                    color      = MaterialTheme.colorScheme.onSurface)
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(4.dp)) {
+                Text(s.curiosity.body, Modifier.padding(20.dp), style = MaterialTheme.typography.bodyLarge, lineHeight = 27.sp, color = MaterialTheme.colorScheme.onSurface)
             }
             Spacer(Modifier.height(16.dp))
 
-            // ── Actions: AI / Comments ──────────────────────────────────────
-            Spacer(Modifier.height(8.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
-                // Dimmi di più (Gemini) - Versione Outlined Teal
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 val giaSvelato = s.curiosity.approfondimentoAi != null
-                OutlinedButton(
-                    onClick = onDimmiDiPiu,
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
+                OutlinedButton(onClick = onDimmiDiPiu, modifier = Modifier.weight(1f).height(48.dp), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)) {
                     Icon(if (giaSvelato) Icons.Default.CheckCircle else Icons.Default.AutoAwesome, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(if (giaSvelato) "Già svelato! 🐾" else "Dimmi di più", fontWeight = FontWeight.Bold)
                 }
-
-                // Comments - Versione Outlined teal
-                OutlinedButton(
-                    onClick = onCommenti,
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    val count = commentiState.commenti.size
+                OutlinedButton(onClick = onCommenti, modifier = Modifier.weight(1f).height(48.dp), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)) {
                     Icon(Icons.Default.ChatBubbleOutline, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(
-                        text  = "Commenti ($count)",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text("Commenti (${commentiState.commenti.size})", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 }
             }
 
-            // Hidden Report Sheet logic
-            if (mostraSegnalazione) {
-                SegnalazioneBottomSheet(
-                    onInvia   = { tipo, testo -> onSegnala(tipo, testo) },
-                    onDismiss = { mostraSegnalazione = false },
-                    isLoading = segnalazioneState is SegnalazioneUiState.Loading
-                )
-            }
+            if (mostraSegnalazione) SegnalazioneBottomSheet(onInvia = { tipo, testo -> onSegnala(tipo, testo) }, onDismiss = { mostraSegnalazione = false }, isLoading = segnalazioneState is SegnalazioneUiState.Loading)
 
             Spacer(Modifier.height(16.dp))
-
             if (!s.curiosity.isRead) {
-                Button(onLearn, Modifier.fillMaxWidth().height(58.dp),
-                    shape = RoundedCornerShape(16.dp)
-                ) { Text("Ho imparato!", style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold) }
+                Button(onLearn, Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(16.dp)) { Text("Ho imparato!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
             } else {
-                OutlinedButton(onLearn, Modifier.fillMaxWidth().height(58.dp),
-                    shape = RoundedCornerShape(16.dp)
-                ) { Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium) }
+                OutlinedButton(onLearn, Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(16.dp)) { Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium) }
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -586,247 +398,71 @@ private fun CuriosityContent(
 
 @Composable
 fun GeminiSheet(state: GeminiUiState) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .padding(bottom = 48.dp)
-            .heightIn(min = 300.dp, max = 500.dp)
-    ) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 48.dp).heightIn(min = 300.dp, max = 500.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = if (state.errore != null) Icons.Default.Warning else Icons.Default.AutoAwesome,
-                contentDescription = null,
-                tint = if (state.errore != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-            )
+            Icon(imageVector = if (state.errore != null) Icons.Default.Warning else Icons.Default.AutoAwesome, contentDescription = null, tint = if (state.errore != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(
-                    text = if (state.errore != null && state.rimanenti == 0) "Limite raggiunto" 
-                          else if (state.errore != null) "Oops! Servizio non disponibile" 
-                          else "Approfondimento AI",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = if (state.errore != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "Rimanenti oggi: ${state.rimanenti}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                )
+                Text(text = if (state.errore != null && state.rimanenti == 0) "Limite raggiunto" else if (state.errore != null) "Oops! Servizio non disponibile" else "Approfondimento AI", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = if (state.errore != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+                Text(text = "Rimanenti oggi: ${state.rimanenti}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
             }
         }
-        
         Spacer(Modifier.height(20.dp))
-
         if (state.isLoading) {
-            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator()
-                    Spacer(Modifier.height(12.dp))
-                    Text("Curiosillo sta pensando...", style = MaterialTheme.typography.bodyMedium)
-                }
-            }
+            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { CircularProgressIndicator(); Spacer(Modifier.height(12.dp)); Text("Curiosillo sta pensando...", style = MaterialTheme.typography.bodyMedium) } }
         } else if (state.errore != null) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(20.dp)) {
-                    Text(
-                        state.errore,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    
-                    if (state.rimanenti > 0) {
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            "Assicurati di avere una connessione internet attiva o riprova tra qualche minuto.\n\nGrazie della comprensione.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
-                        )
-                    }
+                    Text(state.errore, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onErrorContainer)
+                    if (state.rimanenti > 0) { Spacer(Modifier.height(12.dp)); Text("Assicurati di avere una connessione internet attiva o riprova tra qualche minuto.\n\nGrazie della comprensione.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)) }
                 }
             }
         } else {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                Text(
-                    text = state.risposta,
-                    style = MaterialTheme.typography.bodyLarge,
-                    lineHeight = 26.sp
-                )
-                
-                if (state.isScritturaInCorso) {
-                    Box(
-                        Modifier
-                            .padding(top = 4.dp)
-                            .size(12.dp, 20.dp)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
-                    )
-                }
+                Text(text = state.risposta, style = MaterialTheme.typography.bodyLarge, lineHeight = 26.sp)
+                if (state.isScritturaInCorso) Box(Modifier.padding(top = 4.dp).size(12.dp, 20.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)))
             }
         }
     }
 }
 
 @Composable
-private fun LearnedContent(
-    pad:        androidx.compose.foundation.layout.PaddingValues,
-    gradientBg: androidx.compose.ui.graphics.Brush,
-    onNext:     () -> Unit
-) {
-    Column(
-        Modifier.fillMaxSize().background(gradientBg).padding(pad).padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
+private fun LearnedContent(pad: PaddingValues, gradientBg: Brush, onNext: () -> Unit) {
+    Column(Modifier.fillMaxSize().background(gradientBg).padding(pad).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Icon(Icons.Default.CheckCircle, null, Modifier.size(90.dp), tint = Success)
-        Spacer(Modifier.height(20.dp))
-        Text("Fantastico!", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(10.dp))
-        Text("Hai imparato qualcosa di nuovo!\nOra puoi fare il quiz su questa curiosità.",
-            style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
-        Spacer(Modifier.height(32.dp))
-        Button(onNext, Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(16.dp)) {
-            Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium)
-        }
+        Spacer(Modifier.height(20.dp)); Text("Fantastico!", style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(10.dp)); Text("Hai imparato qualcosa di nuovo!\nOra puoi fare il quiz su questa curiosità.", style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+        Spacer(Modifier.height(32.dp)); Button(onNext, Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(16.dp)) { Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium) }
     }
 }
 
 @Composable
-fun CommentiSheet(
-    commentiState:  com.example.curiosillo.viewmodel.CommentiUiState,
-    currentUid:     String?,
-    isLoggato:      Boolean,
-    onInvia:        (String) -> Unit,
-    onElimina:      (String) -> Unit,
-    onDismissError: () -> Unit
-) {
+fun CommentiSheet(commentiState: CommentiUiState, currentUid: String?, isLoggato: Boolean, onInvia: (String) -> Unit, onElimina: (String) -> Unit, onDismissError: () -> Unit) {
     var testo by remember { mutableStateOf("") }
-
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .padding(bottom = 32.dp)
-    ) {
-        Text("Commenti", style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(12.dp))
-
-        // Send error
-        commentiState.erroreInvio?.let { err ->
-            Card(
-                Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-            ) {
-                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(err, color = MaterialTheme.colorScheme.onErrorContainer,
-                        style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    TextButton(onClick = onDismissError) { Text("OK") }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-        }
-
-        // Comments list
-        if (commentiState.isLoading) {
-            CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
-        } else if (commentiState.commenti.isEmpty()) {
-            Text("Nessun commento ancora. Sii il primo!",
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(vertical = 8.dp))
-        } else {
-            val listState = rememberLazyListState()
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.heightIn(max = 300.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
+        Text("Commenti", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Spacer(Modifier.height(12.dp))
+        commentiState.erroreInvio?.let { err -> Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) { Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) { Text(err, color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f)); TextButton(onClick = onDismissError) { Text("OK") } } }; Spacer(Modifier.height(8.dp)) }
+        if (commentiState.isLoading) { CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally).padding(vertical = 16.dp)) }
+        else if (commentiState.commenti.isEmpty()) { Text("Nessun commento ancora. Sii il primo!", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 16.dp).fillMaxWidth(), textAlign = TextAlign.Center) }
+        else {
+            LazyColumn(modifier = Modifier.heightIn(max = 300.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(commentiState.commenti, key = { it.id }) { commento ->
-                    Card(
-                        Modifier.fillMaxWidth(),
-                        shape  = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
+                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
                             Column(Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(commento.autore,
-                                        style      = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color      = MaterialTheme.colorScheme.primary)
-                                }
-                                Spacer(Modifier.height(4.dp))
-                                Text(commento.testo, style = MaterialTheme.typography.bodyMedium)
+                                Text(commento.autore, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.height(4.dp)); Text(commento.testo, style = MaterialTheme.typography.bodyMedium)
                             }
-                            // Delete only own comment
-                            if (currentUid != null && currentUid == commento.uid) {
-                                IconButton(
-                                    onClick  = { onElimina(commento.id) },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(Icons.Default.Delete, "Elimina",
-                                        modifier = Modifier.size(16.dp),
-                                        tint     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
-                                }
-                            }
+                            if (currentUid != null && currentUid == commento.uid) IconButton(onClick = { onElimina(commento.id) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, "Elimina", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)) }
                         }
                     }
                 }
             }
         }
-
-        Spacer(Modifier.height(16.dp))
-        HorizontalDivider()
-        Spacer(Modifier.height(12.dp))
-
-        // Input field
+        Spacer(Modifier.height(16.dp)); HorizontalDivider(); Spacer(Modifier.height(12.dp))
         if (isLoggato) {
-            OutlinedTextField(
-                value         = testo,
-                onValueChange = { if (it.length <= 300) testo = it },
-                placeholder   = { Text("Scrivi un commento...") },
-                modifier      = Modifier.fillMaxWidth(),
-                shape         = RoundedCornerShape(12.dp),
-                maxLines      = 4,
-                trailingIcon  = {
-                    Text("${testo.length}/300",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                        modifier = Modifier.padding(end = 8.dp))
-                }
-            )
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick  = { if (testo.isNotBlank()) { onInvia(testo.trim()); testo = "" } },
-                enabled  = testo.isNotBlank() && !commentiState.invioInCorso,
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape    = RoundedCornerShape(12.dp)
-            ) {
-                if (commentiState.invioInCorso)
-                    CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
-                else
-                    Text("Pubblica commento")
-            }
-        } else {
-            Card(
-                Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Text("Accedi per lasciare un commento.",
-                    Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
+            OutlinedTextField(value = testo, onValueChange = { if (it.length <= 300) testo = it }, placeholder = { Text("Scrivi un commento...") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), maxLines = 4, trailingIcon = { Text("${testo.length}/300", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f), modifier = Modifier.padding(end = 8.dp)) })
+            Spacer(Modifier.height(8.dp)); Button(onClick = { if (testo.isNotBlank()) { onInvia(testo.trim()); testo = "" } }, enabled = testo.isNotBlank() && !commentiState.invioInCorso, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) { if (commentiState.invioInCorso) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text("Pubblica commento") }
+        } else { Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) { Text("Accedi per lasciare un commento.", Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
     }
 }

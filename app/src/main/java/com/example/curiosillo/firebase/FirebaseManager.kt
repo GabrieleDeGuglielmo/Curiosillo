@@ -268,21 +268,14 @@ object FirebaseManager {
         }
     } catch (e: Exception) { emptyList() }
 
-    /** Carica TUTTI i commenti usando collectionGroup("lista") filtrato per path.
-     *  Funziona anche se il documento padre non ha campi propri. */
+    /** Carica TUTTI i commenti caricando tutti i documenti 'lista' ed estraendo solo quelli dei commenti */
     suspend fun caricaTuttiICommentiModerazione(): List<Pair<String, List<Commento>>> = try {
         val snapshot = db.collectionGroup("lista").get().await()
-        Log.d("CommentiAdmin", "collectionGroup lista: \${snapshot.size()} documenti totali")
-
         snapshot.documents
-            .filter { doc ->
-                // Il path e' commenti/{externalId}/lista/{commentoId}
-                val segments = doc.reference.path.split("/")
-                segments.size == 4 && segments[0] == "commenti"
-            }
-            .groupBy { doc -> doc.reference.parent.parent!!.id }
+            .filter { it.reference.path.contains("/commenti/") }
+            .groupBy { it.reference.parent.parent!!.id }
             .map { (exId, docs) ->
-                val commenti = docs.map { doc ->
+                exId to docs.map { doc ->
                     Commento(
                         id        = doc.id,
                         testo     = doc.getString("testo") ?: "",
@@ -291,18 +284,16 @@ object FirebaseManager {
                         timestamp = doc.getLong("timestamp") ?: 0L
                     )
                 }.sortedByDescending { it.timestamp }
-                Log.d("CommentiAdmin", "\$exId: \${commenti.size} commenti")
-                exId to commenti
             }
     } catch (e: Exception) {
-        Log.e("CommentiAdmin", "Errore caricaTuttiICommentiModerazione: \${e.message}")
+        Log.e("FirebaseManager", "Errore caricaTuttiICommentiModerazione", e)
         emptyList()
     }
 
     suspend fun aggiungiCommento(externalId: String, testo: String): Result<Unit> = try {
         val autore = auth.currentUser?.displayName?.takeIf { it.isNotBlank() } ?: "Anonimo"
         val uid    = auth.currentUser?.uid ?: ""
-
+        
         // Assicuriamoci che il documento padre esista esplicitamente
         db.collection("commenti").document(externalId)
             .set(mapOf("lastUpdate" to System.currentTimeMillis()), SetOptions.merge()).await()
@@ -571,7 +562,7 @@ object FirebaseManager {
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
 
-    /** Caricamento PIATTO: molto più veloce */
+    /** Carica TUTTI le curiosita dal server */
     suspend fun caricaTutteLeCuriositaRemote(): List<CuriositaRemota> = try {
         val snap = db.collection("curiosita").whereNotEqualTo("__name__", "_meta_").get().await()
         val docs = snap.documents.filter { it.id != "_meta_" }
@@ -633,7 +624,7 @@ object FirebaseManager {
                         if (doc.getString("domanda") == null) {
                             val quizDoc = db.collection("curiosita").document(doc.id)
                                 .collection("quiz").document("domanda").get().await()
-
+                            
                             if (quizDoc.exists()) {
                                 db.collection("curiosita").document(doc.id).update(mapOf(
                                     "domanda"          to quizDoc.getString("domanda"),
@@ -648,7 +639,7 @@ object FirebaseManager {
                 }
             }
         } catch (e: Exception) {
-            Log.e("Migration", "Errore migrazione: ${e.message}")
+            Log.e("Migration", "Errore migrazione: \${e.message}")
         }
     }
 }

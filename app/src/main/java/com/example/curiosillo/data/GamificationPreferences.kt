@@ -1,15 +1,12 @@
 package com.example.curiosillo.data
 
 import android.content.Context
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.time.LocalDate
 
 private val Context.gamificationStore by preferencesDataStore(name = "gamification_prefs")
 
@@ -50,7 +47,9 @@ class GamificationPreferences(private val context: Context) {
                     (prefs[STREAK_CORRENTE] ?: 0) + 1
                 }
                 else -> {
-                    streakAumentata = ultimoGiorno == -1L
+                    // Al primo avvio assoluto (ultimoGiorno == -1L), 
+                    // impostiamo la streak a 1 e consideriamo l'aumento vero.
+                    streakAumentata = true
                     1
                 }
             }

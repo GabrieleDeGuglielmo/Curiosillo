@@ -8,7 +8,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
@@ -79,7 +78,7 @@ class PilloleNascosteViewModel(private val repo: CuriosityRepository) : ViewMode
 
     class Factory(private val repo: CuriosityRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(c: Class<T>): T =
+        override fun <T : ViewModel> create(modelClass: Class<T>): T =
             PilloleNascosteViewModel(repo) as T
     }
 }
@@ -112,14 +111,16 @@ fun PilloleNascosteScreen(nav: NavController) {
             title = {
                 Text(
                     "Ripristina tutte?",
-                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
+                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
+                    fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Text(
-                    "Tutte le ${state.pillole.size} pillole nascoste torneranno nella coda di lettura.",
+                    "Le ${state.pillole.size} pillole nascoste torneranno nella coda di lettura principale.",
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             confirmButton = {
@@ -130,7 +131,7 @@ fun PilloleNascosteScreen(nav: NavController) {
                 }) { Text("Ripristina tutte") }
             },
             dismissButton = {
-                OutlinedButton(onClick = { showConfirmRipristinaTutte = false }) { Text("Annulla") }
+                TextButton(onClick = { showConfirmRipristinaTutte = false }) { Text("Annulla") }
             }
         )
     }
@@ -161,7 +162,16 @@ fun PilloleNascosteScreen(nav: NavController) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { 
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            } 
+        },
         containerColor = Color.Transparent
     ) { pad ->
         val gradientBg = Brush.verticalGradient(
@@ -226,11 +236,9 @@ private fun PilolaNascostaCard(pillola: Curiosity, onRipristina: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(
-                alpha = 0.7f
-            )
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
         ),
-        elevation = CardDefaults.cardElevation(2.dp)
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
             Modifier
@@ -240,9 +248,9 @@ private fun PilolaNascostaCard(pillola: Curiosity, onRipristina: () -> Unit) {
         ) {
             Box(
                 Modifier
-                    .size(10.dp)
+                    .size(8.dp)
                     .background(
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f), CircleShape
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), CircleShape
                     )
             )
             Spacer(Modifier.width(12.dp))
@@ -253,22 +261,26 @@ private fun PilolaNascostaCard(pillola: Curiosity, onRipristina: () -> Unit) {
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    pillola.category, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    pillola.category, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                    fontWeight = FontWeight.Bold
                 )
             }
             Spacer(Modifier.width(8.dp))
-            OutlinedButton(
-                onClick = onRipristina, shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            IconButton(
+                onClick = onRipristina,
+                modifier = Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape)
             ) {
-                Icon(Icons.Default.Visibility, null, Modifier.size(16.dp))
-                Spacer(Modifier.width(4.dp))
-                Text("Ripristina", style = MaterialTheme.typography.labelMedium)
+                Icon(
+                    Icons.Default.Visibility, 
+                    "Ripristina", 
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
