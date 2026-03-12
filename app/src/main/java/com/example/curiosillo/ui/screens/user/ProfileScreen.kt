@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Bookmark
@@ -144,6 +145,21 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     sub   = "Opzioni account"
                 ) {
                     showAccountSheet = true
+                }
+
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
+                // Voce Supporto
+                AzioneItemNav(
+                    icon  = Icons.AutoMirrored.Filled.Help,
+                    tint  = MaterialTheme.colorScheme.primary,
+                    label = "Supporto",
+                    sub   = "FAQ, segnalazioni e suggerimenti"
+                ) {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                        showSheet = false
+                        nav.navigate("supporto")
+                    }
                 }
 
                 Spacer(Modifier.height(8.dp))

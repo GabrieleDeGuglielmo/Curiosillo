@@ -37,6 +37,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.curiosillo.domain.LivelloHelper
+import kotlin.math.cos
+import kotlin.math.sin
 
 // Soglia giorni per XP streak massimi (badge streak_30)
 private const val STREAK_MAX_GIORNI = 30
