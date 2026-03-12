@@ -62,7 +62,7 @@ object SegnalazioneHelper {
 enum class TipoSegnalazione(val etichetta: String, val emoji: String, val descrizione: String) {
     ERRORE_DIGITAZIONE("Errore di digitazione",        "✏️", "Parola sbagliata, punteggiatura, spazi ecc."),
     INFO_FALSE(        "Informazioni false o imprecise","⚠️", "Il contenuto non è accurato o è fuorviante"),
-    CONTENUTO_OBSOLETO("Contenuto obsoleto",           "📅", "Le informazioni non sono più attuali"),
+    CATEGORIA_ERRATA("Categoria errata",           "📅", "La categoria assegnata alla curiosità è errata"),
     CURIOSITA_RIPETUTA("Curiosità ripetuta", "🔂", "Questa curiosità è ripetuta più volte"),
     ALTRO(             "Altro",                        "💬", "Qualcosa che non rientra nelle categorie precedenti")
 }
