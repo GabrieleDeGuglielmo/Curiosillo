@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui.screens
+package com.example.curiosillo.ui.screens.curiosity
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
+import com.example.curiosillo.ui.screens.utils.coloreCategoria
+import com.example.curiosillo.ui.screens.utils.emojiCategoria
 import com.example.curiosillo.viewmodel.CategoryViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

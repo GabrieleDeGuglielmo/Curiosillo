@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui.screens
+package com.example.curiosillo.ui.screens.curiosity
 
 import android.content.Intent
 import androidx.compose.foundation.BorderStroke
@@ -26,19 +26,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
-import com.example.curiosillo.R
 import com.example.curiosillo.data.BadgeSbloccato
 import com.example.curiosillo.firebase.FirebaseManager
-import com.example.curiosillo.ui.categoryImage
+import com.example.curiosillo.ui.screens.utils.categoryImage
 import com.example.curiosillo.ui.components.NotaBottomSheet
+import com.example.curiosillo.ui.screens.utils.CommentiUiState
+import com.example.curiosillo.ui.screens.utils.SegnalazioneBottomSheet
+import com.example.curiosillo.ui.screens.utils.SegnalazioneUiState
+import com.example.curiosillo.ui.screens.utils.emojiCategoria
 import com.example.curiosillo.ui.theme.Success
-import com.example.curiosillo.viewmodel.CommentiUiState
 import com.example.curiosillo.viewmodel.CuriosityUiState
 import com.example.curiosillo.viewmodel.CuriosityViewModel
 import com.example.curiosillo.viewmodel.GeminiUiState
@@ -309,8 +310,8 @@ private fun CuriosityContent(
     s:                        CuriosityUiState.Success,
     pad:                      PaddingValues,
     gradientBg:               Brush,
-    commentiState:            CommentiUiState,
-    segnalazioneState:        SegnalazioneUiState,
+    commentiState: CommentiUiState,
+    segnalazioneState: SegnalazioneUiState,
     triggerSegnalaExternally: Boolean = false,
     onSegnalaReset:           () -> Unit = {},
     onLearn:                  () -> Unit,
@@ -383,7 +384,16 @@ private fun CuriosityContent(
                 }
             }
 
-            if (mostraSegnalazione) SegnalazioneBottomSheet(onInvia = { tipo, testo -> onSegnala(tipo, testo) }, onDismiss = { mostraSegnalazione = false }, isLoading = segnalazioneState is SegnalazioneUiState.Loading)
+            if (mostraSegnalazione) SegnalazioneBottomSheet(
+                onInvia = { tipo, testo ->
+                    onSegnala(
+                        tipo,
+                        testo
+                    )
+                },
+                onDismiss = { mostraSegnalazione = false },
+                isLoading = segnalazioneState is SegnalazioneUiState.Loading
+            )
 
             Spacer(Modifier.height(16.dp))
             if (!s.curiosity.isRead) {

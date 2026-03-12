@@ -1,4 +1,4 @@
-package com.example.curiosillo.viewmodel
+package com.example.curiosillo.ui.screens.utils
 
 import com.example.curiosillo.firebase.FirebaseManager
 

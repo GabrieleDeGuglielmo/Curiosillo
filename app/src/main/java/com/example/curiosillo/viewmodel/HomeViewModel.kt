@@ -13,7 +13,7 @@ import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.network.AppUpdateService
 import com.example.curiosillo.network.ChangelogService
-import com.example.curiosillo.network.FirestoreSyncService
+import com.example.curiosillo.firebase.FirestoreSyncService
 import com.example.curiosillo.network.VersioneChangelog
 import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.delay

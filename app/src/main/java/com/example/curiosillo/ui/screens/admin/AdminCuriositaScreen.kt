@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui.screens
+package com.example.curiosillo.ui.screens.admin
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -38,11 +38,16 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.firebase.FirebaseManager
+import com.example.curiosillo.ui.screens.utils.LISTA_CATEGORIE
+import com.example.curiosillo.ui.screens.utils.coloreCategoria
+import com.example.curiosillo.ui.screens.utils.emojiCategoria
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONArray
+import org.json.JSONObject
 
 // ── ViewModel ─────────────────────────────────────────────────────────────────
 
@@ -121,7 +126,7 @@ class AdminCuriositaViewModel : ViewModel() {
     private fun parseJson(json: String): List<FirebaseManager.CuriositaRemota> {
         val array = if (json.trim().startsWith("[")) JSONArray(json)
         else {
-            val obj = org.json.JSONObject(json)
+            val obj = JSONObject(json)
             obj.getJSONArray("curiosita")
         }
 
@@ -213,7 +218,7 @@ fun AdminCuriositaScreen(nav: NavController, apriModificaId: String? = null) {
 
     state.messaggio?.let {
         LaunchedEffect(it) {
-            kotlinx.coroutines.delay(3000)
+            delay(3000)
             vm.dismissMessaggio()
         }
     }

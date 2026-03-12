@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui.screens
+package com.example.curiosillo.ui.screens.user
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

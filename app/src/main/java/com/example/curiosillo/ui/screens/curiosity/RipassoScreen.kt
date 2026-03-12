@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui.screens
+package com.example.curiosillo.ui.screens.curiosity
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -42,11 +42,16 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.firebase.FirebaseManager
-import com.example.curiosillo.ui.categoryImage
+import com.example.curiosillo.ui.screens.utils.categoryImage
 import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.ui.components.NotaBottomSheet
+import com.example.curiosillo.ui.screens.utils.SegnalazioneBottomSheet
+import com.example.curiosillo.ui.screens.utils.SegnalazioneUiState
+import com.example.curiosillo.ui.screens.utils.emojiCategoria
 import com.example.curiosillo.ui.theme.Success
+import com.example.curiosillo.viewmodel.RipassoUiState
 import com.example.curiosillo.viewmodel.RipassoViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
@@ -124,7 +129,7 @@ fun RipassoScreen(nav: NavController) {
 
     if (mostraSegnalazione) {
         SegnalazioneBottomSheet(
-            onInvia   = { tipo, testo -> vm.inviaSegnalazione(tipo, testo) },
+            onInvia = { tipo, testo -> vm.inviaSegnalazione(tipo, testo) },
             onDismiss = { mostraSegnalazione = false },
             isLoading = segnalazioneState is SegnalazioneUiState.Loading
         )
@@ -211,7 +216,7 @@ fun RipassoScreen(nav: NavController) {
                     onClick  = {
                         animateChiudiAzioni()
                         coroutineScope.launch {
-                            kotlinx.coroutines.delay(300)
+                            delay(300)
                             mostraNota = true
                         }
                     },
@@ -233,7 +238,7 @@ fun RipassoScreen(nav: NavController) {
                     onClick  = {
                         animateChiudiAzioni()
                         coroutineScope.launch {
-                            kotlinx.coroutines.delay(300)
+                            delay(300)
                             vm.caricaCommenti()
                             mostraCommenti = true
                         }
@@ -252,7 +257,7 @@ fun RipassoScreen(nav: NavController) {
                     onClick  = {
                         animateChiudiAzioni()
                         coroutineScope.launch {
-                            kotlinx.coroutines.delay(300)
+                            delay(300)
                             mostraSegnalazione = true
                         }
                     },
@@ -342,7 +347,7 @@ fun RipassoScreen(nav: NavController) {
             when (val sState = segnalazioneState) {
                 is SegnalazioneUiState.Successo -> {
                     LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay(3000)
+                        delay(3000)
                         vm.dismissSegnalazione()
                     }
                     Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
@@ -361,7 +366,7 @@ fun RipassoScreen(nav: NavController) {
                 }
                 is SegnalazioneUiState.Errore -> {
                     LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay(3500)
+                        delay(3500)
                         vm.dismissSegnalazione()
                     }
                     Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
@@ -383,7 +388,7 @@ fun RipassoScreen(nav: NavController) {
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun PillolePager(
-    state:      com.example.curiosillo.viewmodel.RipassoUiState,
+    state:      RipassoUiState,
     gradientBg: Brush,
     pad:        PaddingValues,
     vm:         RipassoViewModel,

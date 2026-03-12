@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui
+package com.example.curiosillo.ui.screens.utils
 
 import androidx.annotation.DrawableRes
 import com.example.curiosillo.R

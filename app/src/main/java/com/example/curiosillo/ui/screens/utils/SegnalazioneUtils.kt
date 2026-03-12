@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui.screens
+package com.example.curiosillo.ui.screens.utils
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*

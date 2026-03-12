@@ -1,4 +1,4 @@
-package com.example.curiosillo.network
+package com.example.curiosillo.firebase
 
 import androidx.room.withTransaction
 import com.example.curiosillo.data.AppDatabase

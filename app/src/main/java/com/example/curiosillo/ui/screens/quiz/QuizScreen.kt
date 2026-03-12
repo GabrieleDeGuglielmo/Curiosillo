@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui.screens
+package com.example.curiosillo.ui.screens.quiz
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,7 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.data.BadgeSbloccato
-import com.example.curiosillo.ui.categoryImage
+import com.example.curiosillo.ui.screens.utils.categoryImage
 import com.example.curiosillo.ui.theme.Error
 import com.example.curiosillo.ui.theme.Success
 import com.example.curiosillo.viewmodel.QuizUiState

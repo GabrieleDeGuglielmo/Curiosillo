@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui.screens
+package com.example.curiosillo.ui.screens.user
 
 import android.app.Activity
 import android.content.Intent

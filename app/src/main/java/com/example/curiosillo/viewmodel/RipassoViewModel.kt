@@ -7,8 +7,9 @@ import com.example.curiosillo.data.Curiosity
 import com.example.curiosillo.data.GeminiPreferences
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.repository.CuriosityRepository
-import com.example.curiosillo.ui.screens.SegnalazioneHelper
-import com.example.curiosillo.ui.screens.SegnalazioneUiState
+import com.example.curiosillo.ui.screens.utils.CommentiUiState
+import com.example.curiosillo.ui.screens.utils.SegnalazioneHelper
+import com.example.curiosillo.ui.screens.utils.SegnalazioneUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

@@ -1,8 +1,9 @@
-package com.example.curiosillo.ui.screens
+package com.example.curiosillo.ui.screens.user
 
 import android.content.Intent
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.BorderStroke
@@ -39,6 +40,8 @@ import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.data.Curiosity
 import com.example.curiosillo.ui.components.NotaBottomSheet
+import com.example.curiosillo.ui.screens.utils.SegnalazioneBottomSheet
+import com.example.curiosillo.ui.screens.utils.coloreCategoria
 import com.example.curiosillo.ui.theme.Error
 import com.example.curiosillo.viewmodel.BookmarkViewModel
 
@@ -62,7 +65,13 @@ fun BookmarkScreen(nav: NavController) {
 
     mostraSegnalazione?.let { pillola ->
         SegnalazioneBottomSheet(
-            onInvia   = { tipo, testo -> vm.inviaSegnalazione(pillola, tipo, testo); mostraSegnalazione = null },
+            onInvia = { tipo, testo ->
+                vm.inviaSegnalazione(
+                    pillola,
+                    tipo,
+                    testo
+                ); mostraSegnalazione = null
+            },
             onDismiss = { mostraSegnalazione = null }
         )
     }

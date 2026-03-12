@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui.screens
+package com.example.curiosillo.ui.screens.utils
 
 import androidx.compose.ui.graphics.Color
 

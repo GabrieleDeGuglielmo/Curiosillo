@@ -1,10 +1,22 @@
-package com.example.curiosillo.ui.screens
+package com.example.curiosillo.ui.screens.user
 
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,9 +33,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.SportsMartialArts
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.WifiOff
@@ -40,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -51,6 +61,7 @@ import com.example.curiosillo.network.VersioneChangelog
 import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.ui.components.GamificationBanner
 import com.example.curiosillo.viewmodel.HomeViewModel
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -233,7 +244,7 @@ fun HomeScreen(nav: NavController) {
                     enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
                     homeState.syncMessaggio?.let { msg ->
                         LaunchedEffect(msg) {
-                            kotlinx.coroutines.delay(7000)
+                            delay(7000)
                             homeVm.dismissSyncMessaggio()
                         }
                         Card(modifier = Modifier.padding(top = 6.dp), shape = RoundedCornerShape(12.dp),
@@ -351,7 +362,7 @@ private fun ChangelogDialog(versioni: List<VersioneChangelog>, titolo: String, o
                                 .fillMaxWidth()
                                 .fillMaxHeight(thumbFraction)
                                 .align(Alignment.TopStart)
-                                .offset(y = androidx.compose.ui.unit.Dp(fraction * trackHeight * (1f - thumbFraction)))
+                                .offset(y = Dp(fraction * trackHeight * (1f - thumbFraction)))
                                 .background(
                                     MaterialTheme.colorScheme.primary,
                                     RoundedCornerShape(3.dp)
@@ -364,7 +375,7 @@ private fun ChangelogDialog(versioni: List<VersioneChangelog>, titolo: String, o
                 Box(
                     Modifier
                         .align(Alignment.BottomCenter)
-                        .offset(y = androidx.compose.ui.unit.Dp(bounceOffset))
+                        .offset(y = Dp(bounceOffset))
                         .graphicsLayer(alpha = bounceAlpha)
                 ) {
                     Surface(
@@ -547,7 +558,7 @@ private fun NotificheSheet(
 @Composable
 private fun NotificaCard(
     n:      FirebaseManager.NotificaInApp,
-    colore: androidx.compose.ui.graphics.Color,
+    colore: Color,
     onLetta: (String) -> Unit
 ) {
     Card(

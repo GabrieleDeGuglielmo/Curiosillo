@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui.screens
+package com.example.curiosillo.ui.screens.quiz
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -7,7 +7,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
+import com.example.curiosillo.ui.screens.utils.emojiCategoria
 import com.example.curiosillo.viewmodel.QuizStatsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -134,7 +134,8 @@ fun QuizStatsScreen(nav: NavController) {
                                     Row(Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment     = Alignment.CenterVertically) {
-                                        Text(emojiCategoria(stat.category) + " " + stat.category,
+                                        Text(
+                                            emojiCategoria(stat.category) + " " + stat.category,
                                             style = MaterialTheme.typography.bodyMedium,
                                             fontWeight = FontWeight.SemiBold,
                                             color = MaterialTheme.colorScheme.onSurface)
