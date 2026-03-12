@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "235758737875",
+    "project_id": "curiosillo-d7331",
+    "storage_bucket": "curiosillo-d7331.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:235758737875:android:b6219b2c7e3e1e2116f726",
+        "android_client_info": {
+          "package_name": "com.example.curiosillo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "235758737875-7379bsq1as6p46klo045ltav8a6h9pdm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.curiosillo",
+            "certificate_hash": "a80335572c3c8a8fccce56af78e8c03ad75bec81"
+          }
+        },
+        {
+          "client_id": "235758737875-u884q1ni5dah17jgnq9obb5ml6pub0iq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.curiosillo",
+            "certificate_hash": "a5def23a929f14ed6b442b719ca210a4c81d6c27"
+          }
+        },
+        {
+          "client_id": "235758737875-50kaqom32soh8n4ih7lo49nd1pn9s69u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDzcVFD5-mc1m-mW2pMFKfMQQJgo9TNE-Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "235758737875-50kaqom32soh8n4ih7lo49nd1pn9s69u.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

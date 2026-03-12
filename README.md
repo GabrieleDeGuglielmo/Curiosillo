@@ -1,38 +1,58 @@
-# Curiosillo
+# <img src="app/src/main/res/drawable/ic_logo.png" width="40" vertical-align="middle"> Curiosillo
 
-App Android nativa di edutainment: curiosità quotidiane + quiz interattivo.
+[![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android)](https://www.android.com)
+[![Tech Stack](https://img.shields.io/badge/Tech-Jetpack%20Compose-4285F4?logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
+[![AI Powered](https://img.shields.io/badge/AI-Gemini%202.5%20Flash%20Lite-8E75B2?logo=google-gemini)](https://deepmind.google/technologies/gemini/)
 
-## Come aprire in Android Studio
+**Curiosillo** is an Android edutainment app designed to make learning a daily habit—fun, effortless, and bite-sized. Explore wonders across science, history, nature, technology, and more.
 
-1. Apri **Android Studio** (Hedgehog 2023.1.1+)
-2. File > Open -> seleziona la cartella `Curiosillo/`
-3. Aspetta il sync Gradle (scarica le dipendenze automaticamente)
-4. Premi Run su un emulatore API 24+ o dispositivo fisico
+---
 
-## Struttura progetto
+## ✨ Features
 
-```
+Curiosillo offers a rich set of features to keep your curiosity sparked:
+
+* **📅 Daily Curiosities:** Discover a new fact every day, tailored to your favorite categories.
+* **🧠 AI Deep Dive:** Ask **Curiosillo** to expand on any curiosity with extra context and anecdotes.
+* **⚔️ Duels:** Challenge other users in real-time multiple-choice quiz battles.
+* **🔥 Gamification:** Stay motivated with daily streaks, flame indicators, and a points system.
+* **📚 Review Mode:** Revisit previously read curiosities using time-based filters.
+* **📝 Bookmarks & Notes:** Save your favorites and attach personal reflections.
+* **💬 Community:** Engage with other users through the integrated comments system.
+* **🛡️ Admin & Reporting:** Flag inaccurate content for moderation and then the admins will procede to edit them.
+
+---
+
+## 🛠️ Tech Stack
+
+The app is built using modern Android development best practices:
+
+| Layer | Technology                          |
+| :--- |:------------------------------------|
+| **UI Framework** | Jetpack Compose + Material 3        |
+| **Architecture** | MVVM + StateFlow                    |
+| **Local Database** | Room                                |
+| **Backend** | Firebase (Auth, Firestore, Storage) |
+| **AI Engine** | Google Gemini 2.5 Flash lite        |
+| **Navigation** | Navigation Compose                  |
+| **Image Loading** | Coil                                |
+| **Build System** | Kotlin DSL + KSP                    |
+
+---
+
+## 📂 Project Structure
+
+The codebase follows a clean separation of concerns:
+
+```text
 app/src/main/java/com/example/curiosillo/
-  CuriosityApplication.kt   <- Application + DB init
-  MainActivity.kt            <- NavHost con 3 rotte
-  data/                      <- Room entities + DAO + Database
-  repository/                <- Seed data + accesso dati
-  viewmodel/                 <- CuriosityViewModel + QuizViewModel
-  ui/
-    HomeScreen.kt             <- Menu principale (2 pulsanti)
-    CuriosityScreen.kt        <- Leggi curiosità + "Ho imparato!"
-    QuizScreen.kt             <- Quiz con feedback colorato
-    theme/                    <- Colori Material 3 + tema
+├── 📦 data          # Data models and Room database configuration
+├── ⚙️ domain        # Business logic and gamification engine
+├── 🧱 firebase      # FirebaseManager and cloud integration
+├── 🗄️ repository    # Data source management (CuriosityRepository)
+├── 🎨 ui            # Composable screens and UI components
+└── 📱 viewmodel     # UI state management
 ```
-
-## Logica quiz
-
-Il quiz e disponibile solo dopo aver letto almeno una curiosità
-e premuto "Ho imparato!". Le risposte vengono rimescolate ad ogni
-sessione. Punteggio finale con percentuale di risposte corrette.
-
-## Aggiungere nuove curiosità
-
-Modifica `repository/CuriosityRepository.kt`, aggiungi alla lista
-`curiosities` e al relativo `questions`. Il seed viene inserito
-automaticamente al primo avvio su un database vuoto.
+---
+## 📄 License
+This project is currently private. All rights reserved.
