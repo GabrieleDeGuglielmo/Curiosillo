@@ -1,11 +1,15 @@
 package com.example.curiosillo.ui.screens.curiosity
 
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -342,82 +346,94 @@ fun RipassoScreen(nav: NavController) {
                         }
                     }
 
-                state.pillolaDettaglio == null -> {
-                    // Vista Elenco con ricerca e filtri
-                    Column(Modifier.fillMaxSize()) {
-                        OutlinedTextField(
-                            value = state.query,
-                            onValueChange = { vm.onQueryChange(it) },
-                            placeholder = { Text("Cerca tra le pillole lette...") },
-                            leadingIcon = { Icon(Icons.Default.Search, null) },
-                            singleLine = true,
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-
-                        if (state.categorie.isNotEmpty()) {
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState())
-                                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                FilterChip(
-                                    selected = state.categorieSelezionate.isEmpty(),
-                                    onClick = { vm.resetCategorie() },
-                                    label = { Text("Tutte") }
-                                )
-                                state.categorie.forEach { cat ->
-                                    FilterChip(
-                                        selected = state.categorieSelezionate.contains(cat),
-                                        onClick = { vm.onCategoriaSelezionata(cat) },
-                                        label = {
-                                            Text(
-                                                cat,
-                                                color = if (state.categorieSelezionate.contains(cat)) Color(0xFF1A1A1A)
-                                                else MaterialTheme.colorScheme.onSurface
-                                            )
-                                        },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = coloreCategoria(cat),
-                                            selectedLabelColor = Color(0xFF1A1A1A)
-                                        )
-                                    )
-                                }
+                else -> {
+                    AnimatedContent(
+                        targetState = state.pillolaDettaglio == null,
+                        transitionSpec = {
+                            if (targetState) {
+                                (fadeIn() + slideInHorizontally { -it }).togetherWith(fadeOut() + slideOutHorizontally { it })
+                            } else {
+                                (fadeIn() + slideInHorizontally { it }).togetherWith(fadeOut() + slideOutHorizontally { -it })
                             }
-                        }
-                        HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                        },
+                        label = "RipassoTransition"
+                    ) { isListView ->
+                        if (isListView) {
+                            // Vista Elenco con ricerca e filtri
+                            Column(Modifier.fillMaxSize()) {
+                                OutlinedTextField(
+                                    value = state.query,
+                                    onValueChange = { vm.onQueryChange(it) },
+                                    placeholder = { Text("Cerca tra le pillole lette...") },
+                                    leadingIcon = { Icon(Icons.Default.Search, null) },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
 
-                        if (state.risultati.isEmpty()) {
-                            Box(Modifier.fillMaxSize(), Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("🔍", fontSize = 48.sp)
-                                    Text("Nessun risultato", color = MaterialTheme.colorScheme.onSurface.copy(0.5f))
+                                if (state.categorie.isNotEmpty()) {
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .horizontalScroll(rememberScrollState())
+                                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        FilterChip(
+                                            selected = state.categorieSelezionate.isEmpty(),
+                                            onClick = { vm.resetCategorie() },
+                                            label = { Text("Tutte") }
+                                        )
+                                        state.categorie.forEach { cat ->
+                                            FilterChip(
+                                                selected = state.categorieSelezionate.contains(cat),
+                                                onClick = { vm.onCategoriaSelezionata(cat) },
+                                                label = {
+                                                    Text(
+                                                        cat,
+                                                        color = if (state.categorieSelezionate.contains(cat)) Color(0xFF1A1A1A)
+                                                        else MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                },
+                                                colors = FilterChipDefaults.filterChipColors(
+                                                    selectedContainerColor = coloreCategoria(cat),
+                                                    selectedLabelColor = Color(0xFF1A1A1A)
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                                HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+
+                                if (state.risultati.isEmpty()) {
+                                    Box(Modifier.fillMaxSize(), Alignment.Center) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("🔍", fontSize = 48.sp)
+                                            Text("Nessun risultato", color = MaterialTheme.colorScheme.onSurface.copy(0.5f))
+                                        }
+                                    }
+                                } else {
+                                    LazyColumn(
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        items(state.risultati, key = { it.id }) { p ->
+                                            RipassoItemCard(p) { vm.apriDettaglio(p) }
+                                        }
+                                    }
                                 }
                             }
                         } else {
-                            LazyColumn(
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                items(state.risultati, key = { it.id }) { p ->
-                                    RipassoItemCard(p) { vm.apriDettaglio(p) }
-                                }
-                            }
+                            // Vista Card (Pager)
+                            PillolePager(
+                                state = state,
+                                vm = vm,
+                                onDimmiDiPiu = { vm.dimmiDiPiu(); mostraGemini = true }
+                            )
                         }
                     }
-                }
-
-                else -> {
-                    // Vista Card (Pager)
-                    PillolePager(
-                        state = state,
-                        vm = vm,
-                        onDimmiDiPiu = { vm.dimmiDiPiu(); mostraGemini = true }
-                    )
                 }
             }
 
@@ -548,9 +564,10 @@ private fun PillolePager(
                         scaleX = scale
                         scaleY = scale
 
-                        shadowElevation = 24.dp.toPx() // Ombra ampia e morbida
+                        shadowElevation = 24.dp.toPx() // Un'ombra ampia e morbida
                         shape = RoundedCornerShape(24.dp)
-                        clip = false
+                        clip = false // Importante: evita che l'ombra venga tagliata ai bordi
+
                     },
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -613,10 +630,16 @@ private fun PillolePager(
                     }
 
                     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalAlignment = Alignment.End) {
+                        // Bottone Dimmi di più (piccolo)
                         val giaSvelato = cur.approfondimentoAi != null
                         OutlinedButton(
-                            onClick = onDimmiDiPiu, modifier = Modifier.height(36.dp),
-                            shape = RoundedCornerShape(10.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                            onClick = onDimmiDiPiu,
+                            modifier = Modifier.height(36.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.primary
+                            ),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                         ) {
                             Icon(if (giaSvelato) Icons.Default.CheckCircle else Icons.Default.AutoAwesome, null, Modifier.size(14.dp))
@@ -626,9 +649,18 @@ private fun PillolePager(
 
                         Spacer(Modifier.height(10.dp))
 
-                        Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
                             if (page > 0) {
-                                FilledTonalIconButton(onClick = onPrecedente, modifier = Modifier.size(48.dp), shape = RoundedCornerShape(12.dp)) {
+                                FilledTonalIconButton(
+                                    onClick = onPrecedente,
+                                    modifier = Modifier.size(48.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
                                     Icon(Icons.Default.ArrowBackIosNew, null, Modifier.size(18.dp))
                                 }
                             } else {
@@ -636,9 +668,13 @@ private fun PillolePager(
                             }
 
                             Button(
-                                onClick = onProssima, enabled = page < state.risultati.size - 1,
-                                modifier = Modifier.weight(1f).height(48.dp), shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                                onClick = onProssima,
+                                enabled = page < state.risultati.size - 1,
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary
+                                )
                             ) {
                                 Text(if (page < state.risultati.size - 1) "Prossima" else "Fine ripasso")
                                 if (page < state.risultati.size - 1) {
