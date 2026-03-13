@@ -10,6 +10,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -166,8 +167,8 @@ fun RipassoScreen(nav: NavController) {
     if (mostraGemini) {
         val sheetStateGemini = rememberModalBottomSheetState(skipPartiallyExpanded = false)
         ModalBottomSheet(
-            onDismissRequest = { 
-                mostraGemini = false 
+            onDismissRequest = {
+                mostraGemini = false
             },
             sheetState = sheetStateGemini
         ) {
@@ -289,9 +290,9 @@ fun RipassoScreen(nav: NavController) {
             TopAppBar(
                 title = { Text("Ripasso") },
                 navigationIcon = {
-                    IconButton(onClick = { 
-                        if (state.pillolaDettaglio != null) vm.chiudiDettaglio() 
-                        else nav.popBackStack() 
+                    IconButton(onClick = {
+                        if (state.pillolaDettaglio != null) vm.chiudiDettaglio()
+                        else nav.popBackStack()
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
                     }
@@ -476,10 +477,12 @@ fun RipassoScreen(nav: NavController) {
 private fun RipassoItemCard(p: Curiosity, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(elevation = 3.dp, shape = RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(3.dp)
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
             Modifier.padding(16.dp).fillMaxWidth(),

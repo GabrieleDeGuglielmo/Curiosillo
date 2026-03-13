@@ -283,8 +283,9 @@ private fun BookmarkCard(pillola: Curiosity, onClick: () -> Unit) {
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(3.dp)
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
             Modifier
