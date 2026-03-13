@@ -155,8 +155,8 @@ fun RipassoScreen(nav: NavController) {
     if (mostraGemini) {
         val sheetStateGemini = rememberModalBottomSheetState(skipPartiallyExpanded = false)
         ModalBottomSheet(
-            onDismissRequest = { 
-                mostraGemini = false 
+            onDismissRequest = {
+                mostraGemini = false
             },
             sheetState = sheetStateGemini
         ) {
@@ -438,26 +438,20 @@ private fun PillolePager(
                     .fillMaxWidth()
                     .fillMaxHeight(0.85f)
                     .graphicsLayer {
-                        val pageOffset = (
-                                (pagerState.currentPage - page) + pagerState
-                                    .currentPageOffsetFraction
-                                ).absoluteValue
+                        val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                        val scale = lerp(start = 0.85f, stop = 1f, fraction = 1f - pageOffset.absoluteValue.coerceIn(0f, 1f))
 
-                        alpha = lerp(
-                            start = 0.5f,
-                            stop = 1f,
-                            fraction = 1f - pageOffset.coerceIn(0f, 1f)
-                        )
+                        scaleX = scale
+                        scaleY = scale
 
-                        scaleY = lerp(
-                            start = 0.85f,
-                            stop = 1f,
-                            fraction = 1f - pageOffset.coerceIn(0f, 1f)
-                        )
+                        shadowElevation = 24.dp.toPx() // Un'ombra ampia e morbida
+                        shape = RoundedCornerShape(24.dp)
+                        clip = false // Importante: evita che l'ombra venga tagliata ai bordi
+
                     },
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Column(Modifier.fillMaxSize()) {
                     Image(
