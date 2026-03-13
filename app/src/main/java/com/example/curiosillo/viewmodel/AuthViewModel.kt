@@ -16,11 +16,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 sealed class AuthUiState {
     object Idle                              : AuthUiState()
     object Loading                           : AuthUiState()
     object EmailRecuperoInviata              : AuthUiState()
+    object VerificaEmailInviata              : AuthUiState()
     data class Successo(val user: FirebaseUser, val isNuovoUtente: Boolean) : AuthUiState()
     data class RichiedeUsername(val user: FirebaseUser, val suggestedUsername: String) : AuthUiState()
     data class Errore(val messaggio: String) : AuthUiState()
@@ -55,7 +57,13 @@ class AuthViewModel(
             val result = FirebaseManager.loginEmail(email, password)
             result.fold(
                 onSuccess = { user ->
-                    sincronizzaDopoLogin(user, isNuovo = false)
+                    if (!user.isEmailVerified) {
+                        user.sendEmailVerification().await()
+                        FirebaseManager.logout()
+                        _state.value = AuthUiState.VerificaEmailInviata
+                    } else {
+                        sincronizzaDopoLogin(user, isNuovo = false)
+                    }
                 },
                 onFailure = {
                     _state.value = AuthUiState.Errore(messaggioErrore(it.message))
@@ -81,7 +89,13 @@ class AuthViewModel(
             val result = FirebaseManager.registraEmail(email, password, username)
             result.fold(
                 onSuccess = { user ->
-                    sincronizzaDopoLogin(user, isNuovo = true)
+                    try {
+                        user.sendEmailVerification().await()
+                        FirebaseManager.logout()
+                        _state.value = AuthUiState.VerificaEmailInviata
+                    } catch (e: Exception) {
+                        _state.value = AuthUiState.Errore("Errore invio email verifica: ${e.message}")
+                    }
                 },
                 onFailure = {
                     _state.value = AuthUiState.Errore(messaggioErrore(it.message))

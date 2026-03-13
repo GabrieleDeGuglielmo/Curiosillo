@@ -110,67 +110,146 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
     var mostraPassword    by remember { mutableStateOf(false) }
     var showRecuperoDialog by remember { mutableStateOf(false) }
     var emailRecupero     by remember { mutableStateOf("") }
+    var showVerificaDialog by remember { mutableStateOf(false) }
 
-    // ── Dialog per impostare lo username dopo Google ──────────────────────────
+    // Gestione stato verifica email
+    LaunchedEffect(state) {
+        if (state is AuthUiState.VerificaEmailInviata) {
+            showVerificaDialog = true
+        }
+    }
+
+    DisposableEffect(usernameInput) {
+        onDispose {
+            usernameCheckJob?.cancel()
+        }
+    }
+
+    // Funzione helper per il controllo (da chiamare nell'onValueChange)
+    fun checkUsernameAvailability(name: String) {
+        val trimmed = name.trim()
+        usernameDisponibile = null
+        usernameCheckJob?.cancel()
+
+        if (trimmed.length >= 3) {
+            usernameCheckLoading = true
+            usernameCheckJob = coroutineScope.launch {
+                try {
+                    delay(600) // Debounce per non sovraccaricare Firebase
+                    // Assicurati che FirebaseManager.isUsernameOccupato sia thread-safe
+                    usernameDisponibile = !FirebaseManager.isUsernameOccupato(trimmed)
+                } catch (e: Exception) {
+                    usernameDisponibile = null // In caso di errore di rete
+                } finally {
+                    usernameCheckLoading = false
+                }
+            }
+        } else {
+            usernameCheckLoading = false
+        }
+    }
+
+    // ── Dialog per impostare lo username dopo Google ──────────────
     if (showGoogleUsernameDialog && state is AuthUiState.RichiedeUsername) {
         val s = state as AuthUiState.RichiedeUsername
-        
-        var checkJob by remember { mutableStateOf<Job?>(null) }
+
         var isChecking by remember { mutableStateOf(false) }
-        var isAvail by remember { mutableStateOf<Boolean?>(null) }
+        var isAvail    by remember { mutableStateOf<Boolean?>(null) }
+
+        // Parte subito con il suggestedUsername pre-popolato da Google
+        // e si ri-esegue ad ogni modifica dell'utente
+        LaunchedEffect(googleUsernameInput) {
+            val trimmed = googleUsernameInput.trim()
+            isAvail = null
+            if (trimmed.length < 3) { isChecking = false; return@LaunchedEffect }
+            isChecking = true
+            try {
+                delay(600)
+                isAvail = !FirebaseManager.isUsernameOccupato(trimmed)
+            } catch (_: Exception) {
+                isAvail = null
+            } finally {
+                isChecking = false
+            }
+        }
 
         AlertDialog(
             onDismissRequest = { /* obbligatorio scegliere */ },
             title = { Text("Scegli il tuo username", fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    Text("Benvenuto! Come vorresti farti chiamare su Curiosillo?", 
-                        Modifier.padding(bottom = 16.dp), color = MaterialTheme.colorScheme.onSurface.copy(0.7f))
-                    
+                    Text(
+                        "Benvenuto! Come vorresti farti chiamare su Curiosillo?",
+                        Modifier.padding(bottom = 16.dp),
+                        color = MaterialTheme.colorScheme.onSurface.copy(0.7f)
+                    )
                     OutlinedTextField(
-                        value = googleUsernameInput,
-                        onValueChange = { v ->
-                            if (v.length <= 20) {
-                                googleUsernameInput = v
-                                isAvail = null
-                                checkJob?.cancel()
-                                if (v.trim().length >= 3) {
-                                    isChecking = true
-                                    checkJob = coroutineScope.launch {
-                                        delay(600)
-                                        isAvail = !FirebaseManager.isUsernameOccupato(v.trim())
-                                        isChecking = false
-                                    }
-                                }
+                        value         = googleUsernameInput,
+                        onValueChange = { v -> if (v.length <= 20) googleUsernameInput = v },
+                        label         = { Text("Username") },
+                        trailingIcon  = {
+                            when {
+                                isChecking       -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                                isAvail == true  -> Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50))
+                                isAvail == false -> Icon(Icons.Default.Cancel, null, tint = MaterialTheme.colorScheme.error)
                             }
                         },
-                        label = { Text("Username") },
-                        trailingIcon = {
-                            if (isChecking) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                            else if (isAvail == true) Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50))
-                            else if (isAvail == false) Icon(Icons.Default.Cancel, null, tint = MaterialTheme.colorScheme.error)
-                        },
-                        isError = isAvail == false,
+                        isError        = isAvail == false,
                         supportingText = {
-                            if (isAvail == false) Text("Già in uso", color = MaterialTheme.colorScheme.error)
-                            else Text("${googleUsernameInput.length}/20")
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                when {
+                                    isAvail == false -> Text("Username già in uso", color = MaterialTheme.colorScheme.error)
+                                    isAvail == true  -> Text("Username disponibile", color = Color(0xFF4CAF50))
+                                    googleUsernameInput.length < 3 -> Text("Minimo 3 caratteri")
+                                    else             -> Spacer(Modifier.weight(1f))
+                                }
+                                Text("${googleUsernameInput.length}/20")
+                            }
                         },
-                        singleLine = true,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        singleLine     = true,
+                        shape          = RoundedCornerShape(14.dp),
+                        modifier       = Modifier.fillMaxWidth()
                     )
                 }
             },
             confirmButton = {
                 Button(
-                    onClick = {
-                        vm.completaRegistrazioneGoogle(s.user, googleUsernameInput)
+                    onClick  = {
+                        vm.completaRegistrazioneGoogle(s.user, googleUsernameInput.trim())
                         showGoogleUsernameDialog = false
                     },
                     enabled = googleUsernameInput.trim().length >= 3 && isAvail == true && !isChecking
                 ) {
-                    Text("Conferma")
+                    if (state is AuthUiState.Loading)
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary)
+                    else Text("Conferma")
                 }
+            }
+        )
+    }
+
+    // ── Dialog verifica email ────────────────────────────────────────────────
+    if (showVerificaDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showVerificaDialog = false
+                vm.resetStato()
+            },
+            icon = { Text("✉️", fontSize = 32.sp) },
+            title = { Text("Verifica la tua email", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            text = {
+                Text(
+                    "Ti abbiamo inviato un'email di verifica a $email. Per favore, clicca sul link contenuto nell'email per attivare il tuo account prima di accedere.",
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showVerificaDialog = false
+                    vm.resetStato()
+                }) { Text("Ho capito") }
             }
         )
     }
@@ -334,49 +413,62 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             // Username (solo registrazione)
             AnimatedVisibility(visible = isRegistrazione) {
                 OutlinedTextField(
-                    value         = usernameInput,
+                    value = usernameInput,
                     onValueChange = { v ->
                         if (v.length <= 20) {
                             usernameInput = v
+                            // 1. Reset immediato degli stati per feedback UI istantaneo
                             usernameDisponibile = null
-                            usernameCheckJob?.cancel()
+                            usernameCheckJob?.cancel() // Ferma ricerche precedenti in corso
+
                             val trimmed = v.trim()
                             if (trimmed.length >= 3) {
+                                // 2. Avvia il caricamento solo se abbiamo almeno 3 caratteri
                                 usernameCheckLoading = true
                                 usernameCheckJob = coroutineScope.launch {
-                                    delay(600)
-                                    usernameDisponibile = !FirebaseManager.isUsernameOccupato(trimmed)
-                                    usernameCheckLoading = false
+                                    try {
+                                        delay(600) // Debounce: aspetta che l'utente finisca di scrivere
+                                        val occupato = FirebaseManager.isUsernameOccupato(trimmed)
+                                        usernameDisponibile = !occupato
+                                    } catch (e: Exception) {
+                                        // In caso di errore (es. offline), permettiamo di procedere
+                                        // o resettiamo per sicurezza. Qui resettiamo:
+                                        usernameDisponibile = null
+                                    } finally {
+                                        // 3. IMPORTANTISSIMO: ferma SEMPRE il caricamento
+                                        usernameCheckLoading = false
+                                    }
                                 }
                             } else {
+                                // 4. Se meno di 3 caratteri, spegniamo il caricamento
                                 usernameCheckLoading = false
                             }
                         }
                     },
-                    label         = { Text("Username") },
-                    leadingIcon   = { Icon(Icons.Default.Person, null) },
-                    trailingIcon  = {
+                    label = { Text("Username") },
+                    leadingIcon = { Icon(Icons.Default.Person, null) },
+                    trailingIcon = {
                         when {
                             usernameCheckLoading -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                            usernameDisponibile == true  -> Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50))
+                            usernameDisponibile == true -> Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50))
                             usernameDisponibile == false -> Icon(Icons.Default.Cancel, null, tint = MaterialTheme.colorScheme.error)
                         }
                     },
-                    isError       = usernameDisponibile == false,
+                    isError = usernameDisponibile == false,
                     supportingText = {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             when {
                                 usernameDisponibile == false -> Text("Username già in uso", color = MaterialTheme.colorScheme.error)
-                                usernameDisponibile == true  -> Text("Username disponibile", color = Color(0xFF4CAF50))
-                                usernameInput.trim().isNotEmpty() && usernameInput.trim().length < 3 -> Text("Minimo 3 caratteri")
+                                usernameDisponibile == true -> Text("Username disponibile", color = Color(0xFF4CAF50))
+                                usernameInput.isNotEmpty() && usernameInput.length < 3 -> Text("Minimo 3 caratteri")
                                 else -> Spacer(Modifier.weight(1f))
                             }
                             Text("${usernameInput.length}/20")
                         }
                     },
-                    singleLine    = true,
-                    shape         = RoundedCornerShape(14.dp),
-                    modifier      = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
                 )
             }
 
@@ -434,23 +526,32 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
 
             // Pulsante principale
             Button(
-                onClick  = {
-                    if (isRegistrazione) vm.registraEmail(email, password, usernameInput)
-                    else vm.loginEmail(email, password)
+                onClick = {
+                    if (isRegistrazione) {
+                        val finalUsername = usernameInput.trim()
+                        if (finalUsername.length >= 3 && usernameDisponibile == true) {
+                            vm.registraEmail(email, password, finalUsername)
+                        }
+                    } else {
+                        vm.loginEmail(email, password)
+                    }
                 },
-                enabled  = state !is AuthUiState.Loading &&
-                        email.isNotBlank() && password.isNotBlank() &&
-                        (!isRegistrazione || (usernameInput.isNotBlank() && usernameDisponibile != false && !usernameCheckLoading)),
+                enabled = state !is AuthUiState.Loading &&
+                        email.isNotBlank() &&
+                        password.length >= 6 &&
+                        (!isRegistrazione || (usernameInput.trim().length >= 3 &&
+                                usernameDisponibile == true &&
+                                !usernameCheckLoading)),
                 modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape    = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(14.dp)
             ) {
                 if (state is AuthUiState.Loading) {
-                    CircularProgressIndicator(Modifier.size(22.dp),
-                        color = Color.White, strokeWidth = 2.dp)
+                    CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
                 } else {
                     Text(
                         if (isRegistrazione) "Crea account" else "Accedi",
-                        fontWeight = FontWeight.Bold, fontSize = 16.sp
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
                     )
                 }
             }

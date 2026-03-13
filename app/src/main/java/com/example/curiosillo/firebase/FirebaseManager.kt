@@ -61,24 +61,24 @@ object FirebaseManager {
 
     // ── Profilo ───────────────────────────────────────────────────────────────
 
+    /**
+     * Controlla se uno username è gia' usato leggendo la collezione 'usernames' piatta.
+     * - ID documento = username lowercase
+     * - Lettura pubblica (funziona anche prima del login, durante la registrazione)
+     * - Scrittura solo da utente autenticato proprietario o admin
+     */
     suspend fun isUsernameOccupato(username: String): Boolean {
         val target = username.trim()
         if (target.isBlank()) return false
-        val currentUid = uid
-
         return try {
-            val snapshot = db.collectionGroup("data")
-                .whereEqualTo("username", target)
-                .limit(2)
-                .get().await()
-
-            val altri = snapshot.documents.filter { doc ->
-                doc.reference.parent.parent?.id != currentUid
-            }
-            altri.isNotEmpty()
+            val doc = db.collection("usernames").document(target.lowercase()).get().await()
+            if (!doc.exists()) return false
+            // Se il documento esiste ma appartiene all'utente corrente, non e' occupato
+            val ownerUid = doc.getString("uid")
+            ownerUid != null && ownerUid != uid
         } catch (e: Exception) {
             Log.e("FirebaseManager", "Errore isUsernameOccupato: ${e.message}")
-            false
+            true // fail-safe: blocca in caso di errore
         }
     }
 
@@ -103,6 +103,14 @@ object FirebaseManager {
                 "streakMassima"  to 0,
                 "ultimoAccesso"  to -1L
             ), SetOptions.merge()).await()
+
+        // Riserva username nella collezione piatta (lettura pubblica)
+        try {
+            db.collection("usernames").document(cleanNick.lowercase())
+                .set(mapOf("uid" to uid, "username" to cleanNick), SetOptions.merge()).await()
+        } catch (e: Exception) {
+            Log.e("FirebaseManager", "Errore riserva username: ${e.message}")
+        }
     }
 
     suspend fun caricaProfilo(uid: String): Map<String, Any>? = try {
@@ -132,6 +140,14 @@ object FirebaseManager {
         }
         user.updateProfile(profileUpdates).await()
         aggiornaProfilo(user.uid, mapOf("username" to cleanNick))
+
+        // Aggiorna collezione usernames: rimuove vecchio, aggiunge nuovo
+        val oldNickLower = user.displayName?.trim()?.lowercase()
+        db.collection("usernames").document(cleanNick.lowercase())
+            .set(mapOf("uid" to user.uid, "username" to cleanNick)).await()
+        if (oldNickLower != null && oldNickLower != cleanNick.lowercase()) {
+            db.collection("usernames").document(oldNickLower).delete().await()
+        }
 
         Result.success(Unit)
     } catch (e: Exception) {
@@ -292,7 +308,7 @@ object FirebaseManager {
     suspend fun aggiungiCommento(externalId: String, testo: String): Result<Unit> = try {
         val autore = auth.currentUser?.displayName?.takeIf { it.isNotBlank() } ?: "Anonimo"
         val uid    = auth.currentUser?.uid ?: ""
-        
+
         // Assicuriamoci che il documento padre esista esplicitamente
         db.collection("commenti").document(externalId)
             .set(mapOf("lastUpdate" to System.currentTimeMillis()), SetOptions.merge()).await()
@@ -610,6 +626,7 @@ object FirebaseManager {
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
 
+    /*
     /** SCRIPT DI MIGRAZIONE: sposta i quiz dalle subcollection al documento principale */
     suspend fun eseguiMigrazioneQuizPiatta() {
         try {
@@ -623,7 +640,7 @@ object FirebaseManager {
                         if (doc.getString("domanda") == null) {
                             val quizDoc = db.collection("curiosita").document(doc.id)
                                 .collection("quiz").document("domanda").get().await()
-                            
+
                             if (quizDoc.exists()) {
                                 db.collection("curiosita").document(doc.id).update(mapOf(
                                     "domanda"          to quizDoc.getString("domanda"),
@@ -641,4 +658,5 @@ object FirebaseManager {
             Log.e("Migration", "Errore migrazione: \${e.message}")
         }
     }
+    */
 }
