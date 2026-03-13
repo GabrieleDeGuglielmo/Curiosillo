@@ -127,7 +127,8 @@ fun RipassoScreen(nav: NavController) {
         )
     }
 
-    val pillola = vm.pilloleCorrente()
+    // Pillola corrente reattiva allo stato
+    val pillola = state.pillolaDettaglio ?: state.risultati.getOrNull(state.indiceCorrente)
 
     if (mostraNota && pillola != null) {
         NotaBottomSheet(

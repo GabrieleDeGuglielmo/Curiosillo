@@ -115,7 +115,11 @@ class RipassoViewModel(
     fun setIndice(indice: Int) {
         val s = _state.value
         if (indice in s.risultati.indices && indice != s.indiceCorrente) {
-            _state.value = s.copy(indiceCorrente = indice)
+            val nuovaPillola = s.risultati[indice]
+            _state.value = s.copy(
+                indiceCorrente = indice,
+                pillolaDettaglio = nuovaPillola
+            )
             aggiornaStatoGeminiPerPillolaCorrente()
         }
     }
@@ -173,8 +177,9 @@ class RipassoViewModel(
     private fun aggiornaPillolaCorrente(nuovaPillola: Curiosity) {
         val s = _state.value
         val listaRisultati = s.risultati.toMutableList()
-        if (s.indiceCorrente in listaRisultati.indices) {
-            listaRisultati[s.indiceCorrente] = nuovaPillola
+        val idxRisultati = listaRisultati.indexOfFirst { it.id == nuovaPillola.id }
+        if (idxRisultati >= 0) {
+            listaRisultati[idxRisultati] = nuovaPillola
         }
         
         val listaPillole = s.pillole.toMutableList()
@@ -183,7 +188,11 @@ class RipassoViewModel(
             listaPillole[idxPillole] = nuovaPillola
         }
 
-        _state.value = s.copy(risultati = listaRisultati, pillole = listaPillole, pillolaDettaglio = if (s.pillolaDettaglio?.id == nuovaPillola.id) nuovaPillola else s.pillolaDettaglio)
+        _state.value = s.copy(
+            risultati = listaRisultati, 
+            pillole = listaPillole, 
+            pillolaDettaglio = if (s.pillolaDettaglio?.id == nuovaPillola.id) nuovaPillola else s.pillolaDettaglio
+        )
     }
 
     // ── Bookmarks ─────────────────────────────────────────────────────────────
