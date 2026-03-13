@@ -81,7 +81,9 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             vm.resetStato()
         }
         if (state is AuthUiState.RichiedeUsername) {
-            googleUsernameInput = (state as AuthUiState.RichiedeUsername).suggestedUsername
+            // Svuotiamo l'input per obbligare l'utente a scegliere uno username valido
+            // partendo da zero, evitando nomi troppo lunghi ereditati da Google.
+            googleUsernameInput = ""
             showGoogleUsernameDialog = true
         }
     }
@@ -180,6 +182,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                         value         = googleUsernameInput,
                         onValueChange = { v -> if (v.length <= 20) googleUsernameInput = v },
                         label         = { Text("Username") },
+                        placeholder   = { Text("Username") },
                         trailingIcon  = {
                             when {
                                 isChecking       -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -193,7 +196,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                                 when {
                                     isAvail == false -> Text("Username già in uso", color = MaterialTheme.colorScheme.error)
                                     isAvail == true  -> Text("Username disponibile", color = Color(0xFF4CAF50))
-                                    googleUsernameInput.length < 3 -> Text("Minimo 3 caratteri")
+                                    googleUsernameInput.length > 0 && googleUsernameInput.length < 3 -> Text("Minimo 3 caratteri")
                                     else             -> Spacer(Modifier.weight(1f))
                                 }
                                 Text("${googleUsernameInput.length}/20")

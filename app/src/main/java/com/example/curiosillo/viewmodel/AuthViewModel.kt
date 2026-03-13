@@ -164,15 +164,18 @@ class AuthViewModel(
     }
 
     private fun messaggioErrore(raw: String?): String = when {
-        raw == null                              -> "Errore sconosciuto"
-        "email address is already" in raw        -> "Email già registrata"
-        "password is invalid" in raw             -> "Password errata"
-        "no user record" in raw                  -> "Account non trovato"
-        "badly formatted" in raw                 -> "Email non valida"
-        "at least 6 characters" in raw           -> "La password deve avere almeno 6 caratteri"
-        "network error" in raw.lowercase()       -> "Errore di rete — controlla la connessione"
-        "Username già in uso" in raw             -> "Username già in uso"
-        else                                     -> "Errore: $raw"
+        raw == null                                 -> "Errore sconosciuto"
+        "email address is already" in raw           -> "Email già registrata"
+        "password is invalid" in raw                -> "Credenziali errate"
+        "no user record" in raw                     -> "Credenziali errate"
+        "invalid-credential" in raw                 -> "Credenziali errate"
+        "badly formatted" in raw                    -> "Email non valida"
+        "incorrect, malformed" in raw               -> "Credenziali errate"
+        "at least 6 characters" in raw              -> "La password deve avere almeno 6 caratteri"
+        "network error" in raw.lowercase()          -> "Errore di rete — controlla la connessione"
+        "Username già in uso" in raw                -> "Username già in uso"
+        "too-many-requests" in raw.lowercase()      -> "Troppi tentativi falliti. Riprova più tardi."
+        else                                        -> "Errore: $raw"
     }
 
     class Factory(

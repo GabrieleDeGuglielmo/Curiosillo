@@ -158,6 +158,27 @@ fun HomeScreen(nav: NavController) {
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
+                AnimatedVisibility(
+                    visible  = homeState.isOffline,
+                    enter    = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                    exit     = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                    modifier = Modifier.statusBarsPadding().padding(top = 8.dp).align(Alignment.TopCenter)
+                ) {
+                    Surface(shape = CircleShape,
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f),
+                        tonalElevation = 4.dp, shadowElevation = 6.dp
+                    ) {
+                        Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.WifiOff, null, Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onErrorContainer)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Nessuna connessione", style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                        }
+                    }
+                }
+
                 // ── Campanella in alto a sinistra ─────────────────────────────
                 Box(Modifier.align(Alignment.CenterEnd)) {
                     IconButton(onClick = { mostraNotifiche = true }) {
@@ -198,27 +219,6 @@ fun HomeScreen(nav: NavController) {
         containerColor = Color.Transparent
     ) { scaffoldPad ->
         Box(modifier = Modifier.fillMaxSize().background(gradientBg).padding(scaffoldPad)) {
-
-            AnimatedVisibility(
-                visible  = homeState.isOffline,
-                enter    = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-                exit     = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
-                modifier = Modifier.statusBarsPadding().padding(top = 8.dp).align(Alignment.TopCenter)
-            ) {
-                Surface(shape = CircleShape,
-                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f),
-                    tonalElevation = 4.dp, shadowElevation = 6.dp
-                ) {
-                    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.WifiOff, null, Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onErrorContainer)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Nessuna connessione", style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
-                    }
-                }
-            }
 
             val screenHeight  = LocalConfiguration.current.screenHeightDp
             val isSmallScreen = screenHeight < 700
