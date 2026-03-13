@@ -91,8 +91,17 @@ class ProfileViewModel(
     fun cambiaPassword(nuovaPass: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             val res = FirebaseManager.cambiaPassword(nuovaPass)
-            if (res.isSuccess) onSuccess()
-            else onError(res.exceptionOrNull()?.message ?: "Errore nel cambio password")
+            if (res.isSuccess) {
+                onSuccess()
+            } else {
+                val raw = res.exceptionOrNull()?.message ?: ""
+                val msg = when {
+                    "recent login" in raw.lowercase() -> "Per motivi di sicurezza, questa operazione richiede un accesso recente. Disconnettiti e rientra prima di riprovare."
+                    "at least 6 characters" in raw.lowercase() -> "La password deve avere almeno 6 caratteri."
+                    else -> "Errore nel cambio password: $raw"
+                }
+                onError(msg)
+            }
         }
     }
 
@@ -109,26 +118,17 @@ class ProfileViewModel(
         onLogout()
     }
 
-    /**
-     * Elimina tutti i dati Firestore dell'utente, poi cancella l'account Firebase Auth.
-     * Infine resetta i dati locali e chiama onEliminato per navigare al login.
-     */
     fun eliminaAccount(onEliminato: () -> Unit) {
         val uid = FirebaseManager.uid ?: return
         viewModelScope.launch {
             _state.value = _state.value.copy(isEliminazioneInCorso = true)
             try {
-                // 1. Anonimizza commenti pubblici
                 FirebaseManager.anonimizzaCommentiUtente(uid)
-                // 2. Cancella dati Firestore
                 FirebaseManager.eliminaDatiUtente(uid)
-                // 2. Resetta dati locali
                 repo.resetProgressi()
                 gamifPrefs.reset()
-                // 3. Cancella account Firebase Auth
                 FirebaseManager.eliminaAccount()
             } catch (_: Exception) {
-                // Se fallisce l'eliminazione dell'account Auth, logout comunque
                 FirebaseManager.logout()
             }
             _state.value = _state.value.copy(isEliminazioneInCorso = false)

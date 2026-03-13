@@ -102,6 +102,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
     var isRegistrazione   by remember { mutableStateOf(false) }
     var email             by remember { mutableStateOf("") }
     var password          by remember { mutableStateOf("") }
+    var confermaPassword  by remember { mutableStateOf("") }
     val coroutineScope         = rememberCoroutineScope()
     var usernameInput         by remember { mutableStateOf("") }
     var usernameDisponibile   by remember { mutableStateOf<Boolean?>(null) }
@@ -119,32 +120,23 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
         }
     }
 
-    DisposableEffect(usernameInput) {
-        onDispose {
-            usernameCheckJob?.cancel()
-        }
-    }
-
-    // Funzione helper per il controllo (da chiamare nell'onValueChange)
-    fun checkUsernameAvailability(name: String) {
-        val trimmed = name.trim()
+    // Check disponibilita' username: LaunchedEffect garantisce cancellazione automatica
+    // del job precedente ad ogni cambio. Parte anche quando si entra in modalita' registrazione.
+    LaunchedEffect(usernameInput, isRegistrazione) {
+        if (!isRegistrazione) return@LaunchedEffect
+        val trimmed = usernameInput.trim()
         usernameDisponibile = null
-        usernameCheckJob?.cancel()
-
-        if (trimmed.length >= 3) {
-            usernameCheckLoading = true
-            usernameCheckJob = coroutineScope.launch {
-                try {
-                    delay(600) // Debounce per non sovraccaricare Firebase
-                    // Assicurati che FirebaseManager.isUsernameOccupato sia thread-safe
-                    usernameDisponibile = !FirebaseManager.isUsernameOccupato(trimmed)
-                } catch (e: Exception) {
-                    usernameDisponibile = null // In caso di errore di rete
-                } finally {
-                    usernameCheckLoading = false
-                }
-            }
-        } else {
+        if (trimmed.length < 3) {
+            usernameCheckLoading = false
+            return@LaunchedEffect
+        }
+        usernameCheckLoading = true
+        try {
+            delay(600)
+            usernameDisponibile = !FirebaseManager.isUsernameOccupato(trimmed)
+        } catch (_: Exception) {
+            usernameDisponibile = null
+        } finally {
             usernameCheckLoading = false
         }
     }
@@ -177,7 +169,8 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             onDismissRequest = { /* obbligatorio scegliere */ },
             title = { Text("Scegli il tuo username", fontWeight = FontWeight.Bold) },
             text = {
-                Column {
+                val scrollState = rememberScrollState()
+                Column(Modifier.verticalScroll(scrollState)) {
                     Text(
                         "Benvenuto! Come vorresti farti chiamare su Curiosillo?",
                         Modifier.padding(bottom = 16.dp),
@@ -414,37 +407,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             AnimatedVisibility(visible = isRegistrazione) {
                 OutlinedTextField(
                     value = usernameInput,
-                    onValueChange = { v ->
-                        if (v.length <= 20) {
-                            usernameInput = v
-                            // 1. Reset immediato degli stati per feedback UI istantaneo
-                            usernameDisponibile = null
-                            usernameCheckJob?.cancel() // Ferma ricerche precedenti in corso
-
-                            val trimmed = v.trim()
-                            if (trimmed.length >= 3) {
-                                // 2. Avvia il caricamento solo se abbiamo almeno 3 caratteri
-                                usernameCheckLoading = true
-                                usernameCheckJob = coroutineScope.launch {
-                                    try {
-                                        delay(600) // Debounce: aspetta che l'utente finisca di scrivere
-                                        val occupato = FirebaseManager.isUsernameOccupato(trimmed)
-                                        usernameDisponibile = !occupato
-                                    } catch (e: Exception) {
-                                        // In caso di errore (es. offline), permettiamo di procedere
-                                        // o resettiamo per sicurezza. Qui resettiamo:
-                                        usernameDisponibile = null
-                                    } finally {
-                                        // 3. IMPORTANTISSIMO: ferma SEMPRE il caricamento
-                                        usernameCheckLoading = false
-                                    }
-                                }
-                            } else {
-                                // 4. Se meno di 3 caratteri, spegniamo il caricamento
-                                usernameCheckLoading = false
-                            }
-                        }
-                    },
+                    onValueChange = { v -> if (v.length <= 20) usernameInput = v },
                     label = { Text("Username") },
                     leadingIcon = { Icon(Icons.Default.Person, null) },
                     trailingIcon = {
@@ -503,6 +466,32 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                 shape                = RoundedCornerShape(14.dp),
                 modifier             = Modifier.fillMaxWidth()
             )
+
+            // Conferma Password (solo registrazione)
+            AnimatedVisibility(visible = isRegistrazione) {
+                Column {
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value                = confermaPassword,
+                        onValueChange        = { confermaPassword = it },
+                        label                = { Text("Conferma Password") },
+                        leadingIcon          = { Icon(Icons.Default.Lock, null) },
+                        singleLine           = true,
+                        visualTransformation = if (mostraPassword) VisualTransformation.None
+                        else PasswordVisualTransformation(),
+                        keyboardOptions      = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        isError              = isRegistrazione && confermaPassword.isNotEmpty() && confermaPassword != password,
+                        supportingText       = {
+                            if (isRegistrazione && confermaPassword.isNotEmpty() && confermaPassword != password) {
+                                Text("Le password non coincidono", color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        shape                = RoundedCornerShape(14.dp),
+                        modifier             = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
             Spacer(Modifier.height(8.dp))
 
             // Link "Password dimenticata?" — solo in modalità login
@@ -529,7 +518,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                 onClick = {
                     if (isRegistrazione) {
                         val finalUsername = usernameInput.trim()
-                        if (finalUsername.length >= 3 && usernameDisponibile == true) {
+                        if (finalUsername.length >= 3 && usernameDisponibile == true && password == confermaPassword) {
                             vm.registraEmail(email, password, finalUsername)
                         }
                     } else {
@@ -541,7 +530,8 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                         password.length >= 6 &&
                         (!isRegistrazione || (usernameInput.trim().length >= 3 &&
                                 usernameDisponibile == true &&
-                                !usernameCheckLoading)),
+                                !usernameCheckLoading &&
+                                password == confermaPassword)),
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(14.dp)
             ) {

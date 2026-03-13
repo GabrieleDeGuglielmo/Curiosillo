@@ -263,7 +263,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     icon  = Icons.Default.Edit,
                     tint  = MaterialTheme.colorScheme.primary,
                     label = "Modifica profilo",
-                    sub   = "Cambia il tuo username o password"
+                    sub   = if (state.isGoogleUser) "Cambia il tuo username" else "Cambia il tuo username o password"
                 ) {
                     scope.launch { accountSheetState.hide() }.invokeOnCompletion {
                         showAccountSheet = false

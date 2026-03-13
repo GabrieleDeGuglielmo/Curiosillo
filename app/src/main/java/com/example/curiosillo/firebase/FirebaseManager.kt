@@ -61,24 +61,25 @@ object FirebaseManager {
 
     // ── Profilo ───────────────────────────────────────────────────────────────
 
-    /**
-     * Controlla se uno username è gia' usato leggendo la collezione 'usernames' piatta.
-     * - ID documento = username lowercase
-     * - Lettura pubblica (funziona anche prima del login, durante la registrazione)
-     * - Scrittura solo da utente autenticato proprietario o admin
-     */
     suspend fun isUsernameOccupato(username: String): Boolean {
         val target = username.trim()
         if (target.isBlank()) return false
+        val currentUid = uid
+
         return try {
-            val doc = db.collection("usernames").document(target.lowercase()).get().await()
-            if (!doc.exists()) return false
-            // Se il documento esiste ma appartiene all'utente corrente, non e' occupato
-            val ownerUid = doc.getString("uid")
-            ownerUid != null && ownerUid != uid
+            // Cerchiamo in tutti i documenti "profile" (che sono dentro users/UID/data/profile)
+            val snapshot = db.collectionGroup("data")
+                .whereEqualTo("username", target)
+                .get().await()
+
+            // Filtriamo i risultati per assicurarci che siano documenti "profile"
+            val altri = snapshot.documents.filter { doc ->
+                doc.id == "profile" && doc.reference.parent.parent?.id != currentUid
+            }
+            altri.isNotEmpty()
         } catch (e: Exception) {
             Log.e("FirebaseManager", "Errore isUsernameOccupato: ${e.message}")
-            true // fail-safe: blocca in caso di errore
+            false
         }
     }
 
@@ -103,14 +104,6 @@ object FirebaseManager {
                 "streakMassima"  to 0,
                 "ultimoAccesso"  to -1L
             ), SetOptions.merge()).await()
-
-        // Riserva username nella collezione piatta (lettura pubblica)
-        try {
-            db.collection("usernames").document(cleanNick.lowercase())
-                .set(mapOf("uid" to uid, "username" to cleanNick), SetOptions.merge()).await()
-        } catch (e: Exception) {
-            Log.e("FirebaseManager", "Errore riserva username: ${e.message}")
-        }
     }
 
     suspend fun caricaProfilo(uid: String): Map<String, Any>? = try {
@@ -141,14 +134,6 @@ object FirebaseManager {
         user.updateProfile(profileUpdates).await()
         aggiornaProfilo(user.uid, mapOf("username" to cleanNick))
 
-        // Aggiorna collezione usernames: rimuove vecchio, aggiunge nuovo
-        val oldNickLower = user.displayName?.trim()?.lowercase()
-        db.collection("usernames").document(cleanNick.lowercase())
-            .set(mapOf("uid" to user.uid, "username" to cleanNick)).await()
-        if (oldNickLower != null && oldNickLower != cleanNick.lowercase()) {
-            db.collection("usernames").document(oldNickLower).delete().await()
-        }
-
         Result.success(Unit)
     } catch (e: Exception) {
         Result.failure(e)
@@ -174,6 +159,19 @@ object FirebaseManager {
     }
 
     suspend fun eliminaDatiUtente(uid: String) {
+        // Rimuove lo username dalla collezione piatta prima di cancellare il profilo
+        try {
+            val profilo = db.collection("users").document(uid)
+                .collection("data").document("profile").get().await()
+            val username = profilo.getString("username")
+            if (!username.isNullOrBlank()) {
+                db.collection("usernames").document(username.lowercase()).delete().await()
+                Log.d("FirebaseManager", "Username '$username' rimosso da usernames")
+            }
+        } catch (e: Exception) {
+            Log.e("FirebaseManager", "Errore rimozione username: ${e.message}")
+        }
+
         val ref = db.collection("users").document(uid).collection("data")
         val docs = ref.get().await()
         docs.forEach { ref.document(it.id).delete().await() }
@@ -626,7 +624,6 @@ object FirebaseManager {
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
 
-    /*
     /** SCRIPT DI MIGRAZIONE: sposta i quiz dalle subcollection al documento principale */
     suspend fun eseguiMigrazioneQuizPiatta() {
         try {
@@ -658,5 +655,4 @@ object FirebaseManager {
             Log.e("Migration", "Errore migrazione: \${e.message}")
         }
     }
-    */
 }
