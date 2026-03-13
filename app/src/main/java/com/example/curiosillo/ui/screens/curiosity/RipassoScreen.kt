@@ -1,13 +1,19 @@
 package com.example.curiosillo.ui.screens.curiosity
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,6 +28,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,19 +42,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
+import com.example.curiosillo.data.Curiosity
 import com.example.curiosillo.firebase.FirebaseManager
-import com.example.curiosillo.ui.screens.utils.categoryImage
 import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.ui.components.NotaBottomSheet
-import com.example.curiosillo.ui.screens.utils.SegnalazioneBottomSheet
-import com.example.curiosillo.ui.screens.utils.SegnalazioneUiState
-import com.example.curiosillo.ui.screens.utils.emojiCategoria
+import com.example.curiosillo.ui.screens.utils.*
 import com.example.curiosillo.ui.theme.Success
 import com.example.curiosillo.viewmodel.RipassoUiState
 import com.example.curiosillo.viewmodel.RipassoViewModel
@@ -155,8 +161,8 @@ fun RipassoScreen(nav: NavController) {
     if (mostraGemini) {
         val sheetStateGemini = rememberModalBottomSheetState(skipPartiallyExpanded = false)
         ModalBottomSheet(
-            onDismissRequest = {
-                mostraGemini = false
+            onDismissRequest = { 
+                mostraGemini = false 
             },
             sheetState = sheetStateGemini
         ) {
@@ -195,7 +201,6 @@ fun RipassoScreen(nav: NavController) {
                 OutlinedButton(
                     onClick  = {
                         vm.toggleBookmark()
-                        // Il menu NON si chiude quando si preme preferiti, come richiesto
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape    = RoundedCornerShape(14.dp)
@@ -279,16 +284,20 @@ fun RipassoScreen(nav: NavController) {
             TopAppBar(
                 title = { Text("Ripasso") },
                 navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
+                    IconButton(onClick = { 
+                        if (state.pillolaDettaglio != null) vm.chiudiDettaglio() 
+                        else nav.popBackStack() 
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
                     }
                 },
                 actions = {
-                    TextButton(onClick = { mostraSelettore = true }) {
-                        val label = opzioniGiorni.find { it.first == state.giorniSelezionati }?.second ?: "Filtra"
-                        Text(label, color = MaterialTheme.colorScheme.primary)
-                    }
-                    if (state.pillole.isNotEmpty()) {
+                    if (state.pillolaDettaglio == null) {
+                        TextButton(onClick = { mostraSelettore = true }) {
+                            val label = opzioniGiorni.find { it.first == state.giorniSelezionati }?.second ?: "Filtra"
+                            Text(label, color = MaterialTheme.colorScheme.primary)
+                        }
+                    } else {
                         IconButton(onClick = { mostraAzioni = true }) {
                             Icon(Icons.Default.MoreVert, "Azioni",
                                 tint = MaterialTheme.colorScheme.onBackground)
@@ -298,7 +307,7 @@ fun RipassoScreen(nav: NavController) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        bottomBar      = { CuriosilloBottomBar(nav) },
+        bottomBar      = { if (state.pillolaDettaglio == null) CuriosilloBottomBar(nav) },
         containerColor = Color.Transparent
     ) { pad ->
         val gradientBg = Brush.verticalGradient(listOf(
@@ -306,16 +315,16 @@ fun RipassoScreen(nav: NavController) {
             MaterialTheme.colorScheme.background
         ))
 
-        Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().background(gradientBg).padding(pad)) {
             when {
                 state.isLoading ->
-                    Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
+                    Box(Modifier.fillMaxSize(), Alignment.Center) {
                         CircularProgressIndicator()
                     }
 
                 state.pillole.isEmpty() ->
                     Column(
-                        Modifier.fillMaxSize().background(gradientBg).padding(pad),
+                        Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
@@ -333,31 +342,96 @@ fun RipassoScreen(nav: NavController) {
                         }
                     }
 
+                state.pillolaDettaglio == null -> {
+                    // Vista Elenco con ricerca e filtri
+                    Column(Modifier.fillMaxSize()) {
+                        OutlinedTextField(
+                            value = state.query,
+                            onValueChange = { vm.onQueryChange(it) },
+                            placeholder = { Text("Cerca tra le pillole lette...") },
+                            leadingIcon = { Icon(Icons.Default.Search, null) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+
+                        if (state.categorie.isNotEmpty()) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState())
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilterChip(
+                                    selected = state.categorieSelezionate.isEmpty(),
+                                    onClick = { vm.resetCategorie() },
+                                    label = { Text("Tutte") }
+                                )
+                                state.categorie.forEach { cat ->
+                                    FilterChip(
+                                        selected = state.categorieSelezionate.contains(cat),
+                                        onClick = { vm.onCategoriaSelezionata(cat) },
+                                        label = {
+                                            Text(
+                                                cat,
+                                                color = if (state.categorieSelezionate.contains(cat)) Color(0xFF1A1A1A)
+                                                else MaterialTheme.colorScheme.onSurface
+                                            )
+                                        },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = coloreCategoria(cat),
+                                            selectedLabelColor = Color(0xFF1A1A1A)
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                        HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+
+                        if (state.risultati.isEmpty()) {
+                            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("🔍", fontSize = 48.sp)
+                                    Text("Nessun risultato", color = MaterialTheme.colorScheme.onSurface.copy(0.5f))
+                                }
+                            }
+                        } else {
+                            LazyColumn(
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                items(state.risultati, key = { it.id }) { p ->
+                                    RipassoItemCard(p) { vm.apriDettaglio(p) }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 else -> {
+                    // Vista Card (Pager)
                     PillolePager(
                         state = state,
-                        gradientBg = gradientBg,
-                        pad = pad,
                         vm = vm,
                         onDimmiDiPiu = { vm.dimmiDiPiu(); mostraGemini = true }
                     )
                 }
             }
 
+            // Notifiche segnalazione
             when (val sState = segnalazioneState) {
                 is SegnalazioneUiState.Successo -> {
                     LaunchedEffect(Unit) {
                         delay(3000)
                         vm.dismissSegnalazione()
                     }
-                    Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
-                        Surface(
-                            color = Success,
-                            shape = RoundedCornerShape(12.dp),
-                            shadowElevation = 6.dp
-                        ) {
+                    Box(Modifier.fillMaxSize().padding(bottom = 20.dp), contentAlignment = Alignment.BottomCenter) {
+                        Surface(color = Success, shape = RoundedCornerShape(12.dp), shadowElevation = 6.dp) {
                             Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = "Success", tint = Color.White)
+                                Icon(Icons.Default.CheckCircle, null, tint = Color.White)
                                 Spacer(Modifier.width(8.dp))
                                 Text("Segnalazione inviata. Grazie!", color = Color.White, fontWeight = FontWeight.Bold)
                             }
@@ -369,12 +443,8 @@ fun RipassoScreen(nav: NavController) {
                         delay(3500)
                         vm.dismissSegnalazione()
                     }
-                    Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.error,
-                            shape = RoundedCornerShape(12.dp),
-                            shadowElevation = 6.dp
-                        ) {
+                    Box(Modifier.fillMaxSize().padding(bottom = 20.dp), contentAlignment = Alignment.BottomCenter) {
+                        Surface(color = MaterialTheme.colorScheme.error, shape = RoundedCornerShape(12.dp), shadowElevation = 6.dp) {
                             Text(sState.msg, color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp))
                         }
                     }
@@ -385,16 +455,50 @@ fun RipassoScreen(nav: NavController) {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun RipassoItemCard(p: Curiosity, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(3.dp)
+    ) {
+        Row(
+            Modifier.padding(16.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.size(10.dp).background(coloreCategoria(p.category), CircleShape))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    p.title, style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    p.body, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForwardIos, null,
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PillolePager(
-    state:      RipassoUiState,
-    gradientBg: Brush,
-    pad:        PaddingValues,
-    vm:         RipassoViewModel,
+    state: RipassoUiState,
+    vm: RipassoViewModel,
     onDimmiDiPiu: () -> Unit
 ) {
-    val pagerState = rememberPagerState(initialPage = state.indiceCorrente, pageCount = { state.pillole.size })
+    val pagerState = rememberPagerState(initialPage = state.indiceCorrente, pageCount = { state.risultati.size })
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(pagerState.currentPage) {
@@ -403,7 +507,7 @@ private fun PillolePager(
 
     val onProssima: () -> Unit = {
         coroutineScope.launch {
-            if (pagerState.currentPage < state.pillole.size - 1) {
+            if (pagerState.currentPage < state.risultati.size - 1) {
                 pagerState.animateScrollToPage(pagerState.currentPage + 1)
             }
         }
@@ -416,9 +520,9 @@ private fun PillolePager(
         }
     }
 
-    Box(Modifier.fillMaxSize().background(gradientBg).padding(pad)) {
+    Box(Modifier.fillMaxSize()) {
         LinearProgressIndicator(
-            progress = { (pagerState.currentPage + 1f) / state.pillole.size },
+            progress = { (pagerState.currentPage + 1f) / state.risultati.size },
             modifier   = Modifier.fillMaxWidth().height(3.dp).align(Alignment.TopCenter),
             color      = MaterialTheme.colorScheme.secondary,
             trackColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
@@ -431,7 +535,7 @@ private fun PillolePager(
             pageSpacing = 16.dp,
             verticalAlignment = Alignment.CenterVertically
         ) { page ->
-            val cur = state.pillole[page]
+            val cur = state.risultati[page]
 
             Card(
                 modifier = Modifier
@@ -444,10 +548,9 @@ private fun PillolePager(
                         scaleX = scale
                         scaleY = scale
 
-                        shadowElevation = 24.dp.toPx() // Un'ombra ampia e morbida
+                        shadowElevation = 24.dp.toPx() // Ombra ampia e morbida
                         shape = RoundedCornerShape(24.dp)
-                        clip = false // Importante: evita che l'ombra venga tagliata ai bordi
-
+                        clip = false
                     },
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -466,10 +569,7 @@ private fun PillolePager(
 
                     Box(Modifier.weight(1f)) {
                         Column(
-                            Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
-                                .padding(20.dp)
+                            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)
                         ) {
                             Row(
                                 Modifier.fillMaxWidth(),
@@ -486,7 +586,7 @@ private fun PillolePager(
                                     color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
                                 ) {
                                     Text(
-                                        "${page + 1} / ${state.pillole.size}",
+                                        "${page + 1} / ${state.risultati.size}",
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold,
@@ -496,55 +596,27 @@ private fun PillolePager(
                             }
 
                             Spacer(Modifier.height(12.dp))
-
-                            Text(
-                                cur.title,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground)
-
+                            Text(cur.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(12.dp))
-
-                            Text(
-                                cur.body,
-                                style = MaterialTheme.typography.bodyMedium,
-                                lineHeight = 24.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+                            Text(cur.body, style = MaterialTheme.typography.bodyMedium, lineHeight = 24.sp)
 
                             if (cur.nota.isNotBlank()) {
                                 Spacer(Modifier.height(16.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                                ) {
+                                Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(0.4f)) {
                                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
                                         Text("📝 ", fontSize = 14.sp)
-                                        Text(
-                                            cur.nota,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
+                                        Text(cur.nota, style = MaterialTheme.typography.bodySmall)
                                     }
                                 }
                             }
                         }
-                    } // Box weight
+                    }
 
-                    Column(
-                        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        horizontalAlignment = Alignment.End
-                    ) {
-                        // Bottone Dimmi di più (piccolo)
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalAlignment = Alignment.End) {
                         val giaSvelato = cur.approfondimentoAi != null
                         OutlinedButton(
-                            onClick = onDimmiDiPiu,
-                            modifier = Modifier.height(36.dp),
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.primary
-                            ),
+                            onClick = onDimmiDiPiu, modifier = Modifier.height(36.dp),
+                            shape = RoundedCornerShape(10.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                         ) {
                             Icon(if (giaSvelato) Icons.Default.CheckCircle else Icons.Default.AutoAwesome, null, Modifier.size(14.dp))
@@ -554,18 +626,9 @@ private fun PillolePager(
 
                         Spacer(Modifier.height(10.dp))
 
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
+                        Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             if (page > 0) {
-                                FilledTonalIconButton(
-                                    onClick = onPrecedente,
-                                    modifier = Modifier.size(48.dp),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
+                                FilledTonalIconButton(onClick = onPrecedente, modifier = Modifier.size(48.dp), shape = RoundedCornerShape(12.dp)) {
                                     Icon(Icons.Default.ArrowBackIosNew, null, Modifier.size(18.dp))
                                 }
                             } else {
@@ -573,16 +636,12 @@ private fun PillolePager(
                             }
 
                             Button(
-                                onClick = onProssima,
-                                enabled = page < state.pillole.size - 1,
-                                modifier = Modifier.weight(1f).height(48.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary
-                                )
+                                onClick = onProssima, enabled = page < state.risultati.size - 1,
+                                modifier = Modifier.weight(1f).height(48.dp), shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                             ) {
-                                Text(if (page < state.pillole.size - 1) "Prossima" else "Fine ripasso")
-                                if (page < state.pillole.size - 1) {
+                                Text(if (page < state.risultati.size - 1) "Prossima" else "Fine ripasso")
+                                if (page < state.risultati.size - 1) {
                                     Spacer(Modifier.width(8.dp))
                                     Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, Modifier.size(16.dp))
                                 }
