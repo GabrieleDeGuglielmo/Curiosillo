@@ -1,7 +1,7 @@
 package com.example.curiosillo.ui.screens.quiz
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -67,7 +68,6 @@ fun QuizScreen(nav: NavController) {
     LaunchedEffect(segnalazioneState) {
         if (segnalazioneState is SegnalazioneUiState.Successo) {
             mostraSegnala = false
-            // Opzionale: mostra un toast o snackbar
         }
     }
 
@@ -132,15 +132,34 @@ fun QuizScreen(nav: NavController) {
             MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
             MaterialTheme.colorScheme.background
         ))
+        
         Box(Modifier.fillMaxSize().background(gradientBg)) {
-        when (val s = state) {
-            is QuizUiState.Loading ->
-                Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator() }
-            is QuizUiState.NoQuestions -> NoQuestionsContent(pad) { nav.popBackStack() }
-            is QuizUiState.Question    -> QuestionContent(s, pad, vm::answer)
-            is QuizUiState.Answered    -> AnsweredContent(s, pad, vm::next)
-            is QuizUiState.Summary     -> SummaryContent(s, pad, vm::startQuiz) { nav.popBackStack() }
-        }
+            AnimatedContent(
+                targetState = state,
+                transitionSpec = {
+                    if (targetState is QuizUiState.Question && initialState is QuizUiState.Answered) {
+                        // Transizione tra domande: slide
+                        (slideInHorizontally { it } + fadeIn()) togetherWith 
+                        (slideOutHorizontally { -it } + fadeOut())
+                    } else {
+                        // Altre transizioni: fade & scale
+                        (scaleIn(initialScale = 0.92f) + fadeIn(tween(400))) togetherWith 
+                        fadeOut(tween(300))
+                    }
+                },
+                label = "quizContentTransition"
+            ) { s ->
+                Box(Modifier.fillMaxSize()) {
+                    when (s) {
+                        is QuizUiState.Loading ->
+                            Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator() }
+                        is QuizUiState.NoQuestions -> NoQuestionsContent(pad) { nav.popBackStack() }
+                        is QuizUiState.Question    -> QuestionContent(s, pad, vm::answer)
+                        is QuizUiState.Answered    -> AnsweredContent(s, pad, vm::next)
+                        is QuizUiState.Summary     -> SummaryContent(s, pad, vm::startQuiz) { nav.popBackStack() }
+                    }
+                }
+            }
         }
     }
 }
@@ -255,7 +274,7 @@ private fun AnsweredContent(s: QuizUiState.Answered, pad: PaddingValues, onNext:
             }
             if (s.question.explanation.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
-                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
+                Card(Modifier.fillMaxWidth().animateContentSize(), shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
@@ -317,23 +336,38 @@ private enum class AnswerState { Idle, Correct, Wrong }
 private fun AnswerButton(text: String, state: AnswerState, onClick: () -> Unit) {
     val idleBg  = MaterialTheme.colorScheme.surface
     val idleFg  = MaterialTheme.colorScheme.onSurface
+
+    // Fluid scale feedback
+    val scale by animateFloatAsState(
+        targetValue = if (state != AnswerState.Idle) 1.04f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "scale"
+    )
+
     val bg by animateColorAsState(
         when (state) {
             AnswerState.Idle    -> idleBg
             AnswerState.Correct -> Success
             AnswerState.Wrong   -> Error
-        }, animationSpec = tween(300), label = "bg"
+        }, animationSpec = tween(450), label = "bg"
     )
     val fg = if (state == AnswerState.Idle) idleFg else Color.White
+
     Button(
-        onClick, enabled = state == AnswerState.Idle,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+        onClick = onClick,
+        enabled = state == AnswerState.Idle,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 58.dp)
+            .graphicsLayer(scaleX = scale, scaleY = scale),
         shape  = RoundedCornerShape(14.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor         = bg, disabledContainerColor = bg,
-            contentColor           = fg, disabledContentColor   = fg
+            containerColor         = bg,
+            disabledContainerColor = bg,
+            contentColor           = fg,
+            disabledContentColor   = fg
         ),
-        elevation = ButtonDefaults.buttonElevation(2.dp, disabledElevation = 2.dp)
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp, pressedElevation = 6.dp, disabledElevation = 2.dp)
     ) {
         Text(text, style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
