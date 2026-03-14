@@ -62,6 +62,7 @@ import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.ui.components.GamificationBanner
 import com.example.curiosillo.viewmodel.HomeViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -138,6 +139,7 @@ fun HomeScreen(nav: NavController) {
     // ── Bottom sheet notifiche ───────────────────────────────────────────────
     if (mostraNotifiche) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        val scope = rememberCoroutineScope()
         ModalBottomSheet(
             onDismissRequest = { mostraNotifiche = false },
             sheetState       = sheetState
@@ -145,7 +147,16 @@ fun HomeScreen(nav: NavController) {
             NotificheSheet(
                 notifiche       = homeState.notifiche,
                 onLetta         = { id -> homeVm.segnaNotificaLetta(id) },
-                onTutteLette    = { homeVm.segnaNotificheTutteLette(); mostraNotifiche = false }
+                onTutteLette    = {
+                    scope.launch {
+                        sheetState.hide()
+                    }.invokeOnCompletion {
+                        if (!sheetState.isVisible) {
+                            mostraNotifiche = false
+                            homeVm.segnaNotificheTutteLette()
+                        }
+                    }
+                }
             )
         }
     }
