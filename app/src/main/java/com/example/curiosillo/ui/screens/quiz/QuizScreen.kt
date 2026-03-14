@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +30,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.data.BadgeSbloccato
+import com.example.curiosillo.ui.screens.utils.SegnalazioneBottomSheet
+import com.example.curiosillo.ui.screens.utils.SegnalazioneUiState
 import com.example.curiosillo.ui.screens.utils.categoryImage
 import com.example.curiosillo.ui.theme.Error
 import com.example.curiosillo.ui.theme.Success
@@ -43,11 +46,13 @@ fun QuizScreen(nav: NavController) {
     val vm: QuizViewModel = viewModel(
         factory = QuizViewModel.Factory(app.repository, app.categoryPrefs, app.gamificationEngine)
     )
-    val state    by vm.state.collectAsState()
-    val risultato by vm.risultatoAzione.collectAsState()
+    val state             by vm.state.collectAsState()
+    val risultato         by vm.risultatoAzione.collectAsState()
+    val segnalazioneState by vm.segnalazioneState.collectAsState()
 
     var badgeDaMostrare by remember { mutableStateOf<BadgeSbloccato?>(null) }
     var badgeQueue      by remember { mutableStateOf<List<BadgeSbloccato>>(emptyList()) }
+    var mostraSegnala   by remember { mutableStateOf(false) }
 
     LaunchedEffect(risultato) {
         risultato?.let {
@@ -55,6 +60,14 @@ fun QuizScreen(nav: NavController) {
                 badgeQueue = it.badgeSbloccati; badgeDaMostrare = badgeQueue.first()
             }
             vm.consumaRisultato()
+        }
+    }
+
+    // Feedback segnalazione
+    LaunchedEffect(segnalazioneState) {
+        if (segnalazioneState is SegnalazioneUiState.Successo) {
+            mostraSegnala = false
+            // Opzionale: mostra un toast o snackbar
         }
     }
 
@@ -88,12 +101,27 @@ fun QuizScreen(nav: NavController) {
         )
     }
 
+    if (mostraSegnala) {
+        SegnalazioneBottomSheet(
+            onInvia = { tipo, testo -> vm.inviaSegnalazione(tipo, testo) },
+            onDismiss = { mostraSegnala = false; vm.dismissSegnalazione() },
+            isLoading = segnalazioneState is SegnalazioneUiState.Loading
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Quiz") },
                 navigationIcon = {
                     IconButton({ nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro") }
+                },
+                actions = {
+                    if (state is QuizUiState.Question || state is QuizUiState.Answered) {
+                        IconButton(onClick = { mostraSegnala = true }) {
+                            Icon(Icons.Default.Flag, "Segnala", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )

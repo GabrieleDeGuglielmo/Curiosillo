@@ -7,6 +7,8 @@ import com.example.curiosillo.data.CategoryPreferences
 import com.example.curiosillo.domain.GamificationEngine
 import com.example.curiosillo.domain.RisultatoAzione
 import com.example.curiosillo.repository.CuriosityRepository
+import com.example.curiosillo.ui.screens.utils.SegnalazioneHelper
+import com.example.curiosillo.ui.screens.utils.SegnalazioneUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +44,10 @@ class QuizViewModel(
 
     private val _risultatoAzione = MutableStateFlow<RisultatoAzione?>(null)
     val risultatoAzione: StateFlow<RisultatoAzione?> = _risultatoAzione.asStateFlow()
+
+    // Stato per la segnalazione
+    private val _segnalazioneState = MutableStateFlow<SegnalazioneUiState>(SegnalazioneUiState.Idle)
+    val segnalazioneState: StateFlow<SegnalazioneUiState> = _segnalazioneState.asStateFlow()
 
     private var questions    = listOf<QuizUiModel>()
     private var currentIndex = 0
@@ -96,6 +102,20 @@ class QuizViewModel(
     }
 
     fun consumaRisultato() { _risultatoAzione.value = null }
+
+    // Metodi per la segnalazione
+    fun inviaSegnalazione(tipo: String, testo: String) {
+        val qId = when (val s = _state.value) {
+            is QuizUiState.Question -> s.question.questionId.toString()
+            is QuizUiState.Answered -> s.question.questionId.toString()
+            else -> return
+        }
+        SegnalazioneHelper.invia(viewModelScope, _segnalazioneState, qId, "quiz_$tipo", testo)
+    }
+
+    fun dismissSegnalazione() {
+        SegnalazioneHelper.dismiss(_segnalazioneState)
+    }
 
     private fun push() {
         _state.value = if (currentIndex < questions.size)

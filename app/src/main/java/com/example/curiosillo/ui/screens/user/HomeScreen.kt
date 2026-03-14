@@ -63,6 +63,7 @@ import com.example.curiosillo.ui.components.GamificationBanner
 import com.example.curiosillo.viewmodel.HomeViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,8 +124,8 @@ fun HomeScreen(nav: NavController) {
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = {
-                        val url = if (info.downloadUrl.isNotEmpty()) info.downloadUrl else info.releaseUrl
-                        ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        val url = info.downloadUrl.ifEmpty { info.releaseUrl }
+                        ctx.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                     }
                 ) { Text("Aggiorna Ora") }
             }
