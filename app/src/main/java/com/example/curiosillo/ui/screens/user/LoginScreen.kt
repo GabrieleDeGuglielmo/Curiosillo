@@ -57,14 +57,13 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
     val app = ctx.applicationContext as CuriosityApplication
 
     val vm: AuthViewModel = viewModel(
-        factory = AuthViewModel.Factory(app.repository, app.gamificationPrefs, ctx)
+        factory = AuthViewModel.Factory(app.repository, app.gamificationPrefs, app.contentPrefs, ctx)
     )
     val homeVm: HomeViewModel = viewModel(
         factory = HomeViewModel.Factory(
             repo         = app.repository,
             contentPrefs = app.contentPrefs,
             context      = ctx,
-            dbRoom       = app.database
         )
     )
 
@@ -81,9 +80,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             vm.resetStato()
         }
         if (state is AuthUiState.RichiedeUsername) {
-            // Svuotiamo l'input per obbligare l'utente a scegliere uno username valido
-            // partendo da zero, evitando nomi troppo lunghi ereditati da Google.
-            googleUsernameInput = ""
+            googleUsernameInput = (state as AuthUiState.RichiedeUsername).suggestedUsername
             showGoogleUsernameDialog = true
         }
     }
@@ -122,23 +119,32 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
         }
     }
 
-    // Check disponibilita' username: LaunchedEffect garantisce cancellazione automatica
-    // del job precedente ad ogni cambio. Parte anche quando si entra in modalita' registrazione.
-    LaunchedEffect(usernameInput, isRegistrazione) {
-        if (!isRegistrazione) return@LaunchedEffect
-        val trimmed = usernameInput.trim()
-        usernameDisponibile = null
-        if (trimmed.length < 3) {
-            usernameCheckLoading = false
-            return@LaunchedEffect
+    DisposableEffect(usernameInput) {
+        onDispose {
+            usernameCheckJob?.cancel()
         }
-        usernameCheckLoading = true
-        try {
-            delay(600)
-            usernameDisponibile = !FirebaseManager.isUsernameOccupato(trimmed)
-        } catch (_: Exception) {
-            usernameDisponibile = null
-        } finally {
+    }
+
+    // Funzione helper per il controllo (da chiamare nell'onValueChange)
+    fun checkUsernameAvailability(name: String) {
+        val trimmed = name.trim()
+        usernameDisponibile = null
+        usernameCheckJob?.cancel()
+
+        if (trimmed.length >= 3) {
+            usernameCheckLoading = true
+            usernameCheckJob = coroutineScope.launch {
+                try {
+                    delay(600) // Debounce per non sovraccaricare Firebase
+                    // Assicurati che FirebaseManager.isUsernameOccupato sia thread-safe
+                    usernameDisponibile = !FirebaseManager.isUsernameOccupato(trimmed)
+                } catch (e: Exception) {
+                    usernameDisponibile = null // In caso di errore di rete
+                } finally {
+                    usernameCheckLoading = false
+                }
+            }
+        } else {
             usernameCheckLoading = false
         }
     }
@@ -182,7 +188,6 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                         value         = googleUsernameInput,
                         onValueChange = { v -> if (v.length <= 20) googleUsernameInput = v },
                         label         = { Text("Username") },
-                        placeholder   = { Text("Username") },
                         trailingIcon  = {
                             when {
                                 isChecking       -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -196,7 +201,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                                 when {
                                     isAvail == false -> Text("Username già in uso", color = MaterialTheme.colorScheme.error)
                                     isAvail == true  -> Text("Username disponibile", color = Color(0xFF4CAF50))
-                                    googleUsernameInput.length > 0 && googleUsernameInput.length < 3 -> Text("Minimo 3 caratteri")
+                                    googleUsernameInput.length in 1..<3 -> Text("Minimo 3 caratteri")
                                     else             -> Spacer(Modifier.weight(1f))
                                 }
                                 Text("${googleUsernameInput.length}/20")
@@ -410,7 +415,37 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             AnimatedVisibility(visible = isRegistrazione) {
                 OutlinedTextField(
                     value = usernameInput,
-                    onValueChange = { v -> if (v.length <= 20) usernameInput = v },
+                    onValueChange = { v ->
+                        if (v.length <= 20) {
+                            usernameInput = v
+                            // 1. Reset immediato degli stati per feedback UI istantaneo
+                            usernameDisponibile = null
+                            usernameCheckJob?.cancel() // Ferma ricerche precedenti in corso
+
+                            val trimmed = v.trim()
+                            if (trimmed.length >= 3) {
+                                // 2. Avvia il caricamento solo se abbiamo almeno 3 caratteri
+                                usernameCheckLoading = true
+                                usernameCheckJob = coroutineScope.launch {
+                                    try {
+                                        delay(600) // Debounce: aspetta che l'utente finisca di scrivere
+                                        val occupato = FirebaseManager.isUsernameOccupato(trimmed)
+                                        usernameDisponibile = !occupato
+                                    } catch (e: Exception) {
+                                        // In caso di errore (es. offline), permettiamo di procedere
+                                        // o resettiamo per sicurezza. Qui resettiamo:
+                                        usernameDisponibile = null
+                                    } finally {
+                                        // 3. IMPORTANTISSIMO: ferma SEMPRE il caricamento
+                                        usernameCheckLoading = false
+                                    }
+                                }
+                            } else {
+                                // 4. Se meno di 3 caratteri, spegniamo il caricamento
+                                usernameCheckLoading = false
+                            }
+                        }
+                    },
                     label = { Text("Username") },
                     leadingIcon = { Icon(Icons.Default.Person, null) },
                     trailingIcon = {

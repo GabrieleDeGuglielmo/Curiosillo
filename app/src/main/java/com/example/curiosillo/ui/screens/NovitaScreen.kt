@@ -37,8 +37,7 @@ fun NovitaScreen(nav: NavController) {
         factory = HomeViewModel.Factory(
             repo         = app.repository,
             contentPrefs = app.contentPrefs,
-            context      = ctx,
-            dbRoom       = app.database
+            context      = ctx
         )
     )
     val homeState by homeVm.state.collectAsState()

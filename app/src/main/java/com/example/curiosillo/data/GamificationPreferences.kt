@@ -69,6 +69,13 @@ class GamificationPreferences(private val context: Context) {
         return nuovoValore
     }
 
+    suspend fun setStreakDaCloud(streakCorrente: Int, streakMassima: Int) {
+        context.gamificationStore.edit { prefs ->
+            prefs[STREAK_CORRENTE] = streakCorrente
+            prefs[STREAK_MASSIMA]  = maxOf(prefs[STREAK_MASSIMA] ?: 0, streakMassima)
+        }
+    }
+
     suspend fun reset() {
         context.gamificationStore.edit { prefs ->
             prefs[XP_TOTALI]       = 0

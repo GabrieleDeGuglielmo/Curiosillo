@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.data.GamificationPreferences
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.firebase.SyncManager
@@ -29,15 +30,16 @@ sealed class AuthUiState {
 }
 
 class AuthViewModel(
-    private val repo:       CuriosityRepository,
-    private val gamifPrefs: GamificationPreferences,
-    private val context:    Context
+    private val repo:         CuriosityRepository,
+    private val gamifPrefs:   GamificationPreferences,
+    private val contentPrefs: ContentPreferences,
+    private val context:      Context
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val state: StateFlow<AuthUiState> = _state.asStateFlow()
 
-    private val syncManager = SyncManager(repo, gamifPrefs)
+    private val syncManager = SyncManager(repo, gamifPrefs, contentPrefs)
 
     // ── Google Sign-In client ─────────────────────────────────────────────────
 
@@ -154,12 +156,16 @@ class AuthViewModel(
 
     private suspend fun sincronizzaDopoLogin(user: FirebaseUser, isNuovo: Boolean) {
         try {
-            if (isNuovo) syncManager.migraLocaleVersoCloud(user.uid)
-            else syncManager.ripristinaCloudVersoLocale(user.uid)
+            if (isNuovo) {
+                syncManager.migraLocaleVersoCloud(user.uid)
+            } else {
+                // Migrazione one-shot per utenti esistenti che aggiornano l'app
+                syncManager.migraLocaleVersoCloudSeNecessario(user.uid)
+                syncManager.ripristinaCloudVersoLocale(user.uid)
+            }
         } catch (_: Exception) {
-            // sync fallita — l'utente è loggato ugualmente, si ignora
+            // sync fallita — l'utente e' loggato ugualmente
         }
-        // Questo viene eseguito sempre, anche se il sync ha fallito
         _state.value = AuthUiState.Successo(user, isNuovo)
     }
 
@@ -179,12 +185,13 @@ class AuthViewModel(
     }
 
     class Factory(
-        private val repo:       CuriosityRepository,
-        private val gamifPrefs: GamificationPreferences,
-        private val context:    Context
+        private val repo:         CuriosityRepository,
+        private val gamifPrefs:   GamificationPreferences,
+        private val contentPrefs: ContentPreferences,
+        private val context:      Context
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(c: Class<T>): T =
-            AuthViewModel(repo, gamifPrefs, context) as T
+            AuthViewModel(repo, gamifPrefs, contentPrefs, context) as T
     }
 }
