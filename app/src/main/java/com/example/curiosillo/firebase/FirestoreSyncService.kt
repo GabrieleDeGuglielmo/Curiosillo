@@ -1,14 +1,11 @@
-package com.example.curiosillo.network
+package com.example.curiosillo.firebase
 
-import androidx.room.withTransaction
-import com.example.curiosillo.data.AppDatabase
+import android.util.Log
 import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.data.Curiosity
 import com.example.curiosillo.data.QuizQuestion
 import com.example.curiosillo.repository.CuriosityRepository
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Source
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -17,8 +14,7 @@ import kotlinx.coroutines.tasks.await
  */
 class FirestoreSyncService(
     private val repo:         CuriosityRepository,
-    private val contentPrefs: ContentPreferences,
-    private val dbRoom:       AppDatabase
+    private val contentPrefs: ContentPreferences
 ) {
     private val db = FirebaseFirestore.getInstance()
 
@@ -30,94 +26,103 @@ class FirestoreSyncService(
 
     suspend fun sync(): SyncResult {
         return try {
-            // Forziamo il controllo sul server per essere sicuri di vedere l'ultima versione
-            val metaDoc      = db.collection("curiosita").document("_meta_").get(Source.SERVER).await()
+            val metaDoc      = db.collection("curiosita").document("_meta_").get().await()
             val versioneRemota = metaDoc.getLong("versione") ?: 1L
             val versioneLocale = contentPrefs.getContentVersion()
 
             val dbVuoto = repo.totaleCuriosità() == 0
-            if (!dbVuoto && versioneRemota <= versioneLocale) {
+            // Sincronizza anche se la versione è uguale, per recuperare
+            // quiz mancanti da sync precedenti incomplete (domanda = null)
+            val quizMancanti = repo.quizNonRisposti() == 0 && !dbVuoto
+            if (!dbVuoto && !quizMancanti && versioneRemota <= versioneLocale) {
                 return SyncResult.NessunaModifica
             }
 
-            // Se il DB è vuoto (primo avvio), NON aspettiamo.
-            // Se non è vuoto, aspettiamo un attimo per la consistenza di Firestore.
-            if (!dbVuoto) delay(2500)
-
-            val snapshot = db.collection("curiosita").get(Source.SERVER).await()
-            val remoteIds = snapshot.documents.map { it.id }.filter { it != "_meta_" }
+            val snapshot = db.collection("curiosita")
+                .whereNotEqualTo("__name__", "_meta_")
+                .get().await()
 
             var nuove      = 0
             var aggiornate = 0
 
-            // Eseguiamo tutto il blocco di scrittura in una transazione Room.
-            // Questo rende l'inserimento di massa (es. 200 pillole) istantaneo
-            // perché il DB scrive su disco una volta sola alla fine.
-            dbRoom.withTransaction {
-                repo.deleteMissing(remoteIds)
+            // Quiz nella subcollection quiz/domanda - lettura in parallelo
+            data class DocConQuiz(
+                val externalId: String,
+                val titolo: String, val corpo: String,
+                val categoria: String, val emoji: String,
+                val domanda: String?, val rispostaCorretta: String?,
+                val risposteErrate: List<String>?, val spiegazione: String?
+            )
 
-                for (doc in snapshot.documents) {
-                    val externalId = doc.id
-                    if (externalId == "_meta_") continue
-
-                    val titolo    = doc.getString("titolo")    ?: continue
-                    val corpo     = doc.getString("corpo")     ?: continue
+            // Quiz come campi flat nel documento padre
+            // Nomi campi Firestore: domanda, risposta_corretta, risposte_errate, spiegazione
+            val docsConQuiz = snapshot.documents
+                .filter { it.id != "_meta_" }
+                .mapNotNull { doc ->
+                    val titolo    = doc.getString("titolo")    ?: return@mapNotNull null
+                    val corpo     = doc.getString("corpo")     ?: return@mapNotNull null
                     val categoria = doc.getString("categoria") ?: ""
                     val emoji     = doc.getString("emoji")     ?: ""
-
-                    val domanda          = doc.getString("domanda")
-                    val rispostaCorretta = doc.getString("rispostaCorretta")
                     @Suppress("UNCHECKED_CAST")
-                    val risposteErrate   = doc.get("risposteErrate") as? List<String>
-                    val spiegazione      = doc.getString("spiegazione")
+                    DocConQuiz(
+                        externalId       = doc.id,
+                        titolo           = titolo,
+                        corpo            = corpo,
+                        categoria        = categoria,
+                        emoji            = emoji,
+                        domanda          = doc.getString("domanda"),
+                        rispostaCorretta = doc.getString("risposta_corretta"),
+                        risposteErrate   = doc.get("risposte_errate") as? List<String>,
+                        spiegazione      = doc.getString("spiegazione")
+                    )
+                }
 
-                    val esistente = repo.getByExternalId(externalId)
-
-                    if (esistente == null) {
-                        val curId = repo.insertCuriosita(Curiosity(
-                            externalId = externalId, title = titolo, body = corpo,
-                            category = categoria, emoji = emoji
+            for (d in docsConQuiz) {
+                val esistente = repo.getByExternalId(d.externalId)
+                if (esistente == null) {
+                    val curId = repo.insertCuriosita(Curiosity(
+                        externalId = d.externalId, title = d.titolo, body = d.corpo,
+                        category = d.categoria, emoji = d.emoji
+                    ))
+                    if (d.domanda != null && d.rispostaCorretta != null) {
+                        repo.insertQuizQuestion(QuizQuestion(
+                            curiosityId   = curId.toInt(),
+                            questionText  = d.domanda,
+                            correctAnswer = d.rispostaCorretta,
+                            wrongAnswer1  = d.risposteErrate?.getOrElse(0) { "" } ?: "",
+                            wrongAnswer2  = d.risposteErrate?.getOrElse(1) { "" } ?: "",
+                            wrongAnswer3  = d.risposteErrate?.getOrElse(2) { "" } ?: "",
+                            explanation   = d.spiegazione ?: "",
+                            category      = d.categoria
                         ))
-                        
-                        if (domanda != null && rispostaCorretta != null) {
-                            repo.insertQuizQuestion(QuizQuestion(
-                                curiosityId   = curId.toInt(),
-                                questionText  = domanda,
-                                correctAnswer = rispostaCorretta,
-                                wrongAnswer1  = risposteErrate?.getOrElse(0) { "" } ?: "",
-                                wrongAnswer2  = risposteErrate?.getOrElse(1) { "" } ?: "",
-                                wrongAnswer3  = risposteErrate?.getOrElse(2) { "" } ?: "",
-                                explanation   = spiegazione ?: "",
-                                category      = categoria
-                            ))
-                        }
-                        nuove++
-                    } else {
-                        repo.updateCuriosita(esistente.copy(
-                            title = titolo, body = corpo, category = categoria, emoji = emoji
-                        ))
-                        
-                        if (domanda != null && rispostaCorretta != null) {
-                            val qEsistente = repo.getQuizByCuriosityId(esistente.id)
-                            val qNuovo = QuizQuestion(
-                                id            = qEsistente?.id ?: 0,
-                                curiosityId   = esistente.id,
-                                questionText  = domanda,
-                                correctAnswer = rispostaCorretta,
-                                wrongAnswer1  = risposteErrate?.getOrElse(0) { "" } ?: "",
-                                wrongAnswer2  = risposteErrate?.getOrElse(1) { "" } ?: "",
-                                wrongAnswer3  = risposteErrate?.getOrElse(2) { "" } ?: "",
-                                explanation   = spiegazione ?: "",
-                                category      = categoria
-                            )
-                            if (qEsistente != null) repo.updateQuizQuestion(qNuovo)
-                            else repo.insertQuizQuestion(qNuovo)
-                        }
-                        aggiornate++
                     }
+                    nuove++
+                } else {
+                    repo.updateCuriosita(esistente.copy(
+                        title = d.titolo, body = d.corpo,
+                        category = d.categoria, emoji = d.emoji
+                    ))
+                    if (d.domanda != null && d.rispostaCorretta != null) {
+                        val qEsistente = repo.getQuizByCuriosityId(esistente.id)
+                        val qNuovo = QuizQuestion(
+                            id            = qEsistente?.id ?: 0,
+                            curiosityId   = esistente.id,
+                            questionText  = d.domanda,
+                            correctAnswer = d.rispostaCorretta,
+                            wrongAnswer1  = d.risposteErrate?.getOrElse(0) { "" } ?: "",
+                            wrongAnswer2  = d.risposteErrate?.getOrElse(1) { "" } ?: "",
+                            wrongAnswer3  = d.risposteErrate?.getOrElse(2) { "" } ?: "",
+                            explanation   = d.spiegazione ?: "",
+                            category      = d.categoria
+                        )
+                        if (qEsistente != null) repo.updateQuizQuestion(qNuovo)
+                        else repo.insertQuizQuestion(qNuovo)
+                    }
+                    aggiornate++
                 }
             }
-
+            Log.d("SyncDebug", "docsConQuiz size: ${docsConQuiz.size}")
+            Log.d("SyncDebug", "nuove: $nuove, aggiornate: $aggiornate")
             contentPrefs.setContentVersion(versioneRemota.toInt())
             SyncResult.Success(nuove, aggiornate)
         } catch (e: Exception) {

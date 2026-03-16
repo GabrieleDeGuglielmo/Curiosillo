@@ -2,6 +2,7 @@ package com.example.curiosillo.domain
 
 import com.example.curiosillo.data.BadgeCatalogo
 import com.example.curiosillo.data.BadgeSbloccato
+import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.data.GamificationPreferences
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.firebase.SyncManager
@@ -16,10 +17,11 @@ data class RisultatoAzione(
 )
 
 class GamificationEngine(
-    private val prefs: GamificationPreferences,
-    private val repo:  CuriosityRepository
+    private val prefs:        GamificationPreferences,
+    private val repo:         CuriosityRepository,
+    private val contentPrefs: ContentPreferences
 ) {
-    private val syncManager = SyncManager(repo, prefs)
+    private val syncManager = SyncManager(repo, prefs, contentPrefs)
 
     suspend fun onPillolaLetta(): RisultatoAzione {
         var xp = 10

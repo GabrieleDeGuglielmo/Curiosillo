@@ -1,6 +1,7 @@
 package com.example.curiosillo.viewmodel
 
 import com.example.curiosillo.firebase.FirebaseManager
+import com.example.curiosillo.ui.screens.utils.CommentiUiState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch

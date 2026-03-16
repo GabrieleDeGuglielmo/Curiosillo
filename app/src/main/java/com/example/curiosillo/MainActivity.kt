@@ -13,6 +13,16 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.ui.screens.*
+import com.example.curiosillo.ui.screens.admin.AdminBroadcastScreen
+import com.example.curiosillo.ui.screens.admin.AdminCommentiScreen
+import com.example.curiosillo.ui.screens.admin.AdminCuriositaScreen
+import com.example.curiosillo.ui.screens.admin.AdminVotiScreen
+import com.example.curiosillo.ui.screens.curiosity.CategoryPickerScreen
+import com.example.curiosillo.ui.screens.curiosity.CuriosityScreen
+import com.example.curiosillo.ui.screens.curiosity.RipassoScreen
+import com.example.curiosillo.ui.screens.quiz.QuizScreen
+import com.example.curiosillo.ui.screens.quiz.QuizStatsScreen
+import com.example.curiosillo.ui.screens.user.*
 import com.example.curiosillo.ui.theme.CuriosilloTheme
 
 class MainActivity : ComponentActivity() {
@@ -45,14 +55,24 @@ class MainActivity : ComponentActivity() {
                     composable("home")       { HomeScreen(nav) }
                     composable("curiosity")  { CuriosityScreen(nav) }
                     composable("quiz")       { QuizScreen(nav) }
-                    composable("profile")    { ProfileScreen(nav,
-                        onLogout = {
-                            nav.navigate("login") {
-                                popUpTo("home") { inclusive = true }
-                            }
-                        })
+                    composable("profile")    {
+                        ProfileScreen(
+                            nav,
+                            onLogout = {
+                                nav.navigate("login") {
+                                    popUpTo("home") { inclusive = true }
+                                }
+                            })
                     }
                     composable("edit_profile") { EditProfileScreen(nav) }
+                    composable("supporto") { SupportoScreen(nav) }
+                    composable("supporto_bug") { BugReportScreen(nav) }
+                    composable("supporto_curiosita") { SuggerimentoCuriositaScreen(nav) }
+                    composable("supporto_suggerimento") { SuggerimentoScreen(nav) }
+                    composable("supporto_detail/{title}") { back ->
+                        val title = back.arguments?.getString("title") ?: "Supporto"
+                        SupportoDetailScreen(nav, title)
+                    }
                     composable("admin_broadcast") { AdminBroadcastScreen(nav) }
                     composable("preferiti")  { BookmarkScreen(nav) }
                     composable("ripasso")    { RipassoScreen(nav) }

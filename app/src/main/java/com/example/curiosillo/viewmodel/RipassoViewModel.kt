@@ -7,8 +7,9 @@ import com.example.curiosillo.data.Curiosity
 import com.example.curiosillo.data.GeminiPreferences
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.repository.CuriosityRepository
-import com.example.curiosillo.ui.screens.SegnalazioneHelper
-import com.example.curiosillo.ui.screens.SegnalazioneUiState
+import com.example.curiosillo.ui.screens.utils.CommentiUiState
+import com.example.curiosillo.ui.screens.utils.SegnalazioneHelper
+import com.example.curiosillo.ui.screens.utils.SegnalazioneUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,9 +18,14 @@ import kotlinx.coroutines.launch
 // UI State for Ripasso
 data class RipassoUiState(
     val pillole: List<Curiosity> = emptyList(),
+    val risultati: List<Curiosity> = emptyList(),
     val indiceCorrente: Int = 0,
     val isLoading: Boolean = false,
-    val giorniSelezionati: Int = 0
+    val giorniSelezionati: Int = 0,
+    val query: String = "",
+    val categorie: List<String> = emptyList(),
+    val categorieSelezionate: Set<String> = emptySet(),
+    val pillolaDettaglio: Curiosity? = null
 )
 
 class RipassoViewModel(
@@ -53,37 +59,67 @@ class RipassoViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, giorniSelezionati = giorni)
             val pillole = repo.getPerRipasso(giorni, emptySet())
-            _state.value = _state.value.copy(pillole = pillole, indiceCorrente = 0, isLoading = false)
-            aggiornaStatoGeminiPerPillolaCorrente()
+            val categorie = pillole.map { it.category }.distinct().sorted()
+            _state.value = _state.value.copy(
+                pillole = pillole,
+                categorie = categorie,
+                isLoading = false
+            )
+            filtra()
         }
+    }
+
+    fun onQueryChange(newQuery: String) {
+        _state.value = _state.value.copy(query = newQuery)
+        filtra()
+    }
+
+    fun onCategoriaSelezionata(cat: String) {
+        val attuali = _state.value.categorieSelezionate.toMutableSet()
+        if (attuali.contains(cat)) attuali.remove(cat) else attuali.add(cat)
+        _state.value = _state.value.copy(categorieSelezionate = attuali)
+        filtra()
+    }
+
+    fun resetCategorie() {
+        _state.value = _state.value.copy(categorieSelezionate = emptySet())
+        filtra()
+    }
+
+    private fun filtra() {
+        val s = _state.value
+        val filtrati = s.pillole.filter { p ->
+            val matchQuery = p.title.contains(s.query, ignoreCase = true) || p.body.contains(s.query, ignoreCase = true)
+            val matchCat = s.categorieSelezionate.isEmpty() || s.categorieSelezionate.contains(p.category)
+            matchQuery && matchCat
+        }
+        _state.value = s.copy(risultati = filtrati)
+    }
+
+    fun apriDettaglio(pillola: Curiosity) {
+        val index = _state.value.risultati.indexOf(pillola)
+        _state.value = _state.value.copy(pillolaDettaglio = pillola, indiceCorrente = if (index >= 0) index else 0)
+        aggiornaStatoGeminiPerPillolaCorrente()
+    }
+
+    fun chiudiDettaglio() {
+        _state.value = _state.value.copy(pillolaDettaglio = null)
     }
 
     fun pilloleCorrente(): Curiosity? {
         val s = _state.value
-        if (s.pillole.isEmpty() || s.indiceCorrente !in s.pillole.indices) return null
-        return s.pillole[s.indiceCorrente]
-    }
-
-    fun prossima() {
-        val s = _state.value
-        if (s.indiceCorrente < s.pillole.size - 1) {
-            _state.value = s.copy(indiceCorrente = s.indiceCorrente + 1)
-            aggiornaStatoGeminiPerPillolaCorrente()
-        }
-    }
-
-    fun precedente() {
-        val s = _state.value
-        if (s.indiceCorrente > 0) {
-            _state.value = s.copy(indiceCorrente = s.indiceCorrente - 1)
-            aggiornaStatoGeminiPerPillolaCorrente()
-        }
+        if (s.risultati.isEmpty() || s.indiceCorrente !in s.risultati.indices) return null
+        return s.risultati[s.indiceCorrente]
     }
 
     fun setIndice(indice: Int) {
         val s = _state.value
-        if (indice in s.pillole.indices && indice != s.indiceCorrente) {
-            _state.value = s.copy(indiceCorrente = indice)
+        if (indice in s.risultati.indices && indice != s.indiceCorrente) {
+            val nuovaPillola = s.risultati[indice]
+            _state.value = s.copy(
+                indiceCorrente = indice,
+                pillolaDettaglio = nuovaPillola
+            )
             aggiornaStatoGeminiPerPillolaCorrente()
         }
     }
@@ -100,7 +136,6 @@ class RipassoViewModel(
     fun dimmiDiPiu() {
         val c = pilloleCorrente() ?: return
         
-        // Se abbiamo già l'approfondimento nel database, usiamolo direttamente
         if (c.approfondimentoAi != null) {
             _geminiState.value = _geminiState.value.copy(risposta = c.approfondimentoAi, isLoading = false, errore = null)
             return
@@ -141,11 +176,23 @@ class RipassoViewModel(
 
     private fun aggiornaPillolaCorrente(nuovaPillola: Curiosity) {
         val s = _state.value
-        val lista = s.pillole.toMutableList()
-        if (s.indiceCorrente in lista.indices) {
-            lista[s.indiceCorrente] = nuovaPillola
-            _state.value = s.copy(pillole = lista)
+        val listaRisultati = s.risultati.toMutableList()
+        val idxRisultati = listaRisultati.indexOfFirst { it.id == nuovaPillola.id }
+        if (idxRisultati >= 0) {
+            listaRisultati[idxRisultati] = nuovaPillola
         }
+        
+        val listaPillole = s.pillole.toMutableList()
+        val idxPillole = listaPillole.indexOfFirst { it.id == nuovaPillola.id }
+        if (idxPillole >= 0) {
+            listaPillole[idxPillole] = nuovaPillola
+        }
+
+        _state.value = s.copy(
+            risultati = listaRisultati, 
+            pillole = listaPillole, 
+            pillolaDettaglio = if (s.pillolaDettaglio?.id == nuovaPillola.id) nuovaPillola else s.pillolaDettaglio
+        )
     }
 
     // ── Bookmarks ─────────────────────────────────────────────────────────────
