@@ -96,7 +96,7 @@ fun CuriosityScreen(nav: NavController) {
             onDismissRequest = { vm.dismissRecupero() },
             icon  = { Text("🔄", fontSize = 42.sp) },
             title = { Text("Pillola recuperata", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-            text  = { Text("Questa pillola era stata modificata ma non imparata. Te la riproponiamo prima di passare alle nuove categorie!", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth()) },
+            text  = { Text("Questa pillola era stata modificata ma non imparata. Te la ripropongo prima di passare alle nuove categorie!", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth()) },
             confirmButton = {
                 Button(
                     onClick = { vm.dismissRecupero() },
