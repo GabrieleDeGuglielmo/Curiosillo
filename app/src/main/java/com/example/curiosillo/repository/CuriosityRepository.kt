@@ -4,6 +4,8 @@ import com.example.curiosillo.data.*
 import com.example.curiosillo.firebase.FirebaseManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import androidx.room.withTransaction
+import kotlinx.coroutines.flow.Flow
 
 class CuriosityRepository(
     private val db: AppDatabase,
@@ -102,6 +104,12 @@ class CuriosityRepository(
         else curDao.getPerRipassoFiltered(soglia, categorie.toList())
     }
 
+    fun getPerRipassoFlow(soglia: Long): Flow<List<Curiosity>> =
+        curDao.getPerRipassoFlow(soglia)
+
+    fun getPerRipassoFilteredFlow(soglia: Long, cats: List<String>): Flow<List<Curiosity>> =
+        curDao.getPerRipassoFilteredFlow(soglia, cats)
+
     /** Usato da SyncManager per migrare le pillole lette su Firebase */
     suspend fun getPilloleLette(): List<Curiosity> = curDao.getPilloleLette()
 
@@ -116,6 +124,51 @@ class CuriosityRepository(
     suspend fun insertCuriosita(c: Curiosity): Long = curDao.insert(c)
 
     suspend fun updateCuriosita(c: Curiosity) = curDao.update(c)
+
+    /**
+     * Aggiorna una pillola locale con i dati provenienti da Firebase (Admin).
+     * Preserva lo stato dell'utente (isRead, bookmark, note, ecc).
+     */
+    suspend fun syncLocaleConRemoto(c: FirebaseManager.CuriositaRemota) {
+        db.withTransaction {
+            val locale = curDao.getByExternalId(c.externalId)
+            val curId: Int = if (locale == null) {
+                curDao.insert(Curiosity(
+                    externalId = c.externalId,
+                    title = c.titolo,
+                    body = c.corpo,
+                    category = c.categoria,
+                    emoji = c.emoji
+                )).toInt()
+            } else {
+                curDao.update(locale.copy(
+                    title = c.titolo,
+                    body = c.corpo,
+                    category = c.categoria,
+                    emoji = c.emoji
+                ))
+                locale.id
+            }
+
+            // Sincronizza anche il quiz se presente
+            if (c.domanda != null) {
+                val qEsistente = quizDao.getByCuriosityId(curId)
+                val quiz = QuizQuestion(
+                    id = qEsistente?.id ?: 0,
+                    curiosityId = curId,
+                    questionText = c.domanda,
+                    correctAnswer = c.rispostaCorretta ?: "",
+                    wrongAnswer1 = c.risposteErrate?.getOrNull(0) ?: "",
+                    wrongAnswer2 = c.risposteErrate?.getOrNull(1) ?: "",
+                    wrongAnswer3 = c.risposteErrate?.getOrNull(2) ?: "",
+                    explanation = c.spiegazione ?: "",
+                    category = c.categoria
+                )
+                if (qEsistente != null) quizDao.update(quiz)
+                else quizDao.insert(quiz)
+            }
+        }
+    }
 
     suspend fun getQuizByCuriosityId(curiosityId: Int): QuizQuestion? =
         quizDao.getByCuriosityId(curiosityId)

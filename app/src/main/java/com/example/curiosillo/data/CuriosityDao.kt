@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CuriosityDao {
@@ -27,10 +28,10 @@ interface CuriosityDao {
         SELECT * FROM curiosity 
         WHERE isBookmarked = 1 
           AND (:query = '' OR title LIKE '%' || :query || '%' OR body LIKE '%' || :query || '%')
-          AND (:tutте = 1 OR category IN (:cats))
+          AND (:tutte = 1 OR category IN (:cats))
         ORDER BY id DESC
     """)
-    suspend fun searchBookmarked(query: String, cats: List<String>, tutте: Boolean): List<Curiosity>
+    suspend fun searchBookmarked(query: String, cats: List<String>, tutte: Boolean): List<Curiosity>
 
     @Query("SELECT DISTINCT category FROM curiosity ORDER BY category")
     suspend fun getCategorie(): List<String>
@@ -64,6 +65,14 @@ interface CuriosityDao {
 
     @Query("SELECT * FROM curiosity WHERE isRead = 1 AND isIgnorata = 0 AND (category IN (:cats)) AND (readAt IS NULL OR readAt <= :soglia) ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END, readAt ASC")
     suspend fun getPerRipassoFiltered(soglia: Long, cats: List<String>): List<Curiosity>
+
+    // ── Lettura REATTIVA (per Ripasso e UI) ───────────────────────────────────
+
+    @Query("SELECT * FROM curiosity WHERE isRead = 1 AND isIgnorata = 0 AND (:cat = '' OR category = :cat) AND (readAt IS NULL OR readAt <= :soglia) ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END, readAt ASC")
+    fun getPerRipassoFlow(soglia: Long, cat: String = ""): Flow<List<Curiosity>>
+
+    @Query("SELECT * FROM curiosity WHERE isRead = 1 AND isIgnorata = 0 AND (category IN (:cats)) AND (readAt IS NULL OR readAt <= :soglia) ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END, readAt ASC")
+    fun getPerRipassoFilteredFlow(soglia: Long, cats: List<String>): Flow<List<Curiosity>>
 
     // ── Sync remoto ───────────────────────────────────────────────────────────
 

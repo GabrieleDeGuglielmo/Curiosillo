@@ -222,8 +222,8 @@ fun BookmarkScreen(nav: NavController) {
                             if (isFirst && !hintGiaMostrato) {
                                 LaunchedEffect(Unit) {
                                     delay(400)
-                                    offsetX.animateTo(-28f, tween(400))
-                                    offsetX.animateTo(28f, tween(400))
+                                    offsetX.animateTo(-28f, tween(500))
+                                    offsetX.animateTo(28f, tween(500))
                                     offsetX.animateTo(0f, tween(180))
                                     hintGiaMostrato = true
                                 }

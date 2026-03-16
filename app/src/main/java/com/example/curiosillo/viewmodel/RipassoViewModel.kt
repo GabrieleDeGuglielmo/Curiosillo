@@ -10,9 +10,8 @@ import com.example.curiosillo.repository.CuriosityRepository
 import com.example.curiosillo.ui.screens.utils.CommentiUiState
 import com.example.curiosillo.ui.screens.utils.SegnalazioneHelper
 import com.example.curiosillo.ui.screens.utils.SegnalazioneUiState
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 // UI State for Ripasso
@@ -46,8 +45,12 @@ class RipassoViewModel(
     private val _segnalazioneState = MutableStateFlow<SegnalazioneUiState>(SegnalazioneUiState.Idle)
     val segnalazioneState: StateFlow<SegnalazioneUiState> = _segnalazioneState.asStateFlow()
 
+    // Flusso dei filtri per la reattività automatica
+    private val _giorni = MutableStateFlow(0)
+    private val _filtroCategorie = MutableStateFlow(emptySet<String>())
+
     init {
-        carica(0)
+        osservaDatabase()
         viewModelScope.launch {
             geminiPrefs.getRemainingUsages().collect {
                 _geminiState.value = _geminiState.value.copy(rimanenti = it)
@@ -55,34 +58,49 @@ class RipassoViewModel(
         }
     }
 
+    /**
+     * Osserva il database in tempo reale. Se un admin modifica una pillola,
+     * il Flow di Room emette i nuovi dati e la UI si aggiorna istantaneamente.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun osservaDatabase() {
+        combine(_giorni, _filtroCategorie) { g, cats -> Pair(g, cats) }
+            .flatMapLatest { (g, cats) ->
+                val soglia = if (g == 0) Long.MAX_VALUE
+                else System.currentTimeMillis() - g * 24L * 60 * 60 * 1000
+                
+                if (cats.isEmpty()) repo.getPerRipassoFlow(soglia)
+                else repo.getPerRipassoFilteredFlow(soglia, cats.toList())
+            }
+            .onEach { lista ->
+                val catsDisponibili = lista.map { it.category }.distinct().sorted()
+                _state.update { it.copy(pillole = lista, categorie = catsDisponibili, isLoading = false) }
+                filtra()
+            }
+            .launchIn(viewModelScope)
+    }
+
     fun carica(giorni: Int) {
-        viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true, giorniSelezionati = giorni)
-            val pillole = repo.getPerRipasso(giorni, emptySet())
-            val categorie = pillole.map { it.category }.distinct().sorted()
-            _state.value = _state.value.copy(
-                pillole = pillole,
-                categorie = categorie,
-                isLoading = false
-            )
-            filtra()
-        }
+        _giorni.value = giorni
+        _state.update { it.copy(isLoading = true, giorniSelezionati = giorni) }
     }
 
     fun onQueryChange(newQuery: String) {
-        _state.value = _state.value.copy(query = newQuery)
+        _state.update { it.copy(query = newQuery) }
         filtra()
     }
 
     fun onCategoriaSelezionata(cat: String) {
-        val attuali = _state.value.categorieSelezionate.toMutableSet()
+        val attuali = _filtroCategorie.value.toMutableSet()
         if (attuali.contains(cat)) attuali.remove(cat) else attuali.add(cat)
-        _state.value = _state.value.copy(categorieSelezionate = attuali)
+        _filtroCategorie.value = attuali
+        _state.update { it.copy(categorieSelezionate = attuali) }
         filtra()
     }
 
     fun resetCategorie() {
-        _state.value = _state.value.copy(categorieSelezionate = emptySet())
+        _filtroCategorie.value = emptySet()
+        _state.update { it.copy(categorieSelezionate = emptySet()) }
         filtra()
     }
 
@@ -93,7 +111,17 @@ class RipassoViewModel(
             val matchCat = s.categorieSelezionate.isEmpty() || s.categorieSelezionate.contains(p.category)
             matchQuery && matchCat
         }
-        _state.value = s.copy(risultati = filtrati)
+        
+        _state.update { currentState ->
+            val nuovaPillolaDettaglio = if (currentState.pillolaDettaglio != null) {
+                filtrati.find { it.id == currentState.pillolaDettaglio.id } ?: currentState.pillolaDettaglio
+            } else null
+            
+            currentState.copy(
+                risultati = filtrati,
+                pillolaDettaglio = nuovaPillolaDettaglio
+            )
+        }
     }
 
     fun apriDettaglio(pillola: Curiosity) {
@@ -147,8 +175,8 @@ class RipassoViewModel(
             pillola = c,
             repo = repo,
             geminiPrefs = geminiPrefs,
-            onPillolaAggiornata = { nuovaPillola ->
-                aggiornaPillolaCorrente(nuovaPillola)
+            onPillolaAggiornata = { _ ->
+                // Non serve aggiornare manualmente, osservaDatabase() se ne occupa
             },
             tagLog = "RipassoViewModel"
         )
@@ -162,7 +190,6 @@ class RipassoViewModel(
         val pillola = pilloleCorrente() ?: return
         viewModelScope.launch {
             repo.salvaNota(pillola, testo)
-            aggiornaPillolaCorrente(pillola.copy(nota = testo))
         }
     }
 
@@ -170,29 +197,7 @@ class RipassoViewModel(
         val pillola = pilloleCorrente() ?: return
         viewModelScope.launch {
             repo.setVoto(pillola, voto)
-            aggiornaPillolaCorrente(pillola.copy(voto = voto))
         }
-    }
-
-    private fun aggiornaPillolaCorrente(nuovaPillola: Curiosity) {
-        val s = _state.value
-        val listaRisultati = s.risultati.toMutableList()
-        val idxRisultati = listaRisultati.indexOfFirst { it.id == nuovaPillola.id }
-        if (idxRisultati >= 0) {
-            listaRisultati[idxRisultati] = nuovaPillola
-        }
-        
-        val listaPillole = s.pillole.toMutableList()
-        val idxPillole = listaPillole.indexOfFirst { it.id == nuovaPillola.id }
-        if (idxPillole >= 0) {
-            listaPillole[idxPillole] = nuovaPillola
-        }
-
-        _state.value = s.copy(
-            risultati = listaRisultati, 
-            pillole = listaPillole, 
-            pillolaDettaglio = if (s.pillolaDettaglio?.id == nuovaPillola.id) nuovaPillola else s.pillolaDettaglio
-        )
     }
 
     // ── Bookmarks ─────────────────────────────────────────────────────────────
@@ -201,7 +206,6 @@ class RipassoViewModel(
         val pillola = pilloleCorrente() ?: return
         viewModelScope.launch {
             repo.toggleBookmark(pillola)
-            aggiornaPillolaCorrente(pillola.copy(isBookmarked = !pillola.isBookmarked))
         }
     }
 
