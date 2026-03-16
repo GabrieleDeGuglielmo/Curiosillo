@@ -29,7 +29,7 @@ sealed class QuizUiState {
     object NoQuestions : QuizUiState()
     data class Question(val question: QuizUiModel, val current: Int, val total: Int, val score: Int) : QuizUiState()
     data class Answered(val question: QuizUiModel, val selectedAnswer: String,
-        val isCorrect: Boolean, val current: Int, val total: Int, val score: Int) : QuizUiState()
+                        val isCorrect: Boolean, val current: Int, val total: Int, val score: Int) : QuizUiState()
     data class Summary(val score: Int, val total: Int) : QuizUiState()
 }
 
@@ -83,7 +83,9 @@ class QuizViewModel(
         val ok = sel == s.question.correctAnswer
         if (ok) score++
         viewModelScope.launch {
-            repo.salvaRisposta(s.question.questionId, ok)
+            // Salviamo su quiz_answer SOLO se corretto: il JOIN esclude solo i corretti,
+            // quelli sbagliati rimangono tra i quiz non risposti
+            if (ok) repo.salvaRisposta(s.question.questionId, true)
             val risultato = engine.onRispostaQuiz(ok)
             _risultatoAzione.value = risultato
         }

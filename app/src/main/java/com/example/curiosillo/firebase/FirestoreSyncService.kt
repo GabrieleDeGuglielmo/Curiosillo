@@ -1,14 +1,12 @@
 package com.example.curiosillo.firebase
 
+import android.util.Log
 import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.data.Curiosity
 import com.example.curiosillo.data.QuizQuestion
 import com.example.curiosillo.repository.CuriosityRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 
 /**
  * Sincronizza le curiosità da Firestore → Room locale.
@@ -33,7 +31,7 @@ class FirestoreSyncService(
             val versioneLocale = contentPrefs.getContentVersion()
 
             val dbVuoto = repo.totaleCuriosità() == 0
-            // Sincronizza anche se la versione e' uguale, per recuperare
+            // Sincronizza anche se la versione è uguale, per recuperare
             // quiz mancanti da sync precedenti incomplete (domanda = null)
             val quizMancanti = repo.quizNonRisposti() == 0 && !dbVuoto
             if (!dbVuoto && !quizMancanti && versioneRemota <= versioneLocale) {
@@ -56,36 +54,28 @@ class FirestoreSyncService(
                 val risposteErrate: List<String>?, val spiegazione: String?
             )
 
-            val docsConQuiz = coroutineScope {
-                snapshot.documents
-                    .filter { it.id != "_meta_" }
-                    .map { doc ->
-                        async {
-                            val titolo    = doc.getString("titolo")    ?: return@async null
-                            val corpo     = doc.getString("corpo")     ?: return@async null
-                            val categoria = doc.getString("categoria") ?: ""
-                            val emoji     = doc.getString("emoji")     ?: ""
-                            // Legge dalla subcollection - controlla exists() per evitare
-                            // documenti vuoti che restituiscono null su getString()
-                            val quizDoc = try {
-                                val d = doc.reference.collection("quiz").document("domanda").get().await()
-                                if (d.exists()) d else null
-                            } catch (_: Exception) { null }
-                            @Suppress("UNCHECKED_CAST")
-                            DocConQuiz(
-                                externalId       = doc.id,
-                                titolo           = titolo,
-                                corpo            = corpo,
-                                categoria        = categoria,
-                                emoji            = emoji,
-                                domanda          = quizDoc?.getString("domanda"),
-                                rispostaCorretta = quizDoc?.getString("rispostaCorretta"),
-                                risposteErrate   = quizDoc?.get("risposteErrate") as? List<String>,
-                                spiegazione      = quizDoc?.getString("spiegazione")
-                            )
-                        }
-                    }.awaitAll().filterNotNull()
-            }
+            // Quiz come campi flat nel documento padre
+            // Nomi campi Firestore: domanda, risposta_corretta, risposte_errate, spiegazione
+            val docsConQuiz = snapshot.documents
+                .filter { it.id != "_meta_" }
+                .mapNotNull { doc ->
+                    val titolo    = doc.getString("titolo")    ?: return@mapNotNull null
+                    val corpo     = doc.getString("corpo")     ?: return@mapNotNull null
+                    val categoria = doc.getString("categoria") ?: ""
+                    val emoji     = doc.getString("emoji")     ?: ""
+                    @Suppress("UNCHECKED_CAST")
+                    DocConQuiz(
+                        externalId       = doc.id,
+                        titolo           = titolo,
+                        corpo            = corpo,
+                        categoria        = categoria,
+                        emoji            = emoji,
+                        domanda          = doc.getString("domanda"),
+                        rispostaCorretta = doc.getString("risposta_corretta"),
+                        risposteErrate   = doc.get("risposte_errate") as? List<String>,
+                        spiegazione      = doc.getString("spiegazione")
+                    )
+                }
 
             for (d in docsConQuiz) {
                 val esistente = repo.getByExternalId(d.externalId)
@@ -125,13 +115,14 @@ class FirestoreSyncService(
                             explanation   = d.spiegazione ?: "",
                             category      = d.categoria
                         )
-                        // update se esiste, insert se mancante (es. sync precedente fallita)
                         if (qEsistente != null) repo.updateQuizQuestion(qNuovo)
                         else repo.insertQuizQuestion(qNuovo)
                     }
                     aggiornate++
                 }
             }
+            Log.d("SyncDebug", "docsConQuiz size: ${docsConQuiz.size}")
+            Log.d("SyncDebug", "nuove: $nuove, aggiornate: $aggiornate")
             contentPrefs.setContentVersion(versioneRemota.toInt())
             SyncResult.Success(nuove, aggiornate)
         } catch (e: Exception) {

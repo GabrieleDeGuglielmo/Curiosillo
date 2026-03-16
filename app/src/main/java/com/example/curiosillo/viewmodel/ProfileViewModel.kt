@@ -1,5 +1,6 @@
 package com.example.curiosillo.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -73,6 +74,8 @@ class ProfileViewModel(
                 isGoogleUser      = FirebaseManager.isGoogleUser(),
                 isLoading         = false
             )
+            Log.d("SyncDebug", "quizNonRisposti: ${repo.quizNonRisposti()}")
+            Log.d("SyncDebug", "quiz_question count: ${repo.countTotaliQuiz()}")
         }
     }
 

@@ -13,7 +13,7 @@ interface QuizQuestionDao {
     @Query("""
     SELECT qq.* FROM quiz_question qq
     INNER JOIN curiosity c ON c.id = qq.curiosityId
-    LEFT JOIN quiz_answer qa ON qa.questionId = qq.id
+    LEFT JOIN quiz_answer qa ON qa.questionId = qq.id AND qa.isCorrect = 1
     WHERE qa.id IS NULL
       AND c.isRead = 1
       AND c.isIgnorata = 0
@@ -26,7 +26,7 @@ interface QuizQuestionDao {
     @Query("""
     SELECT qq.* FROM quiz_question qq
     INNER JOIN curiosity c ON c.id = qq.curiosityId
-    LEFT JOIN quiz_answer qa ON qa.questionId = qq.id
+    LEFT JOIN quiz_answer qa ON qa.questionId = qq.id AND qa.isCorrect = 1
     WHERE qa.id IS NULL
       AND c.isRead = 1
       AND c.isIgnorata = 0
@@ -39,7 +39,7 @@ interface QuizQuestionDao {
     @Query("""
     SELECT COUNT(*) FROM quiz_question qq
     INNER JOIN curiosity c ON c.id = qq.curiosityId
-    LEFT JOIN quiz_answer qa ON qa.questionId = qq.id
+    LEFT JOIN quiz_answer qa ON qa.questionId = qq.id AND qa.isCorrect = 1
     WHERE qa.id IS NULL
       AND c.isRead = 1
       AND c.isIgnorata = 0
@@ -50,12 +50,15 @@ interface QuizQuestionDao {
     @Query("""
     SELECT COUNT(*) FROM quiz_question qq
     INNER JOIN curiosity c ON c.id = qq.curiosityId
-    LEFT JOIN quiz_answer qa ON qa.questionId = qq.id
+    LEFT JOIN quiz_answer qa ON qa.questionId = qq.id AND qa.isCorrect = 1
     WHERE qa.id IS NULL
       AND c.isRead = 1
       AND c.isIgnorata = 0
 """)
     suspend fun quizNonRisposti(): Int
+
+    @Query("SELECT COUNT(*) FROM quiz_question")
+    suspend fun countTotali(): Int
 
     // Sync remoto
     @Query("SELECT * FROM quiz_question WHERE curiosityId = :curiosityId LIMIT 1")

@@ -48,7 +48,7 @@ class CuriosityRepository(
             }
         }
     }
-
+    suspend fun countTotaliQuiz() = quizDao.countTotali()
     suspend fun rimuoviBookmark(c: Curiosity) {
         curDao.update(c.copy(isBookmarked = false))
         val uid = FirebaseManager.uid ?: return
