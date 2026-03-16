@@ -19,6 +19,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -104,7 +106,7 @@ fun CategoryPickerScreen(nav: NavController, destinazione: String) {
             Spacer(Modifier.height(20.dp))
             Button(
                 onClick  = { nav.navigate(destinazione) { popUpTo("home") } },
-                modifier = Modifier.fillMaxWidth().height(58.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
                 shape    = RoundedCornerShape(16.dp)
             ) {
                 val label = when {
@@ -112,7 +114,13 @@ fun CategoryPickerScreen(nav: NavController, destinazione: String) {
                     categorieAttive.size == 1 -> "Avanti — ${categorieAttive.first()}"
                     else                      -> "Avanti — ${categorieAttive.size} categorie"
                 }
-                Text(label, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    label,
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             Spacer(Modifier.height(16.dp))
         }

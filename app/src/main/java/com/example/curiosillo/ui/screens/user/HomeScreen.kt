@@ -97,18 +97,19 @@ fun HomeScreen(nav: NavController) {
 
     // ── Obbligatorio: Aggiornamento App ──────────────────────────────────────
     homeState.aggiornamentoApp?.let { info ->
-        // Se c'è un aggiornamento, impediamo di chiudere il dialog
         BackHandler { /* Disabilitiamo il tasto indietro */ }
 
         AlertDialog(
             onDismissRequest = { /* Non facciamo nulla: deve aggiornare */ },
             icon  = { Icon(Icons.Default.SystemUpdate, null, tint = MaterialTheme.colorScheme.primary) },
             title = { Text("Aggiornamento Obbligatorio",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
             text  = {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("La tua versione: $versioneAttuale",
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                     Spacer(Modifier.height(12.dp))
                     Text("È disponibile la versione ${info.versione} di Curiosillo.\nPer continuare a imparare è necessario aggiornare l'applicazione.",
@@ -122,12 +123,12 @@ fun HomeScreen(nav: NavController) {
             },
             confirmButton = {
                 Button(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     onClick = {
                         val url = info.downloadUrl.ifEmpty { info.releaseUrl }
                         ctx.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                     }
-                ) { Text("Aggiorna Ora") }
+                ) { Text("Aggiorna Ora", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold) }
             }
         )
     }
@@ -137,7 +138,6 @@ fun HomeScreen(nav: NavController) {
         MaterialTheme.colorScheme.background
     ))
 
-    // ── Bottom sheet notifiche ───────────────────────────────────────────────
     if (mostraNotifiche) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
         val scope = rememberCoroutineScope()
@@ -185,15 +185,14 @@ fun HomeScreen(nav: NavController) {
                             Icon(Icons.Default.WifiOff, null, Modifier.size(14.dp),
                                 tint = MaterialTheme.colorScheme.onErrorContainer)
                             Spacer(Modifier.width(8.dp))
-                            Text("Nessuna connessione", style = MaterialTheme.typography.labelMedium,
+                            Text("Nessuna connessione", style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
                         }
                     }
                 }
 
-                // ── Campanella in alto a sinistra ─────────────────────────────
                 Box(Modifier.align(Alignment.CenterEnd)) {
-                    IconButton(onClick = { mostraNotifiche = true }) {
+                    IconButton(onClick = { mostraNotifiche = true }, modifier = Modifier.minimumInteractiveComponentSize()) {
                         Icon(
                             if (homeState.notifiche.isEmpty()) Icons.Default.NotificationsNone
                             else Icons.Default.Notifications,
@@ -203,11 +202,10 @@ fun HomeScreen(nav: NavController) {
                             else MaterialTheme.colorScheme.primary
                         )
                     }
-                    // Badge contatore
                     if (homeState.notifiche.isNotEmpty()) {
                         Surface(
                             modifier = Modifier
-                                .size(18.dp)
+                                .size(20.dp)
                                 .align(Alignment.TopEnd)
                                 .offset(x = (-2).dp, y = 2.dp),
                             shape = CircleShape,
@@ -219,7 +217,7 @@ fun HomeScreen(nav: NavController) {
                                     else homeState.notifiche.size.toString(),
                                     style    = MaterialTheme.typography.labelSmall,
                                     color    = Color.White,
-                                    fontSize = 9.sp
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
@@ -245,7 +243,7 @@ fun HomeScreen(nav: NavController) {
                     contentDescription = "Logo Curiosillo",
                     modifier = Modifier.size(if (isSmallScreen) 72.dp else 110.dp))
 
-                Spacer(Modifier.height(if (isSmallScreen) 0.dp else 0.dp))
+                Spacer(Modifier.height(8.dp))
                 Text("Curiosillo",
                     style = if (isSmallScreen) MaterialTheme.typography.headlineLarge
                     else MaterialTheme.typography.displayMedium,
@@ -278,7 +276,7 @@ fun HomeScreen(nav: NavController) {
                     modifier = Modifier.padding(bottom = if (isSmallScreen) 12.dp else 20.dp))
 
                 MenuCard(Icons.Default.EmojiObjects, "Scopri una Curiosità",
-                    "Leggi e impara something di sorprendente", MaterialTheme.colorScheme.primary) {
+                    "Leggi e impara qualcosa di sorprendente", MaterialTheme.colorScheme.primary) {
                     nav.navigate("category_picker/curiosity") }
                 Spacer(Modifier.height(12.dp))
                 MenuCard(Icons.Default.Quiz, "Fai un Quiz",
@@ -290,14 +288,13 @@ fun HomeScreen(nav: NavController) {
     }
 }
 
-// ── Dialog changelog ──────────────────────────────────────────────────────────
 @Composable
 private fun ChangelogDialog(versioni: List<VersioneChangelog>, titolo: String, onDismiss: () -> Unit) {
     val colorNovita = Color(0xFF4CAF50)
     val colorFix    = Color(0xFFFF9800)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(titolo,
+        title = { Text(titolo, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
         text  = {
             val scrollState    = rememberScrollState()
@@ -305,7 +302,6 @@ private fun ChangelogDialog(versioni: List<VersioneChangelog>, titolo: String, o
             val isAtBottom     by remember { derivedStateOf { scrollState.value >= scrollState.maxValue } }
             val showScrollHint by remember { derivedStateOf { isScrollable && !isAtBottom } }
 
-            // Anima l'opacità del bounce hint per richiamare l'attenzione all'apertura
             val bounceAlpha by animateFloatAsState(
                 targetValue   = if (showScrollHint) 1f else 0f,
                 animationSpec = tween(300),
@@ -323,13 +319,12 @@ private fun ChangelogDialog(versioni: List<VersioneChangelog>, titolo: String, o
             )
 
             Box(Modifier.fillMaxWidth()) {
-                // ── Contenuto scrollabile ──────────────────────────────────────
                 Column(
                     Modifier
                         .fillMaxWidth()
                         .heightIn(max = 420.dp)
                         .verticalScroll(scrollState)
-                        .padding(end = 14.dp) // spazio per la scrollbar
+                        .padding(end = 14.dp)
                 ) {
                     versioni.forEachIndexed { index, versione ->
                         if (index > 0) HorizontalDivider(Modifier.padding(vertical = 16.dp),
@@ -353,7 +348,6 @@ private fun ChangelogDialog(versioni: List<VersioneChangelog>, titolo: String, o
                     }
                 }
 
-                // ── Barra scroll laterale (più spessa e visibile) ──────────────
                 if (isScrollable) {
                     val fraction = (scrollState.value.toFloat() / scrollState.maxValue.toFloat()).coerceIn(0f, 1f)
                     val trackHeight = 420
@@ -383,7 +377,6 @@ private fun ChangelogDialog(versioni: List<VersioneChangelog>, titolo: String, o
                     }
                 }
 
-                // ── Hint "scorri" con pill + freccia animata ───────────────────
                 Box(
                     Modifier
                         .align(Alignment.BottomCenter)
@@ -415,7 +408,7 @@ private fun ChangelogDialog(versioni: List<VersioneChangelog>, titolo: String, o
                 }
             }
         },
-        confirmButton = { Button(onClick = onDismiss) { Text("Ottimo!") } }
+        confirmButton = { Button(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("Ottimo!", style = MaterialTheme.typography.labelLarge) } }
     )
 }
 
@@ -426,11 +419,11 @@ private fun SezioneChangelog(etichetta: String, icona: ImageVector, colore: Colo
             Icon(icona, null, tint = colore, modifier = Modifier.size(14.dp))
         }
         Spacer(Modifier.width(7.dp))
-        Text(etichetta, style = MaterialTheme.typography.labelLarge, color = colore)
+        Text(etichetta, style = MaterialTheme.typography.labelLarge, color = colore, fontWeight = FontWeight.Bold)
     }
     voci.forEach { voce ->
         Row(modifier = Modifier.padding(start = 4.dp, bottom = 5.dp), verticalAlignment = Alignment.Top) {
-            Text("·  ", color = colore, fontSize = 18.sp, lineHeight = 22.sp)
+            Text("·  ", color = colore, style = MaterialTheme.typography.bodyLarge)
             Text(voce, style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f), modifier = Modifier.weight(1f))
         }
@@ -441,13 +434,13 @@ private fun SezioneChangelog(etichetta: String, icona: ImageVector, colore: Colo
 private fun MenuCard(icon: ImageVector, title: String, subtitle: String, color: Color, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = color), elevation = CardDefaults.cardElevation(8.dp)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
+        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, Modifier.size(38.dp), Color.White.copy(alpha = 0.9f))
             Spacer(Modifier.width(16.dp))
             Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White)
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f), maxLines = 2)
+                Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.9f))
             }
         }
     }
@@ -468,14 +461,13 @@ private fun NotificheSheet(
             .padding(horizontal = 20.dp)
             .padding(bottom = 32.dp)
     ) {
-        // Header
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment     = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("🔔", fontSize = 20.sp)
+                Text("🔔", style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.width(8.dp))
                 Text(
                     "Notifiche",
@@ -499,8 +491,8 @@ private fun NotificheSheet(
                 }
             }
             if (notifiche.isNotEmpty()) {
-                TextButton(onClick = onTutteLette) {
-                    Text("Segna tutte lette", style = MaterialTheme.typography.labelMedium)
+                TextButton(onClick = onTutteLette, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("Segna tutte lette", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -513,7 +505,7 @@ private fun NotificheSheet(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("🎉", fontSize = 40.sp)
+                    Text("🎉", style = MaterialTheme.typography.displaySmall)
                     Spacer(Modifier.height(8.dp))
                     Text(
                         "Nessuna notifica non letta",
@@ -523,7 +515,6 @@ private fun NotificheSheet(
                 }
             }
         } else {
-            // Broadcast prima, poi pillole aggiornate
             val broadcast = notifiche.filter { it.tipo == "broadcast" }
             val pillole   = notifiche.filter { it.tipo != "broadcast" }
 
@@ -599,9 +590,10 @@ private fun NotificaCard(
             Spacer(Modifier.width(8.dp))
             TextButton(
                 onClick       = { onLetta(n.id) },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                modifier = Modifier.minimumInteractiveComponentSize(),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
             ) {
-                Text("OK", style = MaterialTheme.typography.labelSmall)
+                Text("OK", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             }
         }
     }

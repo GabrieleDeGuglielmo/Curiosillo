@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
@@ -63,7 +64,7 @@ fun BookmarkScreen(nav: NavController) {
     var pillolaPerNota     by remember { mutableStateOf<Curiosity?>(null) }
     var mostraSegnalazione by remember { mutableStateOf<Curiosity?>(null) }
     var hintGiaMostrato    by rememberSaveable { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     pillolaPerNota?.let { pillola ->
         NotaBottomSheet(
@@ -88,51 +89,59 @@ fun BookmarkScreen(nav: NavController) {
             sheetState = sheetState
         ) {
             val context = LocalContext.current
-            DettaglioSheet(
-                pillola = pillola,
-                onRimuovi = {
-                    scope.launch {
-                        sheetState.hide()
-                        vm.chiudiDettaglio()
-                        vm.rimuoviBookmark(pillola)
+            // Rendiamo il contenuto del BottomSheet scrollabile
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 24.dp)
+            ) {
+                DettaglioSheet(
+                    pillola = pillola,
+                    onRimuovi = {
+                        scope.launch {
+                            sheetState.hide()
+                            vm.chiudiDettaglio()
+                            vm.rimuoviBookmark(pillola)
+                        }
+                    },
+                    onNota = { pillolaPerNota = pillola },
+                    onSegnala = { 
+                        scope.launch {
+                            sheetState.hide()
+                            vm.chiudiDettaglio()
+                            mostraSegnalazione = pillola
+                        }
+                    },
+                    onCondividi = {
+                        val testo = "📚 ${pillola.title}\n\n${pillola.body}\n\n— Categoria: ${pillola.category}\nScoperto con Curiosillo 🎓"
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, testo)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Condividi con..."))
+                    },
+                    onChiudi = { 
+                        scope.launch {
+                            sheetState.hide()
+                            vm.chiudiDettaglio()
+                        }
                     }
-                },
-                onNota = { pillolaPerNota = pillola },
-                onSegnala = { 
-                    scope.launch {
-                        sheetState.hide()
-                        vm.chiudiDettaglio()
-                        mostraSegnalazione = pillola
-                    }
-                },
-                onCondividi = {
-                    val testo = "📚 ${pillola.title}\n\n${pillola.body}\n\n— Categoria: ${pillola.category}\nScoperto con Curiosillo 🎓"
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, testo)
-                    }
-                    context.startActivity(Intent.createChooser(intent, "Condividi con..."))
-                },
-                onChiudi = { 
-                    scope.launch {
-                        sheetState.hide()
-                        vm.chiudiDettaglio()
-                    }
-                }
-            )
+                )
+            }
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("I miei preferiti") },
+                title = { Text("I miei preferiti", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = {
                         if (nav.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
                             nav.popBackStack()
                         }
-                    }) {
+                    }, modifier = Modifier.minimumInteractiveComponentSize()) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
                     }
                 },
@@ -151,7 +160,7 @@ fun BookmarkScreen(nav: NavController) {
             OutlinedTextField(
                 value = state.query,
                 onValueChange = { vm.onQueryChange(it) },
-                placeholder = { Text("Cerca tra i preferiti...") },
+                placeholder = { Text("Cerca tra i preferiti...", style = MaterialTheme.typography.bodyMedium) },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp),
@@ -165,13 +174,13 @@ fun BookmarkScreen(nav: NavController) {
                 ) {
                     FilterChip(
                         selected = state.categorieSelezionate.isEmpty(),
-                        onClick = { vm.resetCategorie() }, label = { Text("Tutte") })
+                        onClick = { vm.resetCategorie() }, label = { Text("Tutte", style = MaterialTheme.typography.labelLarge) })
                     state.categorie.forEach { cat ->
                         FilterChip(
                             selected = state.categorieSelezionate.contains(cat),
                             onClick = { vm.onCategoriaSelezionata(cat) },
                             label = {
-                                Text(cat, color = if (state.categorieSelezionate.contains(cat)) Color(0xFF1A1A1A) else MaterialTheme.colorScheme.onSurface)
+                                Text(cat, style = MaterialTheme.typography.labelLarge, color = if (state.categorieSelezionate.contains(cat)) Color(0xFF1A1A1A) else MaterialTheme.colorScheme.onSurface)
                             },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = coloreCategoria(cat),
@@ -192,7 +201,7 @@ fun BookmarkScreen(nav: NavController) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Text("🔖", fontSize = 56.sp)
+                    Text("🔖", style = MaterialTheme.typography.displayLarge)
                     Spacer(Modifier.height(16.dp))
                     Text(
                         if (state.query.isNotEmpty() || state.categorieSelezionate.isNotEmpty()) "Nessun risultato trovato.\nProva a cambiare i filtri."
@@ -335,39 +344,60 @@ private fun DettaglioSheet(
             Text(pillola.category, style = MaterialTheme.typography.labelLarge, color = coloreCategoria(pillola.category))
         }
         Spacer(Modifier.height(10.dp))
-        Text(pillola.title, style = MaterialTheme.typography.headlineSmall)
+        Text(pillola.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(14.dp))
         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), elevation = CardDefaults.cardElevation(0.dp)) {
-            Text(pillola.body, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge, lineHeight = 26.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(pillola.body, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (pillola.nota.isNotBlank()) {
             Spacer(Modifier.height(12.dp))
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), elevation = CardDefaults.cardElevation(0.dp)) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-                    Text("📝 ", fontSize = 14.sp)
+                    Text("📝 ", style = MaterialTheme.typography.bodySmall)
                     Text(pillola.nota, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
         Spacer(Modifier.height(20.dp))
-        OutlinedButton(onClick = onSegnala, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))) {
+        // Pulsanti con altezza dinamica e wrapping del testo
+        OutlinedButton(
+            onClick = onSegnala, 
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), 
+            shape = RoundedCornerShape(12.dp), 
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+        ) {
             Icon(Icons.Default.Flag, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
             Spacer(Modifier.width(6.dp))
-            Text("Segnala curiosità", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+            Text("Segnala curiosità", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
         }
         Spacer(Modifier.height(10.dp))
-        OutlinedButton(onClick = onNota, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) {
+        OutlinedButton(
+            onClick = onNota, 
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), 
+            shape = RoundedCornerShape(14.dp)
+        ) {
             Icon(Icons.Default.EditNote, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp))
-            Text(if (pillola.nota.isNotBlank()) "Modifica nota" else "Aggiungi nota")
+            Text(if (pillola.nota.isNotBlank()) "Modifica nota" else "Aggiungi nota", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(10.dp))
-        OutlinedButton(onClick = onCondividi, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) {
-            Icon(Icons.Default.Share, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("Condividi")
+        OutlinedButton(
+            onClick = onCondividi, 
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), 
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Icon(Icons.Default.Share, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); 
+            Text("Condividi pillola", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(10.dp))
-        OutlinedButton(onClick = onRimuovi, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = Error), border = ButtonDefaults.outlinedButtonBorder.copy(brush = SolidColor(Error))) {
+        OutlinedButton(
+            onClick = onRimuovi, 
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), 
+            shape = RoundedCornerShape(14.dp), 
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Error), 
+            border = ButtonDefaults.outlinedButtonBorder.copy(brush = SolidColor(Error))
+        ) {
             Icon(Icons.Default.BookmarkRemove, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp))
-            Text("Rimuovi dai preferiti")
+            Text("Rimuovi dai preferiti", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
         }
     }
 }

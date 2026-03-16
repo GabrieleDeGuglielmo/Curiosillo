@@ -137,7 +137,6 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             usernameCheckJob = coroutineScope.launch {
                 try {
                     delay(600) // Debounce per non sovraccaricare Firebase
-                    // Assicurati che FirebaseManager.isUsernameOccupato sia thread-safe
                     usernameDisponibile = !FirebaseManager.isUsernameOccupato(trimmed)
                 } catch (e: Exception) {
                     usernameDisponibile = null // In caso di errore di rete
@@ -157,8 +156,6 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
         var isChecking by remember { mutableStateOf(false) }
         var isAvail    by remember { mutableStateOf<Boolean?>(null) }
 
-        // Parte subito con il suggestedUsername pre-popolato da Google
-        // e si ri-esegue ad ogni modifica dell'utente
         LaunchedEffect(googleUsernameInput) {
             val trimmed = googleUsernameInput.trim()
             isAvail = null
@@ -176,13 +173,14 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
 
         AlertDialog(
             onDismissRequest = { /* obbligatorio scegliere */ },
-            title = { Text("Scegli il tuo username", fontWeight = FontWeight.Bold) },
+            title = { Text("Scegli il tuo username", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) },
             text = {
                 val scrollState = rememberScrollState()
                 Column(Modifier.verticalScroll(scrollState)) {
                     Text(
                         "Benvenuto! Come vorresti farti chiamare su Curiosillo?",
                         Modifier.padding(bottom = 16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(0.7f)
                     )
                     OutlinedTextField(
@@ -220,7 +218,8 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                         vm.completaRegistrazioneGoogle(s.user, googleUsernameInput.trim())
                         showGoogleUsernameDialog = false
                     },
-                    enabled = googleUsernameInput.trim().length >= 3 && isAvail == true && !isChecking
+                    enabled = googleUsernameInput.trim().length >= 3 && isAvail == true && !isChecking,
+                    modifier = Modifier.height(48.dp) // Touch target
                 ) {
                     if (state is AuthUiState.Loading)
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp,
@@ -239,11 +238,12 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                 vm.resetStato()
             },
             icon = { Text("✉️", fontSize = 32.sp) },
-            title = { Text("Verifica la tua email", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            title = { Text("Verifica la tua email", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
             text = {
                 Text(
                     "Ti abbiamo inviato un'email di verifica a $email. Per favore, clicca sul link contenuto nell'email per attivare il tuo account prima di accedere.",
                     textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             },
@@ -251,7 +251,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                 Button(onClick = {
                     showVerificaDialog = false
                     vm.resetStato()
-                }) { Text("Ho capito") }
+                }, modifier = Modifier.height(48.dp)) { Text("Ho capito") }
             }
         )
     }
@@ -269,6 +269,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             title = {
                 Text(
                     if (emailInviata) "Email inviata!" else "Recupera password",
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     textAlign  = TextAlign.Center,
                     modifier   = Modifier.fillMaxWidth()
@@ -279,6 +280,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                     Text(
                         "Controlla la tua casella email — ti abbiamo inviato un link per reimpostare la password.",
                         textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium,
                         color     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 } else {
@@ -308,11 +310,12 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                         showRecuperoDialog = false
                         emailRecupero = ""
                         vm.resetStato()
-                    }) { Text("OK") }
+                    }, modifier = Modifier.height(48.dp)) { Text("OK") }
                 } else {
                     Button(
                         onClick  = { vm.recuperaPassword(emailRecupero) },
-                        enabled  = emailRecupero.isNotBlank() && state !is AuthUiState.Loading
+                        enabled  = emailRecupero.isNotBlank() && state !is AuthUiState.Loading,
+                        modifier = Modifier.height(48.dp)
                     ) {
                         if (state is AuthUiState.Loading) {
                             CircularProgressIndicator(Modifier.size(18.dp),
@@ -328,7 +331,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                     TextButton(onClick = {
                         showRecuperoDialog = false
                         emailRecupero = ""
-                    }) { Text("Annulla") }
+                    }, modifier = Modifier.height(48.dp)) { Text("Annulla") }
                 }
             }
         )
@@ -342,12 +345,14 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                 tint = MaterialTheme.colorScheme.primary) },
             title = {
                 Text("Aggiornamento disponibile",
+                    style = MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             },
             text = {
                 Text(
                     "È disponibile la versione ${info.versione} di Curiosillo.\nVuoi scaricarla adesso?",
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             },
@@ -356,10 +361,10 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                     val url = info.downloadUrl.ifEmpty { info.releaseUrl }
                     ctx.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                     homeVm.dismissAggiornamento()
-                }) { Text("Scarica") }
+                }, modifier = Modifier.height(48.dp)) { Text("Scarica") }
             },
             dismissButton = {
-                TextButton(onClick = { homeVm.dismissAggiornamento() }) { Text("Dopo") }
+                TextButton(onClick = { homeVm.dismissAggiornamento() }, modifier = Modifier.height(48.dp)) { Text("Dopo") }
             }
         )
     }
@@ -419,30 +424,24 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                     onValueChange = { v ->
                         if (v.length <= 20) {
                             usernameInput = v
-                            // 1. Reset immediato degli stati per feedback UI istantaneo
                             usernameDisponibile = null
-                            usernameCheckJob?.cancel() // Ferma ricerche precedenti in corso
+                            usernameCheckJob?.cancel()
 
                             val trimmed = v.trim()
                             if (trimmed.length >= 3) {
-                                // 2. Avvia il caricamento solo se abbiamo almeno 3 caratteri
                                 usernameCheckLoading = true
                                 usernameCheckJob = coroutineScope.launch {
                                     try {
-                                        delay(600) // Debounce: aspetta che l'utente finisca di scrivere
+                                        delay(600)
                                         val occupato = FirebaseManager.isUsernameOccupato(trimmed)
                                         usernameDisponibile = !occupato
                                     } catch (e: Exception) {
-                                        // In caso di errore (es. offline), permettiamo di procedere
-                                        // o resettiamo per sicurezza. Qui resettiamo:
                                         usernameDisponibile = null
                                     } finally {
-                                        // 3. IMPORTANTISSIMO: ferma SEMPRE il caricamento
                                         usernameCheckLoading = false
                                     }
                                 }
                             } else {
-                                // 4. Se meno di 3 caratteri, spegniamo il caricamento
                                 usernameCheckLoading = false
                             }
                         }
@@ -533,19 +532,22 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
 
             Spacer(Modifier.height(8.dp))
 
-            // Link "Password dimenticata?" — solo in modalità login
+            // Link "Password dimenticata?" — Allineato a 48dp di area tocco
             AnimatedVisibility(visible = !isRegistrazione) {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                     Text(
                         "Password dimenticata?",
                         color      = MaterialTheme.colorScheme.primary,
-                        style      = MaterialTheme.typography.bodySmall,
+                        style      = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
-                        modifier   = Modifier.clickable {
-                            emailRecupero = email // precompila con email già inserita
-                            showRecuperoDialog = true
-                            vm.resetStato()
-                        }
+                        modifier   = Modifier
+                            .minimumInteractiveComponentSize() // Assicura 48dp
+                            .clickable {
+                                emailRecupero = email
+                                showRecuperoDialog = true
+                                vm.resetStato()
+                            }
+                            .padding(vertical = 8.dp)
                     )
                 }
             }
@@ -579,8 +581,8 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                 } else {
                     Text(
                         if (isRegistrazione) "Crea account" else "Accedi",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -598,25 +600,34 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape    = RoundedCornerShape(14.dp)
             ) {
-                Text("🔵  Accedi con Google")
+                Text("🔵  Accedi con Google", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(Modifier.height(24.dp))
 
-            // Switch login / registrazione
-            Row(horizontalArrangement = Arrangement.Center) {
+            // Switch login / registrazione — Allineato a 48dp di area tocco
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.heightIn(min = 48.dp)
+            ) {
                 Text(
                     if (isRegistrazione) "Hai già un account? " else "Non hai un account? ",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
                 Text(
                     if (isRegistrazione) "Accedi" else "Registrati",
                     color      = MaterialTheme.colorScheme.primary,
+                    style      = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
-                    modifier   = Modifier.clickable {
-                        isRegistrazione = !isRegistrazione
-                        vm.resetStato()
-                    }
+                    modifier   = Modifier
+                        .minimumInteractiveComponentSize()
+                        .clickable {
+                            isRegistrazione = !isRegistrazione
+                            vm.resetStato()
+                        }
+                        .padding(horizontal = 4.dp)
                 )
             }
         }
