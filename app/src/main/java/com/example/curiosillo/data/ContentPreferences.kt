@@ -31,6 +31,10 @@ class ContentPreferences(private val context: Context) {
         context.contentDataStore.edit { it[KEY_CLOUD_MIGRAZIONE_DONE] = 1 }
     }
 
+    suspend fun resetCloudMigrazione() {
+        context.contentDataStore.edit { it[KEY_CLOUD_MIGRAZIONE_DONE] = 0 }
+    }
+
     suspend fun getUltimaVersioneVista(): String =
         context.contentDataStore.data.first()[androidx.datastore.preferences.core.stringPreferencesKey("ultima_versione_vista")] ?: ""
 

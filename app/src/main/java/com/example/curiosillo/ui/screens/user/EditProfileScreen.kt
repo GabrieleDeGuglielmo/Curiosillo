@@ -39,7 +39,7 @@ fun EditProfileScreen(nav: NavController) {
     val ctx = LocalContext.current
     val app = ctx.applicationContext as CuriosityApplication
     val vm: ProfileViewModel = viewModel(
-        factory = ProfileViewModel.Factory(app.repository, app.gamificationPrefs)
+        factory = ProfileViewModel.Factory(app.repository, app.gamificationPrefs, app.contentPrefs)
     )
     val state by vm.state.collectAsState()
 

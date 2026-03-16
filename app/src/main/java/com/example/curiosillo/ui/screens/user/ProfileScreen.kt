@@ -62,7 +62,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     val vm: ProfileViewModel = viewModel(
-        factory = ProfileViewModel.Factory(app.repository, app.gamificationPrefs)
+        factory = ProfileViewModel.Factory(app.repository, app.gamificationPrefs, app.contentPrefs)
     )
     val state by vm.state.collectAsState()
 

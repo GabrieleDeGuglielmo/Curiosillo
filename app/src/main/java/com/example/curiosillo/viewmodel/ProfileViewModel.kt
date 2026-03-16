@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.curiosillo.data.BadgeSbloccato
+import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.data.GamificationPreferences
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.repository.CuriosityRepository
@@ -34,8 +35,9 @@ data class ProfileUiState(
 )
 
 class ProfileViewModel(
-    private val repo:       CuriosityRepository,
-    private val gamifPrefs: GamificationPreferences
+    private val repo:         CuriosityRepository,
+    private val gamifPrefs:   GamificationPreferences,
+    private val contentPrefs: ContentPreferences
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileUiState())
@@ -112,6 +114,8 @@ class ProfileViewModel(
         viewModelScope.launch {
             repo.resetProgressi()
             gamifPrefs.reset()
+            FirebaseManager.uid?.let { FirebaseManager.resetProgressiUtente(it) }
+            contentPrefs.resetCloudMigrazione()
             caricaStatistiche()
         }
     }
@@ -140,11 +144,12 @@ class ProfileViewModel(
     }
 
     class Factory(
-        private val repo:       CuriosityRepository,
-        private val gamifPrefs: GamificationPreferences
+        private val repo:         CuriosityRepository,
+        private val gamifPrefs:   GamificationPreferences,
+        private val contentPrefs: ContentPreferences
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(c: Class<T>): T =
-            ProfileViewModel(repo, gamifPrefs) as T
+            ProfileViewModel(repo, gamifPrefs, contentPrefs) as T
     }
 }

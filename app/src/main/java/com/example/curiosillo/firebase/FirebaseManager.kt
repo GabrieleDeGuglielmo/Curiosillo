@@ -359,6 +359,25 @@ object FirebaseManager {
         } catch (_: Exception) {}
     }
 
+    // ── Reset progressi utente ───────────────────────────────────────────────
+
+    suspend fun resetProgressiUtente(uid: String) {
+        try {
+            val dataRef = db.collection("users").document(uid).collection("data")
+            listOf("pillole_lette", "pillole_bookmark", "pillole_ignorate",
+                "pillole_note", "quiz_risposti").forEach { doc ->
+                dataRef.document(doc).delete().await()
+            }
+            dataRef.document("profile").set(
+                mapOf("xp" to 0, "streakCorrente" to 0, "streakMassima" to 0),
+                com.google.firebase.firestore.SetOptions.merge()
+            ).await()
+            dataRef.document("badges").delete().await()
+        } catch (e: Exception) {
+            Log.e("FirebaseManager", "Errore reset progressi: ${e.message}")
+        }
+    }
+
     // ── Commenti ──────────────────────────────────────────────────────────────
 
     data class Commento(
