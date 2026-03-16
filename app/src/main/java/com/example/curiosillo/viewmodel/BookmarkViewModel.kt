@@ -84,7 +84,6 @@ class BookmarkViewModel(private val repo: CuriosityRepository) : ViewModel() {
             )
             delay(280) // attende la fine dell'animazione
             repo.rimuoviBookmark(c)
-            chiudiDettaglio()
             carica()
             _state.value = _state.value.copy(
                 idInRimozione = _state.value.idInRimozione - c.id

@@ -1,14 +1,14 @@
 package com.example.curiosillo.ui.screens.user
 
 import android.content.Intent
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.*
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -47,16 +48,20 @@ import com.example.curiosillo.ui.screens.utils.SegnalazioneBottomSheet
 import com.example.curiosillo.ui.screens.utils.coloreCategoria
 import com.example.curiosillo.ui.theme.Error
 import com.example.curiosillo.viewmodel.BookmarkViewModel
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun BookmarkScreen(nav: NavController) {
     val ctx = LocalContext.current
     val repo = (ctx.applicationContext as CuriosityApplication).repository
     val vm: BookmarkViewModel = viewModel(factory = BookmarkViewModel.Factory(repo))
     val state by vm.state.collectAsState()
+    val scope = rememberCoroutineScope()
+    
     var pillolaPerNota     by remember { mutableStateOf<Curiosity?>(null) }
     var mostraSegnalazione by remember { mutableStateOf<Curiosity?>(null) }
+    var hintGiaMostrato    by rememberSaveable { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     pillolaPerNota?.let { pillola ->
@@ -84,9 +89,20 @@ fun BookmarkScreen(nav: NavController) {
             val context = LocalContext.current
             DettaglioSheet(
                 pillola = pillola,
-                onRimuovi = { vm.rimuoviBookmark(pillola) },
+                onRimuovi = {
+                    scope.launch {
+                        sheetState.hide()
+                        vm.rimuoviBookmark(pillola)
+                    }
+                },
                 onNota = { pillolaPerNota = pillola },
-                onSegnala = { mostraSegnalazione = pillola; vm.chiudiDettaglio() },
+                onSegnala = { 
+                    scope.launch {
+                        sheetState.hide()
+                        mostraSegnalazione = pillola
+                        vm.chiudiDettaglio()
+                    }
+                },
                 onCondividi = {
                     val testo =
                         "📚 ${pillola.title}\n\n${pillola.body}\n\n— Categoria: ${pillola.category}\nScoperto con Curiosillo 🎓"
@@ -96,7 +112,12 @@ fun BookmarkScreen(nav: NavController) {
                     }
                     context.startActivity(Intent.createChooser(intent, "Condividi con..."))
                 },
-                onChiudi = { vm.chiudiDettaglio() }
+                onChiudi = { 
+                    scope.launch {
+                        sheetState.hide()
+                        vm.chiudiDettaglio()
+                    }
+                }
             )
         }
     }
@@ -157,7 +178,6 @@ fun BookmarkScreen(nav: NavController) {
                             selected = state.categorieSelezionate.contains(cat),
                             onClick = { vm.onCategoriaSelezionata(cat) },
                             label = {
-                                // Testo scuro (Neutral 900) su sfondo colorato
                                 Text(
                                     cat,
                                     color = if (state.categorieSelezionate.contains(cat)) Color(
@@ -211,23 +231,32 @@ fun BookmarkScreen(nav: NavController) {
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(state.risultati, key = { it.id }) { pillola ->
+                            val isVisible = !state.idInRimozione.contains(pillola.id)
                             val isFirst = state.risultati.firstOrNull()?.id == pillola.id
                             val offsetX = remember { Animatable(0f) }
-                            if (isFirst) {
+
+                            if (isFirst && !hintGiaMostrato) {
                                 LaunchedEffect(Unit) {
                                     kotlinx.coroutines.delay(400)
-                                    offsetX.animateTo(-28f, tween(400))
-                                    offsetX.animateTo(28f, tween(400))
+                                    offsetX.animateTo(-25f, tween(400))
                                     offsetX.animateTo(0f, tween(180))
+                                    hintGiaMostrato = true
                                 }
                             }
-                            SwipeToRemoveBookmark(
-                                onRimuovi = { vm.rimuoviBookmark(pillola) }
+
+                            AnimatedVisibility(
+                                visible = isVisible,
+                                exit = shrinkVertically(tween(280)) + fadeOut(tween(280)),
+                                modifier = Modifier.animateItemPlacement()
                             ) {
-                                BookmarkCard(
-                                    pillola,
-                                    modifier = if (isFirst) Modifier.graphicsLayer { translationX = offsetX.value } else Modifier
-                                ) { vm.apriDettaglio(pillola) }
+                                SwipeToRemoveBookmark(
+                                    onRimuovi = { vm.rimuoviBookmark(pillola) }
+                                ) {
+                                    BookmarkCard(
+                                        pillola,
+                                        modifier = if (isFirst) Modifier.graphicsLayer { translationX = offsetX.value } else Modifier
+                                    ) { vm.apriDettaglio(pillola) }
+                                }
                             }
                         }
                     }
@@ -319,7 +348,6 @@ private fun BookmarkCard(pillola: Curiosity, modifier: Modifier = Modifier, onCl
                     fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(2.dp))
-                // Badge categoria con testo scuro per contrasto 4.5:1
                 Surface(
                     shape = RoundedCornerShape(6.dp),
                     color = coloreCategoria(pillola.category).copy(alpha = 0.18f)
@@ -329,7 +357,7 @@ private fun BookmarkCard(pillola: Curiosity, modifier: Modifier = Modifier, onCl
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF1A1A1A) // Neutral 900 — contrasto garantito
+                        color = Color(0xFF1A1A1A)
                     )
                 }
                 if (pillola.nota.isNotBlank()) {
@@ -409,7 +437,6 @@ private fun DettaglioSheet(
         }
         Spacer(Modifier.height(20.dp))
 
-        // Segnala — gestita nel parent per evitare sheet annidati
         OutlinedButton(
             onClick        = { onSegnala() },
             modifier       = Modifier.fillMaxWidth().height(48.dp),
