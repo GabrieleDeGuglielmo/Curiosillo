@@ -1,6 +1,13 @@
 package com.example.curiosillo.ui.screens.curiosity
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -132,7 +139,7 @@ fun CuriosityScreen(nav: NavController) {
             text  = { Text("Non la vedrai più nei quiz o durante la lettura giornaliera.\n\nPotrai ripristinarla in qualsiasi momento dal profilo.", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth()) },
             confirmButton = {
                 Button(
-                    onClick = { 
+                    onClick = {
                         mostraDialogIgnora = false
                         vm.toggleIgnora()
                         mostraAvvenutaAzioneIgnora = true
@@ -255,27 +262,43 @@ fun CuriosityScreen(nav: NavController) {
         ))
 
         Box(Modifier.fillMaxSize()) {
-            when (val s = state) {
-                is CuriosityUiState.Loading -> Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) { CircularProgressIndicator() }
-                is CuriosityUiState.Empty -> Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
-                    Text("Nessuna curiosità disponibile!\nTorna presto.", Modifier.padding(24.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
+            // AnimatedContent keyed on class name: anima la transizione
+            // Success->Learned senza scattare ad ogni cambio di isBookmarked
+            AnimatedContent(
+                targetState = state,
+                transitionSpec = {
+                    if (targetState is CuriosityUiState.Learned) {
+                        (fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 10 }) togetherWith
+                                (fadeOut(tween(200)) + slideOutVertically(tween(200)) { -it / 10 })
+                    } else {
+                        fadeIn(tween(200)) togetherWith fadeOut(tween(150))
+                    }
+                },
+                contentKey = { it::class },
+                label = "stateTransition"
+            ) { animState ->
+                when (val s = animState) {
+                    is CuriosityUiState.Loading -> Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) { CircularProgressIndicator() }
+                    is CuriosityUiState.Empty -> Box(Modifier.fillMaxSize().background(gradientBg).padding(pad), Alignment.Center) {
+                        Text("Nessuna curiosità disponibile!\nTorna presto.", Modifier.padding(24.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
+                    }
+                    is CuriosityUiState.Success -> {
+                        CuriosityContent(s, pad, gradientBg,
+                            commentiState = commentiState,
+                            segnalazioneState = segnalazioneState,
+                            triggerSegnalaExternally = triggerSegnala,
+                            onSegnalaReset = { triggerSegnala = false },
+                            onLearn      = { vm.markLearned() },
+                            onBookmark   = { vm.toggleBookmark() },
+                            onSalvaNota  = { vm.salvaNota(it) },
+                            onSegnala    = { tipo, testo -> vm.inviaSegnalazione(tipo, testo) },
+                            onCommenti   = { vm.caricaCommenti(); mostraCommenti = true },
+                            onDimmiDiPiu = { vm.dimmiDiPiu(); mostraGemini = true }
+                        )
+                    }
+                    is CuriosityUiState.Learned -> LearnedContent(pad, gradientBg) { vm.load() }
                 }
-                is CuriosityUiState.Success -> {
-                    CuriosityContent(s, pad, gradientBg,
-                        commentiState = commentiState,
-                        segnalazioneState = segnalazioneState,
-                        triggerSegnalaExternally = triggerSegnala,
-                        onSegnalaReset = { triggerSegnala = false },
-                        onLearn      = { vm.markLearned() },
-                        onBookmark   = { vm.toggleBookmark() },
-                        onSalvaNota  = { vm.salvaNota(it) },
-                        onSegnala    = { tipo, testo -> vm.inviaSegnalazione(tipo, testo) },
-                        onCommenti   = { vm.caricaCommenti(); mostraCommenti = true },
-                        onDimmiDiPiu = { vm.dimmiDiPiu(); mostraGemini = true }
-                    )
-                }
-                is CuriosityUiState.Learned -> LearnedContent(pad, gradientBg) { vm.load() }
-            }
+            } // AnimatedContent
 
             when (val sState = segnalazioneState) {
                 is SegnalazioneUiState.Successo -> {
@@ -396,10 +419,16 @@ private fun CuriosityContent(
             )
 
             Spacer(Modifier.height(16.dp))
-            if (!s.curiosity.isRead) {
-                Button(onLearn, Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(16.dp)) { Text("Ho imparato!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-            } else {
-                OutlinedButton(onLearn, Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(16.dp)) { Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium) }
+            AnimatedContent(
+                targetState = s.curiosity.isRead,
+                transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(150)) },
+                label = "learnButton"
+            ) { isRead ->
+                if (!isRead) {
+                    Button(onLearn, Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(16.dp)) { Text("Ho imparato!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                } else {
+                    OutlinedButton(onLearn, Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(16.dp)) { Text("Prossima curiosità", style = MaterialTheme.typography.titleMedium) }
+                }
             }
             Spacer(Modifier.height(24.dp))
         }

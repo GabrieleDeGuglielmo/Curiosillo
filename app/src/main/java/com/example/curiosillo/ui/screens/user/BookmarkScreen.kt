@@ -2,6 +2,8 @@ package com.example.curiosillo.ui.screens.user
 
 import android.content.Intent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -27,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -208,10 +211,23 @@ fun BookmarkScreen(nav: NavController) {
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(state.risultati, key = { it.id }) { pillola ->
+                            val isFirst = state.risultati.firstOrNull()?.id == pillola.id
+                            val offsetX = remember { Animatable(0f) }
+                            if (isFirst) {
+                                LaunchedEffect(Unit) {
+                                    kotlinx.coroutines.delay(400)
+                                    offsetX.animateTo(-28f, tween(400))
+                                    offsetX.animateTo(28f, tween(400))
+                                    offsetX.animateTo(0f, tween(180))
+                                }
+                            }
                             SwipeToRemoveBookmark(
                                 onRimuovi = { vm.rimuoviBookmark(pillola) }
                             ) {
-                                BookmarkCard(pillola) { vm.apriDettaglio(pillola) }
+                                BookmarkCard(
+                                    pillola,
+                                    modifier = if (isFirst) Modifier.graphicsLayer { translationX = offsetX.value } else Modifier
+                                ) { vm.apriDettaglio(pillola) }
                             }
                         }
                     }
@@ -278,10 +294,10 @@ private fun SwipeToRemoveBookmark(onRimuovi: () -> Unit, content: @Composable ()
 // ── BookmarkCard ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun BookmarkCard(pillola: Curiosity, onClick: () -> Unit) {
+private fun BookmarkCard(pillola: Curiosity, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -449,10 +465,6 @@ private fun DettaglioSheet(
                 Modifier.size(20.dp)
             ); Spacer(Modifier.width(8.dp))
             Text("Rimuovi dai preferiti")
-        }
-        Spacer(Modifier.height(8.dp))
-        TextButton(onClick = onChiudi, modifier = Modifier.fillMaxWidth()) {
-            Text("Chiudi", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
         }
     }
 }
