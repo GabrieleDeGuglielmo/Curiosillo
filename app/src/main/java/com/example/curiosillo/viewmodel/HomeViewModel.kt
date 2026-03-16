@@ -8,6 +8,7 @@ import android.net.NetworkRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.curiosillo.data.AppDatabase
 import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.network.AppUpdateService
@@ -41,12 +42,13 @@ class HomeViewModel(
     private val repo:         CuriosityRepository,
     private val contentPrefs: ContentPreferences,
     private val context:      Context,
+    private val database:     AppDatabase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
 
-    private val syncService      = FirestoreSyncService(repo, contentPrefs)
+    private val syncService      = FirestoreSyncService(repo, contentPrefs, database)
     private val updateService    = AppUpdateService()
     private val changelogService = ChangelogService()
 
@@ -74,14 +76,11 @@ class HomeViewModel(
             .build()
         connectivityManager.registerNetworkCallback(request, networkCallback)
 
-        // All'avvio proviamo sempre a sincronizzare, anche con un piccolo delay
-        // per dare tempo alla connessione di stabilizzarsi
         refreshDatiCloud()
     }
 
     private fun refreshDatiCloud() {
         viewModelScope.launch {
-            // Se il DB è vuoto, non serve aspettare la propagazione degli indici
             val dbVuoto = repo.totaleCuriosità() == 0
             if (!dbVuoto) delay(1500)
 
@@ -191,9 +190,10 @@ class HomeViewModel(
         private val repo:         CuriosityRepository,
         private val contentPrefs: ContentPreferences,
         private val context:      Context,
+        private val database:     AppDatabase
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(c: Class<T>): T =
-            HomeViewModel(repo, contentPrefs, context) as T
+            HomeViewModel(repo, contentPrefs, context, database) as T
     }
 }

@@ -64,6 +64,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             repo         = app.repository,
             contentPrefs = app.contentPrefs,
             context      = ctx,
+            database     = app.database
         )
     )
 

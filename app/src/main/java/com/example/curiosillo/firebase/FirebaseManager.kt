@@ -67,12 +67,10 @@ object FirebaseManager {
         val currentUid = uid
 
         return try {
-            // Cerchiamo in tutti i documenti "profile" (che sono dentro users/UID/data/profile)
             val snapshot = db.collectionGroup("data")
                 .whereEqualTo("username", target)
                 .get().await()
 
-            // Filtriamo i risultati per assicurarci che siano documenti "profile"
             val altri = snapshot.documents.filter { doc ->
                 doc.id == "profile" && doc.reference.parent.parent?.id != currentUid
             }
@@ -159,7 +157,6 @@ object FirebaseManager {
     }
 
     suspend fun eliminaDatiUtente(uid: String) {
-        // Rimuove lo username dalla collezione piatta prima di cancellare il profilo
         try {
             val profilo = db.collection("users").document(uid)
                 .collection("data").document("profile").get().await()
@@ -307,7 +304,6 @@ object FirebaseManager {
     }
 
     // ── Note pillole ──────────────────────────────────────────────────────────
-    // Salvate come mappa externalId -> testo in users/{uid}/data/pillole_note
 
     suspend fun caricaNote(uid: String): Map<String, String> = try {
         val doc = db.collection("users").document(uid)
@@ -339,7 +335,6 @@ object FirebaseManager {
     }
 
     // ── Quiz risposti ─────────────────────────────────────────────────────────
-    // Salviamo gli externalId delle curiosita' i cui quiz sono stati risposti
 
     suspend fun caricaQuizRisposti(uid: String): List<String> = try {
         val doc = db.collection("users").document(uid)
@@ -350,7 +345,6 @@ object FirebaseManager {
 
     suspend fun aggiungiQuizRisposto(uid: String, questionId: Int) {
         try {
-            // Recuperiamo l'externalId dalla curiosita' associata alla domanda
             val ref = db.collection("users").document(uid)
                 .collection("data").document("quiz_risposti")
             val doc = ref.get().await()
@@ -600,8 +594,8 @@ object FirebaseManager {
             "categoria" to c.categoria,
             "emoji"     to c.emoji,
             "domanda"          to c.domanda,
-            "rispostaCorretta" to c.rispostaCorretta,
-            "risposteErrate"   to c.risposteErrate,
+            "risposta_corretta" to c.rispostaCorretta,
+            "risposte_errate"   to c.risposteErrate,
             "spiegazione"      to c.spiegazione
         )
 
@@ -642,7 +636,7 @@ object FirebaseManager {
             }
             batch.commit().await()
         } catch (e: Exception) {
-            android.util.Log.e("FirebaseManager", "notificaAggiornamento failed", e)
+            Log.e("FirebaseManager", "notificaAggiornamento failed", e)
         }
     }
 
@@ -696,8 +690,8 @@ object FirebaseManager {
                     "categoria"        to c.categoria,
                     "emoji"            to c.emoji,
                     "domanda"          to c.domanda,
-                    "rispostaCorretta" to c.rispostaCorretta,
-                    "risposteErrate"   to c.risposteErrate,
+                    "risposta_corretta" to c.rispostaCorretta,
+                    "risposte_errate"   to c.risposteErrate,
                     "spiegazione"      to c.spiegazione
                 ))
             }
@@ -713,27 +707,44 @@ object FirebaseManager {
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
 
-    /** Carica TUTTI le curiosita dal server */
+    /** Carica TUTTI le curiosita dal server - FORMATO PIATTO */
     suspend fun caricaTutteLeCuriositaRemote(): List<CuriositaRemota> = try {
         val snap = db.collection("curiosita").whereNotEqualTo("__name__", "_meta_").get().await()
         val docs = snap.documents.filter { it.id != "_meta_" }
 
         docs.map { doc ->
+            // Supporta sia formato flat (nuovo) che annidato (vecchio)
+            val quizObj = doc.get("quiz") as? Map<String, Any>
+            
+            val domanda = doc.getString("domanda") ?: quizObj?.get("domanda") as? String
+            
+            val rispostaCorretta = doc.getString("risposta_corretta") 
+                ?: doc.getString("rispostaCorretta")
+                ?: quizObj?.get("risposta_corretta") as? String
+                ?: quizObj?.get("rispostaCorretta") as? String
+                
             @Suppress("UNCHECKED_CAST")
-            val risposteErrate = doc.get("risposteErrate") as? List<String>
+            val risposteErrate = (doc.get("risposte_errate") ?: doc.get("risposteErrate") 
+                ?: quizObj?.get("risposte_errate") ?: quizObj?.get("risposteErrate")) as? List<String>
+                
+            val spiegazione = doc.getString("spiegazione") ?: quizObj?.get("spiegazione") as? String
+
             CuriositaRemota(
                 externalId       = doc.id,
                 titolo           = doc.getString("titolo") ?: "",
                 corpo            = doc.getString("corpo") ?: "",
                 categoria        = doc.getString("categoria") ?: "",
                 emoji            = doc.getString("emoji") ?: "",
-                domanda          = doc.getString("domanda"),
-                rispostaCorretta = doc.getString("rispostaCorretta"),
+                domanda          = domanda?.ifBlank { null },
+                rispostaCorretta = rispostaCorretta?.ifBlank { null },
                 risposteErrate   = risposteErrate,
-                spiegazione      = doc.getString("spiegazione")
+                spiegazione      = spiegazione?.ifBlank { null }
             )
         }
-    } catch (_: Exception) { emptyList() }
+    } catch (e: Exception) { 
+        Log.e("FirebaseManager", "Errore caricaTutteLeCuriositaRemote: ${e.message}")
+        emptyList() 
+    }
 
     private suspend fun incrementaVersione() {
         try {
@@ -779,8 +790,8 @@ object FirebaseManager {
                             if (quizDoc.exists()) {
                                 db.collection("curiosita").document(doc.id).update(mapOf(
                                     "domanda"          to quizDoc.getString("domanda"),
-                                    "rispostaCorretta" to quizDoc.getString("rispostaCorretta"),
-                                    "risposteErrate"   to quizDoc.get("risposteErrate"),
+                                    "risposta_corretta" to quizDoc.getString("rispostaCorretta"),
+                                    "risposte_errate"   to quizDoc.get("risposteErrate"),
                                     "spiegazione"      to quizDoc.getString("spiegazione")
                                 )).await()
                                 Log.d("Migration", "Migrato quiz per ${doc.id}")
@@ -790,7 +801,7 @@ object FirebaseManager {
                 }
             }
         } catch (e: Exception) {
-            Log.e("Migration", "Errore migrazione: \${e.message}")
+            Log.e("Migration", "Errore migrazione: ${e.message}")
         }
     }
 }
