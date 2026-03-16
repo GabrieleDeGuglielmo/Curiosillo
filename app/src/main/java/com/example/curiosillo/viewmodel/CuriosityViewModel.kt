@@ -65,13 +65,12 @@ class CuriosityViewModel(
             val categorie = prefs.categorieAttive.first()
 
             // Prioritizza la curiosita' con cui l'utente ha interagito (bookmark/nota)
-            // se non ancora imparata e compatibile con le categorie attive
+            // se non ancora imparata (anche se non compatibile con le categorie attive, per non perderla)
             val lastExtId = gamifPrefs.getLastInteractedExternalId()
             val c = if (lastExtId != null) {
                 val candidate = repo.getByExternalId(lastExtId)
-                val compatibile = categorie.isEmpty() ||
-                        (candidate != null && candidate.category in categorie)
-                if (candidate != null && !candidate.isRead && !candidate.isIgnorata && compatibile) {
+                // Se esiste e non è stata imparata, la mostriamo SEMPRE per evitare di perderla
+                if (candidate != null && !candidate.isRead && !candidate.isIgnorata) {
                     candidate
                 } else {
                     gamifPrefs.clearLastInteractedExternalId()
@@ -139,7 +138,8 @@ class CuriosityViewModel(
             _state.value = s.copy(curiosity = s.curiosity.copy(isBookmarked = nuovoStato))
             if (nuovoStato && !s.curiosity.isRead) {
                 s.curiosity.externalId?.let { gamifPrefs.setLastInteractedExternalId(it) }
-            } else if (!nuovoStato) {
+            } else if (!nuovoStato && s.curiosity.nota.isBlank()) {
+                // Rimuoviamo il "last interacted" solo se non c'è più né bookmark né nota
                 gamifPrefs.clearLastInteractedExternalId()
             }
         }
@@ -152,6 +152,9 @@ class CuriosityViewModel(
             _state.value = s.copy(curiosity = s.curiosity.copy(nota = testo))
             if (testo.isNotBlank() && !s.curiosity.isRead) {
                 s.curiosity.externalId?.let { gamifPrefs.setLastInteractedExternalId(it) }
+            } else if (testo.isBlank() && !s.curiosity.isBookmarked) {
+                 // Rimuoviamo il "last interacted" solo se non c'è più né bookmark né nota
+                 gamifPrefs.clearLastInteractedExternalId()
             }
         }
     }
