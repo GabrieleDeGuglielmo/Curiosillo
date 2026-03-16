@@ -43,8 +43,6 @@ class ProfileViewModel(
     private val _state = MutableStateFlow(ProfileUiState())
     val state: StateFlow<ProfileUiState> = _state.asStateFlow()
 
-    init { caricaStatistiche() }
-
     fun caricaStatistiche() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
