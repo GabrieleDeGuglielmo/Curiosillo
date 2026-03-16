@@ -1,5 +1,6 @@
 package com.example.curiosillo.ui.screens.curiosity
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -9,7 +10,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -128,31 +128,36 @@ private fun CategoriaCard(
     emojiOverride: String? = null,
     onClick:       () -> Unit
 ) {
-    val bgColore    = if (attiva) colore else colore.copy(alpha = 0.12f)
-    val testoColore = if (attiva) Color.White else colore
-    val emoji       = emojiOverride ?: emojiCategoria(nome)
+    // Animazione fluida dei colori
+    val animBgColore by animateColorAsState(
+        targetValue = if (attiva) colore else colore.copy(alpha = 0.12f),
+        label = "bg_anim"
+    )
+    val animTestoColore by animateColorAsState(
+        targetValue = if (attiva) Color.White else colore,
+        label = "testo_anim"
+    )
+    
+    val emoji = emojiOverride ?: emojiCategoria(nome)
 
-    Card(
-        onClick   = onClick,
-        modifier  = Modifier.fillMaxWidth().height(90.dp),
-        shape     = RoundedCornerShape(16.dp),
-        colors    = CardDefaults.cardColors(containerColor = bgColore),
-        elevation = CardDefaults.cardElevation(if (attiva) 6.dp else 0.dp)
+    // Usiamo una Surface piatta per evitare ombre/rettangoli di tonal elevation di M3
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().height(85.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = animBgColore,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
     ) {
-        Box(Modifier.fillMaxSize().padding(10.dp)) {
-            Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "$emoji  $nome",
-                        style      = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color      = testoColore
-                    )
-                    if (attiva) {
-                        Spacer(Modifier.width(6.dp))
-                        Icon(Icons.Default.Check, null, Modifier.size(16.dp), tint = Color.White)
-                    }
-                }
+        Box(Modifier.fillMaxSize().padding(10.dp), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "$emoji  $nome",
+                    style      = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color      = animTestoColore
+                )
+
                 // Indicatore completamento
                 if (completamento != null && completamento.second > 0) {
                     val (lette, totali) = completamento
@@ -169,7 +174,7 @@ private fun CategoriaCard(
                     Text(
                         "$perc%",
                         style    = MaterialTheme.typography.labelSmall,
-                        color    = testoColore.copy(alpha = 0.7f),
+                        color    = animTestoColore.copy(alpha = 0.7f),
                         fontSize = 9.sp
                     )
                 }
