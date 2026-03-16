@@ -45,7 +45,9 @@ class ProfileViewModel(
 
     fun caricaStatistiche() {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true)
+            // Mostra spinner solo al primo caricamento (quando non ci sono dati)
+            val primoCaricamento = _state.value.totalCuriosità == 0 && !_state.value.isLoggato
+            if (primoCaricamento) _state.value = _state.value.copy(isLoading = true)
 
             val user     = FirebaseManager.utenteCorrente
             val username = when {

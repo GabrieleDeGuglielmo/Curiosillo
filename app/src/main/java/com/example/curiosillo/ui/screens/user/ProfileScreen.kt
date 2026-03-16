@@ -33,16 +33,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.data.BadgeCatalogo
 import com.example.curiosillo.data.BadgeDefinizione
@@ -66,14 +66,10 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
     )
     val state by vm.state.collectAsState()
 
-    // Ricarica statistiche ogni volta che la schermata torna in foreground
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) vm.caricaStatistiche()
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    // Ricarica statistiche ogni volta che questa schermata e' in cima allo stack
+    val navBackStack by nav.currentBackStackEntryAsState()
+    LaunchedEffect(navBackStack) {
+        if (navBackStack?.destination?.route == "profile") vm.caricaStatistiche()
     }
 
     var showAdminSheet   by remember { mutableStateOf(false) }
