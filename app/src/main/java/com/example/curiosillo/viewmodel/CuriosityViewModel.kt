@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 sealed class CuriosityUiState {
     object Loading : CuriosityUiState()
     object Empty   : CuriosityUiState()
-    data class Success(val curiosity: Curiosity, val readCount: Int) : CuriosityUiState()
+    data class Success(val curiosity: Curiosity, val readCount: Int, val isRecuperata: Boolean = false) : CuriosityUiState()
     object Learned : CuriosityUiState()
 }
 
@@ -65,12 +65,17 @@ class CuriosityViewModel(
             val categorie = prefs.categorieAttive.first()
 
             // Prioritizza la curiosita' con cui l'utente ha interagito (bookmark/nota)
-            // se non ancora imparata (anche se non compatibile con le categorie attive, per non perderla)
+            // se non ancora imparata
             val lastExtId = gamifPrefs.getLastInteractedExternalId()
+            var isRecuperata = false
+            
             val c = if (lastExtId != null) {
                 val candidate = repo.getByExternalId(lastExtId)
-                // Se esiste e non è stata imparata, la mostriamo SEMPRE per evitare di perderla
                 if (candidate != null && !candidate.isRead && !candidate.isIgnorata) {
+                    // Se la pillola non appartiene alle categorie correnti, segnaliamo il recupero
+                    if (categorie.isNotEmpty() && candidate.category !in categorie) {
+                        isRecuperata = true
+                    }
                     candidate
                 } else {
                     gamifPrefs.clearLastInteractedExternalId()
@@ -87,7 +92,7 @@ class CuriosityViewModel(
                 } else {
                     resetGemini()
                 }
-                CuriosityUiState.Success(c, repo.curiositàImparate())
+                CuriosityUiState.Success(c, repo.curiositàImparate(), isRecuperata = isRecuperata)
             } else CuriosityUiState.Empty
         }
     }
@@ -139,7 +144,6 @@ class CuriosityViewModel(
             if (nuovoStato && !s.curiosity.isRead) {
                 s.curiosity.externalId?.let { gamifPrefs.setLastInteractedExternalId(it) }
             } else if (!nuovoStato && s.curiosity.nota.isBlank()) {
-                // Rimuoviamo il "last interacted" solo se non c'è più né bookmark né nota
                 gamifPrefs.clearLastInteractedExternalId()
             }
         }
@@ -153,7 +157,6 @@ class CuriosityViewModel(
             if (testo.isNotBlank() && !s.curiosity.isRead) {
                 s.curiosity.externalId?.let { gamifPrefs.setLastInteractedExternalId(it) }
             } else if (testo.isBlank() && !s.curiosity.isBookmarked) {
-                 // Rimuoviamo il "last interacted" solo se non c'è più né bookmark né nota
                  gamifPrefs.clearLastInteractedExternalId()
             }
         }
@@ -191,6 +194,11 @@ class CuriosityViewModel(
         val s = _state.value as? CuriosityUiState.Success ?: return
         val externalId = s.curiosity.externalId ?: return
         FirebaseHelper.inviaCommento(viewModelScope, _commentiState, externalId, testo)
+    }
+
+    fun dismissRecupero() {
+        val s = _state.value as? CuriosityUiState.Success ?: return
+        _state.value = s.copy(isRecuperata = false)
     }
 
     fun eliminaCommento(commentoId: String) {

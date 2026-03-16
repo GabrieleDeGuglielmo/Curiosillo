@@ -90,6 +90,23 @@ fun CuriosityScreen(nav: NavController) {
 
     // --- Dialogs ---
 
+    // Popup recupero pillola
+    if (state is CuriosityUiState.Success && (state as CuriosityUiState.Success).isRecuperata) {
+        AlertDialog(
+            onDismissRequest = { vm.dismissRecupero() },
+            icon  = { Text("🔄", fontSize = 42.sp) },
+            title = { Text("Pillola recuperata", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            text  = { Text("Questa pillola era stata modificata ma non imparata. Te la riproponiamo prima di passare alle nuove categorie!", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth()) },
+            confirmButton = {
+                Button(
+                    onClick = { vm.dismissRecupero() },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) { Text("Ho capito", fontWeight = FontWeight.Bold) }
+            }
+        )
+    }
+
     // Success dialog after hiding
     if (mostraAvvenutaAzioneIgnora) {
         AlertDialog(
