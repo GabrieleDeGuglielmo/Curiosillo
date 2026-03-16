@@ -188,10 +188,12 @@ object FirebaseManager {
                 .whereEqualTo("uid", uid)
                 .get().await()
             snapshot.forEach { doc ->
-                doc.reference.update(mapOf(
-                    "autore" to "Utente eliminato",
-                    "uid"    to ""
-                )).await()
+                if (doc.reference.path.contains("commenti/")) {
+                    doc.reference.update(mapOf(
+                        "autore" to "Utente eliminato",
+                        "uid"    to ""
+                    )).await()
+                }
             }
         } catch (_: Exception) {}
     }
@@ -355,7 +357,7 @@ object FirebaseManager {
             @Suppress("UNCHECKED_CAST")
             val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
             val idStr = questionId.toString()
-            if (idStr !in ids) { ids.add(idStr); ref.set(mapOf("ids" to ids)).await() }
+            if (idStr !in ids) { idStr !in ids; ids.add(idStr); ref.set(mapOf("ids" to ids)).await() }
         } catch (_: Exception) {}
     }
 
@@ -421,7 +423,7 @@ object FirebaseManager {
     suspend fun caricaTuttiICommentiModerazione(): List<Pair<String, List<Commento>>> = try {
         val snapshot = db.collectionGroup("lista").get().await()
         snapshot.documents
-            .filter { it.reference.path.contains("/commenti/") }
+            .filter { it.reference.path.contains("commenti/") }
             .groupBy { it.reference.parent.parent!!.id }
             .map { (exId, docs) ->
                 exId to docs.map { doc ->

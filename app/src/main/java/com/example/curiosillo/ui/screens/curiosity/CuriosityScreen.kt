@@ -59,7 +59,7 @@ fun CuriosityScreen(nav: NavController) {
     val ctx = LocalContext.current
     val app = ctx.applicationContext as CuriosityApplication
     val vm: CuriosityViewModel = viewModel(
-        factory = CuriosityViewModel.Factory(app.repository, app.categoryPrefs, app.gamificationEngine, app.geminiPrefs)
+        factory = CuriosityViewModel.Factory(app.repository, app.categoryPrefs, app.gamificationEngine, app.geminiPrefs, app.gamificationPrefs)
     )
     val state             by vm.state.collectAsState()
     val risultato         by vm.risultatoAzione.collectAsState()

@@ -4,9 +4,11 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 
 private val Context.gamificationStore by preferencesDataStore(name = "gamification_prefs")
 
@@ -17,7 +19,8 @@ class GamificationPreferences(private val context: Context) {
         val STREAK_CORRENTE = intPreferencesKey("streak_corrente")
         val STREAK_MASSIMA  = intPreferencesKey("streak_massima")
         val ULTIMO_ACCESSO  = longPreferencesKey("ultimo_accesso")
-        val RISPOSTE_FILA   = intPreferencesKey("risposte_fila")
+        val RISPOSTE_FILA          = intPreferencesKey("risposte_fila")
+        val LAST_INTERACTED_EXT_ID = stringPreferencesKey("last_interacted_ext_id")
     }
 
     val xpTotali:       Flow<Int> = context.gamificationStore.data.map { it[XP_TOTALI]       ?: 0 }
@@ -47,7 +50,7 @@ class GamificationPreferences(private val context: Context) {
                     (prefs[STREAK_CORRENTE] ?: 0) + 1
                 }
                 else -> {
-                    // Al primo avvio assoluto (ultimoGiorno == -1L), 
+                    // Al primo avvio assoluto (ultimoGiorno == -1L),
                     // impostiamo la streak a 1 e consideriamo l'aumento vero.
                     streakAumentata = true
                     1
@@ -76,13 +79,25 @@ class GamificationPreferences(private val context: Context) {
         }
     }
 
+    suspend fun getLastInteractedExternalId(): String? =
+        context.gamificationStore.data.first()[LAST_INTERACTED_EXT_ID]?.takeIf { it.isNotBlank() }
+
+    suspend fun setLastInteractedExternalId(externalId: String) {
+        context.gamificationStore.edit { it[LAST_INTERACTED_EXT_ID] = externalId }
+    }
+
+    suspend fun clearLastInteractedExternalId() {
+        context.gamificationStore.edit { it[LAST_INTERACTED_EXT_ID] = "" }
+    }
+
     suspend fun reset() {
         context.gamificationStore.edit { prefs ->
             prefs[XP_TOTALI]       = 0
             prefs[STREAK_CORRENTE] = 0
             prefs[STREAK_MASSIMA]  = 0
             prefs[ULTIMO_ACCESSO]  = -1L
-            prefs[RISPOSTE_FILA]   = 0
+            prefs[RISPOSTE_FILA]          = 0
+            prefs[LAST_INTERACTED_EXT_ID] = ""
         }
     }
 }
