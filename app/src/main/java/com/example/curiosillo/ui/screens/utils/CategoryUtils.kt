@@ -6,7 +6,7 @@ val LISTA_CATEGORIE = listOf(
     "Scienza", "Storia", "Animali", "Tecnologia",
     "Cibo", "Sport", "Arte", "Geografia", "Natura", 
     "Musica", "Cinema", "Letteratura", "Lingua", "Moda", 
-    "Vita quotidiana"
+    "Vita Quotidiana"
 ).sorted()
 
 fun emojiCategoria(categoria: String): String = when (categoria.lowercase()) {

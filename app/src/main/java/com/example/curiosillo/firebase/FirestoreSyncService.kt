@@ -28,11 +28,11 @@ class FirestoreSyncService(
         return try {
             val metaDoc      = db.collection("curiosita").document("_meta_").get().await()
             val versioneRemota = metaDoc.getLong("versione") ?: 1L
-            val versioneLocale = contentPrefs.getContentVersion()
+            val versioneLocale = contentPrefs.getContentVersion().toLong()
 
             val dbVuoto = repo.totaleCuriosità() == 0
-            // Sincronizza anche se la versione è uguale, per recuperare
-            // quiz mancanti da sync precedenti incomplete (domanda = null)
+            
+            // Forziamo la sync se la versione remota è superiore, o se mancano quiz.
             val quizMancanti = repo.quizNonRisposti() == 0 && !dbVuoto
             if (!dbVuoto && !quizMancanti && versioneRemota <= versioneLocale) {
                 return SyncResult.NessunaModifica
@@ -45,7 +45,6 @@ class FirestoreSyncService(
             var nuove      = 0
             var aggiornate = 0
 
-            // Quiz nella subcollection quiz/domanda - lettura in parallelo
             data class DocConQuiz(
                 val externalId: String,
                 val titolo: String, val corpo: String,
@@ -54,15 +53,14 @@ class FirestoreSyncService(
                 val risposteErrate: List<String>?, val spiegazione: String?
             )
 
-            // Quiz come campi flat nel documento padre
-            // Nomi campi Firestore: domanda, risposta_corretta, risposte_errate, spiegazione
             val docsConQuiz = snapshot.documents
                 .filter { it.id != "_meta_" }
                 .mapNotNull { doc ->
                     val titolo    = doc.getString("titolo")    ?: return@mapNotNull null
                     val corpo     = doc.getString("corpo")     ?: return@mapNotNull null
-                    val categoria = doc.getString("categoria") ?: ""
-                    val emoji     = doc.getString("emoji")     ?: ""
+                    val categoria = doc.getString("categoria") ?: "Generale"
+                    val emoji     = doc.getString("emoji")     ?: "✨"
+                    
                     @Suppress("UNCHECKED_CAST")
                     DocConQuiz(
                         externalId       = doc.id,
@@ -70,12 +68,16 @@ class FirestoreSyncService(
                         corpo            = corpo,
                         categoria        = categoria,
                         emoji            = emoji,
+                        // Utilizziamo i nomi campi corretti (CamelCase come in FirebaseManager)
                         domanda          = doc.getString("domanda"),
                         rispostaCorretta = doc.getString("risposta_corretta"),
                         risposteErrate   = doc.get("risposte_errate") as? List<String>,
                         spiegazione      = doc.getString("spiegazione")
                     )
                 }
+
+            // Manteniamo traccia degli ID presenti sul server per eventuale pulizia orfani
+            val remoteIds = docsConQuiz.map { it.externalId }
 
             for (d in docsConQuiz) {
                 val esistente = repo.getByExternalId(d.externalId)
@@ -98,10 +100,12 @@ class FirestoreSyncService(
                     }
                     nuove++
                 } else {
+                    // AGGIORNAMENTO: Qui aggiorniamo la categoria se è cambiata!
                     repo.updateCuriosita(esistente.copy(
                         title = d.titolo, body = d.corpo,
                         category = d.categoria, emoji = d.emoji
                     ))
+                    
                     if (d.domanda != null && d.rispostaCorretta != null) {
                         val qEsistente = repo.getQuizByCuriosityId(esistente.id)
                         val qNuovo = QuizQuestion(
@@ -121,11 +125,15 @@ class FirestoreSyncService(
                     aggiornate++
                 }
             }
-            Log.d("SyncDebug", "docsConQuiz size: ${docsConQuiz.size}")
-            Log.d("SyncDebug", "nuove: $nuove, aggiornate: $aggiornate")
+
+            // Pulizia orfani: se una pillola non è più sul server, la rimuoviamo in locale
+            repo.deleteMissing(remoteIds)
+
+            Log.d("SyncDebug", "Sincronizzazione completata: nuove=$nuove, aggiornate=$aggiornate")
             contentPrefs.setContentVersion(versioneRemota.toInt())
             SyncResult.Success(nuove, aggiornate)
         } catch (e: Exception) {
+            Log.e("SyncDebug", "Errore durante la sync: ${e.message}")
             SyncResult.Errore(e.message ?: "Errore sync")
         }
     }
