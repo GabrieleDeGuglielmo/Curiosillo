@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.data.GamificationPreferences
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.firebase.SyncManager
@@ -16,26 +17,29 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 sealed class AuthUiState {
     object Idle                              : AuthUiState()
     object Loading                           : AuthUiState()
     object EmailRecuperoInviata              : AuthUiState()
+    object VerificaEmailInviata              : AuthUiState()
     data class Successo(val user: FirebaseUser, val isNuovoUtente: Boolean) : AuthUiState()
     data class RichiedeUsername(val user: FirebaseUser, val suggestedUsername: String) : AuthUiState()
     data class Errore(val messaggio: String) : AuthUiState()
 }
 
 class AuthViewModel(
-    private val repo:       CuriosityRepository,
-    private val gamifPrefs: GamificationPreferences,
-    private val context:    Context
+    private val repo:         CuriosityRepository,
+    private val gamifPrefs:   GamificationPreferences,
+    private val contentPrefs: ContentPreferences,
+    private val context:      Context
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val state: StateFlow<AuthUiState> = _state.asStateFlow()
 
-    private val syncManager = SyncManager(repo, gamifPrefs)
+    private val syncManager = SyncManager(repo, gamifPrefs, contentPrefs)
 
     // ── Google Sign-In client ─────────────────────────────────────────────────
 
@@ -55,7 +59,13 @@ class AuthViewModel(
             val result = FirebaseManager.loginEmail(email, password)
             result.fold(
                 onSuccess = { user ->
-                    sincronizzaDopoLogin(user, isNuovo = false)
+                    if (!user.isEmailVerified) {
+                        user.sendEmailVerification().await()
+                        FirebaseManager.logout()
+                        _state.value = AuthUiState.VerificaEmailInviata
+                    } else {
+                        sincronizzaDopoLogin(user, isNuovo = false)
+                    }
                 },
                 onFailure = {
                     _state.value = AuthUiState.Errore(messaggioErrore(it.message))
@@ -81,7 +91,13 @@ class AuthViewModel(
             val result = FirebaseManager.registraEmail(email, password, username)
             result.fold(
                 onSuccess = { user ->
-                    sincronizzaDopoLogin(user, isNuovo = true)
+                    try {
+                        user.sendEmailVerification().await()
+                        FirebaseManager.logout()
+                        _state.value = AuthUiState.VerificaEmailInviata
+                    } catch (e: Exception) {
+                        _state.value = AuthUiState.Errore("Errore invio email verifica: ${e.message}")
+                    }
                 },
                 onFailure = {
                     _state.value = AuthUiState.Errore(messaggioErrore(it.message))
@@ -140,34 +156,42 @@ class AuthViewModel(
 
     private suspend fun sincronizzaDopoLogin(user: FirebaseUser, isNuovo: Boolean) {
         try {
-            if (isNuovo) syncManager.migraLocaleVersoCloud(user.uid)
-            else syncManager.ripristinaCloudVersoLocale(user.uid)
+            if (isNuovo) {
+                syncManager.migraLocaleVersoCloud(user.uid)
+            } else {
+                // Migrazione one-shot per utenti esistenti che aggiornano l'app
+                syncManager.migraLocaleVersoCloudSeNecessario(user.uid)
+                syncManager.ripristinaCloudVersoLocale(user.uid)
+            }
         } catch (_: Exception) {
-            // sync fallita — l'utente è loggato ugualmente, si ignora
+            // sync fallita — l'utente e' loggato ugualmente
         }
-        // Questo viene eseguito sempre, anche se il sync ha fallito
         _state.value = AuthUiState.Successo(user, isNuovo)
     }
 
     private fun messaggioErrore(raw: String?): String = when {
-        raw == null                              -> "Errore sconosciuto"
-        "email address is already" in raw        -> "Email già registrata"
-        "password is invalid" in raw             -> "Password errata"
-        "no user record" in raw                  -> "Account non trovato"
-        "badly formatted" in raw                 -> "Email non valida"
-        "at least 6 characters" in raw           -> "La password deve avere almeno 6 caratteri"
-        "network error" in raw.lowercase()       -> "Errore di rete — controlla la connessione"
-        "Username già in uso" in raw             -> "Username già in uso"
-        else                                     -> "Errore: $raw"
+        raw == null                                 -> "Errore sconosciuto"
+        "email address is already" in raw           -> "Email già registrata"
+        "password is invalid" in raw                -> "Credenziali errate"
+        "no user record" in raw                     -> "Credenziali errate"
+        "invalid-credential" in raw                 -> "Credenziali errate"
+        "badly formatted" in raw                    -> "Email non valida"
+        "incorrect, malformed" in raw               -> "Credenziali errate"
+        "at least 6 characters" in raw              -> "La password deve avere almeno 6 caratteri"
+        "network error" in raw.lowercase()          -> "Errore di rete — controlla la connessione"
+        "Username già in uso" in raw                -> "Username già in uso"
+        "too-many-requests" in raw.lowercase()      -> "Troppi tentativi falliti. Riprova più tardi."
+        else                                        -> "Errore: $raw"
     }
 
     class Factory(
-        private val repo:       CuriosityRepository,
-        private val gamifPrefs: GamificationPreferences,
-        private val context:    Context
+        private val repo:         CuriosityRepository,
+        private val gamifPrefs:   GamificationPreferences,
+        private val contentPrefs: ContentPreferences,
+        private val context:      Context
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(c: Class<T>): T =
-            AuthViewModel(repo, gamifPrefs, context) as T
+            AuthViewModel(repo, gamifPrefs, contentPrefs, context) as T
     }
 }

@@ -6,7 +6,6 @@ import com.example.curiosillo.data.DuelloStato
 import com.example.curiosillo.data.QuizQuestion
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow

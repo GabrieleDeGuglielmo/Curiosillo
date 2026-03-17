@@ -1,6 +1,11 @@
 package com.example.curiosillo.data
 
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Entity
+import androidx.room.Insert
+import androidx.room.PrimaryKey
+import androidx.room.Query
+
 
 @Entity(tableName = "quiz_session")
 data class QuizSession(

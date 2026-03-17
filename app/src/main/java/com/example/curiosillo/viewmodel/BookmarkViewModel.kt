@@ -9,6 +9,7 @@ import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 data class BookmarkUiState(
@@ -17,7 +18,8 @@ data class BookmarkUiState(
     val query:      String          = "",
     val categorieSelezionate: Set<String> = emptySet(),
     val isLoading:  Boolean         = true,
-    val dettaglio:  Curiosity?      = null   // pillola aperta nel bottom sheet
+    val dettaglio:  Curiosity?      = null,  // pillola aperta nel bottom sheet
+    val idInRimozione: Set<Int>     = emptySet() // card in uscita con animazione
 )
 
 class BookmarkViewModel(private val repo: CuriosityRepository) : ViewModel() {
@@ -76,9 +78,16 @@ class BookmarkViewModel(private val repo: CuriosityRepository) : ViewModel() {
 
     fun rimuoviBookmark(c: Curiosity) {
         viewModelScope.launch {
+            // Segna la card come in uscita per avviare AnimatedVisibility
+            _state.value = _state.value.copy(
+                idInRimozione = _state.value.idInRimozione + c.id
+            )
+            delay(280) // attende la fine dell'animazione
             repo.rimuoviBookmark(c)
-            chiudiDettaglio()
             carica()
+            _state.value = _state.value.copy(
+                idInRimozione = _state.value.idInRimozione - c.id
+            )
         }
     }
 

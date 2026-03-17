@@ -1,14 +1,29 @@
 package com.example.curiosillo.repository
 
 import com.example.curiosillo.data.*
+import com.example.curiosillo.firebase.FirebaseManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import androidx.room.withTransaction
+import kotlinx.coroutines.flow.Flow
 
-class CuriosityRepository(private val db: AppDatabase) {
+class CuriosityRepository(
+    private val db: AppDatabase,
+    private val appScope: CoroutineScope
+) {
 
     private val curDao        = db.curiosityDao()
     private val quizDao       = db.quizQuestionDao()
     private val quizAnswerDao = db.quizAnswerDao()
     private val badgeDao      = db.badgeDao()
     private val sessionDao    = db.quizSessionDao()
+
+    // Scrive su Firebase in background usando lo scope applicazione:
+    // non viene cancellato se il ViewModel viene distrutto
+    private fun syncCloud(block: suspend () -> Unit) {
+        val uid = FirebaseManager.uid ?: return
+        appScope.launch { try { block() } catch (_: Exception) {} }
+    }
 
     suspend fun initializeSeedData() { /* contenuti arrivano dal JSON remoto */ }
 
@@ -18,14 +33,29 @@ class CuriosityRepository(private val db: AppDatabase) {
         if (categorie.isEmpty()) curDao.getNext()
         else curDao.getNextFiltered(categorie.toList())
 
-    suspend fun markAsRead(c: Curiosity) =
+    suspend fun markAsRead(c: Curiosity) {
         curDao.update(c.copy(isRead = true, readAt = System.currentTimeMillis()))
+        val uid = FirebaseManager.uid ?: return
+        c.externalId?.let { syncCloud { FirebaseManager.aggiungiPillolaLetta(uid, it) } }
+    }
 
-    suspend fun toggleBookmark(c: Curiosity) =
-        curDao.update(c.copy(isBookmarked = !c.isBookmarked))
-
-    suspend fun rimuoviBookmark(c: Curiosity) =
+    suspend fun toggleBookmark(c: Curiosity) {
+        val nuovoStato = !c.isBookmarked
+        curDao.update(c.copy(isBookmarked = nuovoStato))
+        val uid = FirebaseManager.uid ?: return
+        c.externalId?.let { exId ->
+            syncCloud {
+                if (nuovoStato) FirebaseManager.aggiungiBookmark(uid, exId)
+                else FirebaseManager.rimuoviBookmark(uid, exId)
+            }
+        }
+    }
+    suspend fun countTotaliQuiz() = quizDao.countTotali()
+    suspend fun rimuoviBookmark(c: Curiosity) {
         curDao.update(c.copy(isBookmarked = false))
+        val uid = FirebaseManager.uid ?: return
+        c.externalId?.let { syncCloud { FirebaseManager.rimuoviBookmark(uid, it) } }
+    }
 
     suspend fun getBookmarked(): List<Curiosity> = curDao.getBookmarked()
 
@@ -39,14 +69,26 @@ class CuriosityRepository(private val db: AppDatabase) {
 
     suspend fun getCategorie(): List<String> = curDao.getCategorie()
 
-    suspend fun salvaNota(curiosity: Curiosity, nota: String) =
+    suspend fun salvaNota(curiosity: Curiosity, nota: String) {
         curDao.update(curiosity.copy(nota = nota))
+        val uid = FirebaseManager.uid ?: return
+        curiosity.externalId?.let { syncCloud { FirebaseManager.salvaNota(uid, it, nota) } }
+    }
 
     suspend fun setVoto(curiosity: Curiosity, voto: Int?) =
         curDao.update(curiosity.copy(voto = voto))
 
-    suspend fun toggleIgnora(curiosity: Curiosity) =
-        curDao.update(curiosity.copy(isIgnorata = !curiosity.isIgnorata))
+    suspend fun toggleIgnora(curiosity: Curiosity) {
+        val nuovoStato = !curiosity.isIgnorata
+        curDao.update(curiosity.copy(isIgnorata = nuovoStato))
+        val uid = FirebaseManager.uid ?: return
+        curiosity.externalId?.let { exId ->
+            syncCloud {
+                if (nuovoStato) FirebaseManager.aggiungiIgnorata(uid, exId)
+                else FirebaseManager.rimuoviIgnorata(uid, exId)
+            }
+        }
+    }
 
     suspend fun salvaApprofondimentoAi(curiosity: Curiosity, testo: String) =
         curDao.update(curiosity.copy(approfondimentoAi = testo))
@@ -62,6 +104,12 @@ class CuriosityRepository(private val db: AppDatabase) {
         else curDao.getPerRipassoFiltered(soglia, categorie.toList())
     }
 
+    fun getPerRipassoFlow(soglia: Long): Flow<List<Curiosity>> =
+        curDao.getPerRipassoFlow(soglia)
+
+    fun getPerRipassoFilteredFlow(soglia: Long, cats: List<String>): Flow<List<Curiosity>> =
+        curDao.getPerRipassoFilteredFlow(soglia, cats)
+
     /** Usato da SyncManager per migrare le pillole lette su Firebase */
     suspend fun getPilloleLette(): List<Curiosity> = curDao.getPilloleLette()
 
@@ -76,6 +124,51 @@ class CuriosityRepository(private val db: AppDatabase) {
     suspend fun insertCuriosita(c: Curiosity): Long = curDao.insert(c)
 
     suspend fun updateCuriosita(c: Curiosity) = curDao.update(c)
+
+    /**
+     * Aggiorna una pillola locale con i dati provenienti da Firebase (Admin).
+     * Preserva lo stato dell'utente (isRead, bookmark, note, ecc).
+     */
+    suspend fun syncLocaleConRemoto(c: FirebaseManager.CuriositaRemota) {
+        db.withTransaction {
+            val locale = curDao.getByExternalId(c.externalId)
+            val curId: Int = if (locale == null) {
+                curDao.insert(Curiosity(
+                    externalId = c.externalId,
+                    title = c.titolo,
+                    body = c.corpo,
+                    category = c.categoria,
+                    emoji = c.emoji
+                )).toInt()
+            } else {
+                curDao.update(locale.copy(
+                    title = c.titolo,
+                    body = c.corpo,
+                    category = c.categoria,
+                    emoji = c.emoji
+                ))
+                locale.id
+            }
+
+            // Sincronizza anche il quiz se presente
+            if (c.domanda != null) {
+                val qEsistente = quizDao.getByCuriosityId(curId)
+                val quiz = QuizQuestion(
+                    id = qEsistente?.id ?: 0,
+                    curiosityId = curId,
+                    questionText = c.domanda,
+                    correctAnswer = c.rispostaCorretta ?: "",
+                    wrongAnswer1 = c.risposteErrate?.getOrNull(0) ?: "",
+                    wrongAnswer2 = c.risposteErrate?.getOrNull(1) ?: "",
+                    wrongAnswer3 = c.risposteErrate?.getOrNull(2) ?: "",
+                    explanation = c.spiegazione ?: "",
+                    category = c.categoria
+                )
+                if (qEsistente != null) quizDao.update(quiz)
+                else quizDao.insert(quiz)
+            }
+        }
+    }
 
     suspend fun getQuizByCuriosityId(curiosityId: Int): QuizQuestion? =
         quizDao.getByCuriosityId(curiosityId)
@@ -97,8 +190,11 @@ class CuriosityRepository(private val db: AppDatabase) {
     suspend fun countAvailableQuestions(categorie: Set<String>): Int =
         quizDao.countAvailable()
 
-    suspend fun salvaRisposta(questionId: Int, isCorrect: Boolean) =
+    suspend fun salvaRisposta(questionId: Int, isCorrect: Boolean) {
         quizAnswerDao.inserisci(QuizAnswer(questionId = questionId, isCorrect = isCorrect))
+        val uid = FirebaseManager.uid ?: return
+        syncCloud { FirebaseManager.aggiungiQuizRisposto(uid, questionId) }
+    }
 
     // ── Sessioni quiz ─────────────────────────────────────────────────────────
 
@@ -128,10 +224,32 @@ class CuriosityRepository(private val db: AppDatabase) {
 
     suspend fun getTutteLeCuriosita(): List<Curiosity> = curDao.getTutte()
 
-    suspend fun ripristinaIgnorata(c: Curiosity) =
+    suspend fun ripristinaIgnorata(c: Curiosity) {
         curDao.update(c.copy(isIgnorata = false))
+        val uid = FirebaseManager.uid ?: return
+        c.externalId?.let { syncCloud { FirebaseManager.rimuoviIgnorata(uid, it) } }
+    }
 
     suspend fun resetBadge() = badgeDao.resetTutti()
+
+    // ── Metodi silent (solo Room, no Firebase — usati dal ripristino cloud) ────
+
+    suspend fun markAsReadSilent(c: Curiosity) =
+        curDao.update(c.copy(isRead = true, readAt = System.currentTimeMillis()))
+
+    suspend fun setBookmarkSilent(c: Curiosity, valore: Boolean) =
+        curDao.update(c.copy(isBookmarked = valore))
+
+    suspend fun setIgnorataSilent(c: Curiosity, valore: Boolean) =
+        curDao.update(c.copy(isIgnorata = valore))
+
+    suspend fun setNotaSilent(c: Curiosity, nota: String) =
+        curDao.update(c.copy(nota = nota))
+
+    suspend fun salvaRispostaSilent(questionId: Int) {
+        // Inserisce solo se non gia' presente (IGNORE strategy)
+        quizAnswerDao.inserisci(QuizAnswer(questionId = questionId, isCorrect = true))
+    }
 
     // ── Reset ─────────────────────────────────────────────────────────────────
 

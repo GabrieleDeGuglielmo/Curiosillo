@@ -2,8 +2,12 @@ package com.example.curiosillo.ui.screens
 
 import android.content.Intent
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -54,7 +58,6 @@ fun DuelloScreen(nav: NavController) {
 
     var showAbbandonaDialog by remember { mutableStateOf(false) }
 
-    // Back fisico: durante partita/countdown chiede conferma, altrimenti annulla e torna indietro
     BackHandler(enabled = inPartita || inAttesa) {
         if (inPartita) showAbbandonaDialog = true
         else { vm.abbandonaDuello(); nav.popBackStack() }
@@ -70,7 +73,7 @@ fun DuelloScreen(nav: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Duello") },
+                title = { Text("Duello", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = {
                         val inP = state is DuelloUiState.InCorso
@@ -78,7 +81,7 @@ fun DuelloScreen(nav: NavController) {
                                 || state is DuelloUiState.InCountdown
                         if (inP) showAbbandonaDialog = true
                         else { vm.annullaRicerca(); nav.popBackStack() }
-                    }) {
+                    }, modifier = Modifier.minimumInteractiveComponentSize()) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
                     }
                 },
@@ -97,7 +100,6 @@ fun DuelloScreen(nav: NavController) {
                 .background(gradientBg)
                 .padding(pad)
         ) {
-            // ── Contenuto principale ──────────────────────────────────────────
             when (val s = state) {
                 is DuelloUiState.Idle -> LobbyContent(
                     onCasuale = { vm.cercaAvversarioCasuale() },
@@ -132,7 +134,7 @@ fun DuelloScreen(nav: NavController) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.padding(32.dp)
                     ) {
-                        Text("⚠️", fontSize = 48.sp)
+                        Text("⚠️", style = MaterialTheme.typography.displaySmall)
                         Spacer(Modifier.height(16.dp))
                         Text(
                             s.messaggio,
@@ -140,17 +142,16 @@ fun DuelloScreen(nav: NavController) {
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Spacer(Modifier.height(24.dp))
-                        Button(onClick = { vm.reset() }) { Text("Torna indietro") }
+                        Button(onClick = { vm.reset() }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Torna indietro", style = MaterialTheme.typography.labelLarge) }
                     }
                 }
             }
 
-            // ── Dialog conferma abbandono ─────────────────────────────────────
             if (showAbbandonaDialog) {
                 AlertDialog(
                     onDismissRequest = { showAbbandonaDialog = false },
-                    title = { Text("Abbandona il duello?") },
-                    text  = { Text("Se esci ora, il duello verrà annullato e l'avversario sarà avvisato.") },
+                    title = { Text("Abbandona il duello?", style = MaterialTheme.typography.headlineSmall) },
+                    text  = { Text("Se esci ora, il duello verrà annullato e l'avversario sarà avvisato.", style = MaterialTheme.typography.bodyMedium) },
                     confirmButton = {
                         Button(
                             onClick = {
@@ -160,21 +161,18 @@ fun DuelloScreen(nav: NavController) {
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error
-                            )
-                        ) { Text("Abbandona") }
+                            ),
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        ) { Text("Abbandona", style = MaterialTheme.typography.labelLarge) }
                     },
                     dismissButton = {
-                        TextButton(onClick = { showAbbandonaDialog = false }) { Text("Resta") }
+                        TextButton(onClick = { showAbbandonaDialog = false }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Resta", style = MaterialTheme.typography.labelLarge) }
                     }
                 )
             }
-
-
         }
     }
 }
-
-// ── Lobby ─────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -191,7 +189,7 @@ private fun LobbyContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("⚔️", fontSize = 64.sp)
+        Text("⚔️", style = MaterialTheme.typography.displayMedium)
         Spacer(Modifier.height(16.dp))
         Text(
             "Modalità Duello",
@@ -210,34 +208,35 @@ private fun LobbyContent(
 
         Button(
             onClick  = onCasuale,
-            modifier = Modifier.fillMaxWidth().height(58.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
             shape    = RoundedCornerShape(16.dp)
         ) {
             Icon(Icons.Default.Search, null, Modifier.size(22.dp))
             Spacer(Modifier.width(10.dp))
-            Text("Cerca avversario casuale", style = MaterialTheme.typography.titleMedium)
+            // Text wrapping abilitato
+            Text("Cerca avversario casuale", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
 
         Spacer(Modifier.height(14.dp))
 
         OutlinedButton(
             onClick  = onAmico,
-            modifier = Modifier.fillMaxWidth().height(58.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
             shape    = RoundedCornerShape(16.dp)
         ) {
             Icon(Icons.Default.Person, null, Modifier.size(22.dp))
             Spacer(Modifier.width(10.dp))
-            Text("Crea stanza per un amico", style = MaterialTheme.typography.titleMedium)
+            Text("Crea stanza per un amico", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
 
         Spacer(Modifier.height(14.dp))
 
         OutlinedButton(
             onClick  = { mostraInputCodice = !mostraInputCodice },
-            modifier = Modifier.fillMaxWidth().height(58.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
             shape    = RoundedCornerShape(16.dp)
         ) {
-            Text("Inserisci codice stanza", style = MaterialTheme.typography.titleMedium)
+            Text("Inserisci codice stanza", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
 
         AnimatedVisibility(visible = mostraInputCodice) {
@@ -246,7 +245,7 @@ private fun LobbyContent(
                 OutlinedTextField(
                     value         = codiceInput,
                     onValueChange = { codiceInput = it.uppercase().take(6) },
-                    placeholder   = { Text("Es. ABCDEF") },
+                    placeholder   = { Text("Es. ABCDEF", style = MaterialTheme.typography.bodyMedium) },
                     label         = { Text("Codice stanza") },
                     singleLine    = true,
                     modifier      = Modifier.fillMaxWidth(),
@@ -256,17 +255,15 @@ private fun LobbyContent(
                 Button(
                     onClick  = { if (codiceInput.length == 6) onCodice(codiceInput) },
                     enabled  = codiceInput.length == 6,
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
                     shape    = RoundedCornerShape(14.dp)
                 ) {
-                    Text("Unisciti")
+                    Text("Unisciti", style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
     }
 }
-
-// ── Attesa avversario ─────────────────────────────────────────────────────────
 
 @Composable
 private fun AttesaContent(
@@ -290,7 +287,7 @@ private fun AttesaContent(
             label         = "alpha"
         )
 
-        Text("⏳", fontSize = 56.sp)
+        Text("⏳", style = MaterialTheme.typography.displaySmall)
         Spacer(Modifier.height(20.dp))
         Text(
             if (isCasuale) "In attesa di un avversario..." else "In attesa che l'amico si unisca...",
@@ -319,7 +316,7 @@ private fun AttesaContent(
                 Text(
                     stato.codice,
                     modifier      = Modifier.padding(horizontal = 32.dp, vertical = 16.dp),
-                    fontSize      = 38.sp,
+                    style         = MaterialTheme.typography.displayMedium,
                     fontWeight    = FontWeight.ExtraBold,
                     letterSpacing = 8.sp,
                     color         = MaterialTheme.colorScheme.onPrimaryContainer
@@ -329,11 +326,12 @@ private fun AttesaContent(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
                     onClick = { clipboard.setText(AnnotatedString(stato.codice)) },
-                    shape   = RoundedCornerShape(12.dp)
+                    shape   = RoundedCornerShape(12.dp),
+                    modifier = Modifier.heightIn(min = 48.dp)
                 ) {
                     Icon(Icons.Default.ContentCopy, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Copia")
+                    Text("Copia", style = MaterialTheme.typography.labelLarge)
                 }
                 OutlinedButton(
                     onClick = {
@@ -346,23 +344,22 @@ private fun AttesaContent(
                         }
                         context.startActivity(Intent.createChooser(intent, "Condividi codice"))
                     },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.heightIn(min = 48.dp)
                 ) {
                     Icon(Icons.Default.Share, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Condividi")
+                    Text("Condividi", style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
 
         Spacer(Modifier.height(40.dp))
-        TextButton(onClick = onAnnulla) {
-            Text("Annulla", color = MaterialTheme.colorScheme.error)
+        TextButton(onClick = onAnnulla, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text("Annulla", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
         }
     }
 }
-
-// ── Partita ───────────────────────────────────────────────────────────────────
 
 @Composable
 private fun PartitaContent(
@@ -421,7 +418,7 @@ private fun PartitaContent(
                     .border(2.dp, timerColor, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text("${stato.secondiRimasti}", fontSize = 22.sp, color = timerColor)
+                Text("${stato.secondiRimasti}", style = MaterialTheme.typography.titleLarge, color = timerColor)
             }
             PunteggioChip(
                 user      = avvUser,
@@ -480,7 +477,7 @@ private fun PartitaContent(
 
             Card(
                 onClick   = { if (!haRisposto) onRisposta(risposta) },
-                modifier  = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                modifier  = Modifier.fillMaxWidth().padding(vertical = 5.dp).heightIn(min = 48.dp),
                 shape     = RoundedCornerShape(14.dp),
                 colors    = CardDefaults.cardColors(containerColor = bgColor),
                 elevation = CardDefaults.cardElevation(if (haRisposto) 0.dp else 2.dp)
@@ -492,6 +489,7 @@ private fun PartitaContent(
                         .fillMaxWidth(),
                     style      = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (isSelezionata) FontWeight.Bold else FontWeight.Normal,
+                    textAlign  = TextAlign.Center,
                     color      = when {
                         isSelezionata || (haRisposto && isCorretta) -> Color.White
                         else -> MaterialTheme.colorScheme.onSurface
@@ -532,8 +530,6 @@ private fun PunteggioChip(user: String, punteggio: Int, isMe: Boolean) {
     }
 }
 
-// ── Pausa tra domande ─────────────────────────────────────────────────────────
-
 @Composable
 private fun PausaContent(stato: DuelloUiState.Pausa) {
     val isCorretta    = stato.eraCorretta
@@ -564,7 +560,7 @@ private fun PausaContent(stato: DuelloUiState.Pausa) {
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(32.dp)
         ) {
-            Text(emoji, fontSize = 64.sp)
+            Text(emoji, style = MaterialTheme.typography.displayLarge)
             Spacer(Modifier.height(16.dp))
             Text(
                 titolo,
@@ -636,8 +632,6 @@ private fun PausaContent(stato: DuelloUiState.Pausa) {
     }
 }
 
-// ── Risultati ─────────────────────────────────────────────────────────────────
-
 @Composable
 private fun RisultatiContent(
     stato:   DuelloUiState.Risultati,
@@ -654,7 +648,7 @@ private fun RisultatiContent(
     ) {
         Text(
             when { pareggio -> "🤝"; haVinto -> "🏆"; else -> "😔" },
-            fontSize = 72.sp
+            style = MaterialTheme.typography.displayLarge
         )
         Spacer(Modifier.height(16.dp))
         Text(
@@ -690,22 +684,23 @@ private fun RisultatiContent(
         Spacer(Modifier.height(36.dp))
         Button(
             onClick  = onRivai,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
             shape    = RoundedCornerShape(16.dp)
         ) {
             Text(
                 "Gioca ancora",
-                style      = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                style      = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                textAlign  = TextAlign.Center
             )
         }
         Spacer(Modifier.height(12.dp))
         OutlinedButton(
             onClick  = onEsci,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
             shape    = RoundedCornerShape(16.dp)
         ) {
-            Text("Esci", style = MaterialTheme.typography.titleMedium)
+            Text("Esci", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
     }
 }
@@ -732,7 +727,7 @@ private fun RisultatoCard(
             Modifier.padding(16.dp).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (haVinto) Text("🏆", fontSize = 24.sp)
+            if (haVinto) Text("🏆", style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(4.dp))
             Text(
                 user,
@@ -746,7 +741,7 @@ private fun RisultatoCard(
             Spacer(Modifier.height(8.dp))
             Text(
                 "$punteggio/$totale",
-                fontSize   = 36.sp,
+                style      = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.ExtraBold,
                 color      = if (haVinto) Color.White
                 else MaterialTheme.colorScheme.onSurfaceVariant
@@ -760,8 +755,6 @@ private fun RisultatoCard(
         }
     }
 }
-
-// ── Countdown pre-partita ─────────────────────────────────────────────────────
 
 @Composable
 private fun CountdownContent(stato: DuelloUiState.InCountdown) {
@@ -783,7 +776,7 @@ private fun CountdownContent(stato: DuelloUiState.InCountdown) {
                 Modifier.padding(horizontal = 48.dp, vertical = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("⚔️", fontSize = 52.sp)
+                Text("⚔️", style = MaterialTheme.typography.displayMedium)
                 Spacer(Modifier.height(12.dp))
                 Text(
                     "Avversario trovato!",
@@ -800,7 +793,7 @@ private fun CountdownContent(stato: DuelloUiState.InCountdown) {
                 Spacer(Modifier.height(20.dp))
                 Text(
                     "${stato.secondiRimasti}",
-                    fontSize   = 72.sp,
+                    style      = MaterialTheme.typography.displayLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color      = MaterialTheme.colorScheme.primary
                 )

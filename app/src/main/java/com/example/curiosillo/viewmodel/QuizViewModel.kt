@@ -7,6 +7,8 @@ import com.example.curiosillo.data.CategoryPreferences
 import com.example.curiosillo.domain.GamificationEngine
 import com.example.curiosillo.domain.RisultatoAzione
 import com.example.curiosillo.repository.CuriosityRepository
+import com.example.curiosillo.ui.screens.utils.SegnalazioneHelper
+import com.example.curiosillo.ui.screens.utils.SegnalazioneUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +29,7 @@ sealed class QuizUiState {
     object NoQuestions : QuizUiState()
     data class Question(val question: QuizUiModel, val current: Int, val total: Int, val score: Int) : QuizUiState()
     data class Answered(val question: QuizUiModel, val selectedAnswer: String,
-        val isCorrect: Boolean, val current: Int, val total: Int, val score: Int) : QuizUiState()
+                        val isCorrect: Boolean, val current: Int, val total: Int, val score: Int) : QuizUiState()
     data class Summary(val score: Int, val total: Int) : QuizUiState()
 }
 
@@ -42,6 +44,10 @@ class QuizViewModel(
 
     private val _risultatoAzione = MutableStateFlow<RisultatoAzione?>(null)
     val risultatoAzione: StateFlow<RisultatoAzione?> = _risultatoAzione.asStateFlow()
+
+    // Stato per la segnalazione
+    private val _segnalazioneState = MutableStateFlow<SegnalazioneUiState>(SegnalazioneUiState.Idle)
+    val segnalazioneState: StateFlow<SegnalazioneUiState> = _segnalazioneState.asStateFlow()
 
     private var questions    = listOf<QuizUiModel>()
     private var currentIndex = 0
@@ -77,7 +83,9 @@ class QuizViewModel(
         val ok = sel == s.question.correctAnswer
         if (ok) score++
         viewModelScope.launch {
-            repo.salvaRisposta(s.question.questionId, ok)
+            // Salviamo su quiz_answer SOLO se corretto: il JOIN esclude solo i corretti,
+            // quelli sbagliati rimangono tra i quiz non risposti
+            if (ok) repo.salvaRisposta(s.question.questionId, true)
             val risultato = engine.onRispostaQuiz(ok)
             _risultatoAzione.value = risultato
         }
@@ -96,6 +104,20 @@ class QuizViewModel(
     }
 
     fun consumaRisultato() { _risultatoAzione.value = null }
+
+    // Metodi per la segnalazione
+    fun inviaSegnalazione(tipo: String, testo: String) {
+        val qId = when (val s = _state.value) {
+            is QuizUiState.Question -> s.question.questionId.toString()
+            is QuizUiState.Answered -> s.question.questionId.toString()
+            else -> return
+        }
+        SegnalazioneHelper.invia(viewModelScope, _segnalazioneState, qId, "quiz_$tipo", testo)
+    }
+
+    fun dismissSegnalazione() {
+        SegnalazioneHelper.dismiss(_segnalazioneState)
+    }
 
     private fun push() {
         _state.value = if (currentIndex < questions.size)

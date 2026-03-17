@@ -3,15 +3,13 @@ package com.example.curiosillo.ui.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -19,7 +17,13 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SportsMartialArts
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LargeFloatingActionButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -27,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -40,7 +46,7 @@ data class NavItem(
 val navItems = listOf(
     NavItem("novita",  Icons.Default.AutoAwesome,       "Novità"),
     NavItem("ripasso", Icons.Default.Refresh,           "Ripasso"),
-    NavItem("home",    Icons.Default.Home,              ""),
+    NavItem("home",    Icons.Default.Home,              "Home"),
     NavItem("duello",  Icons.Default.SportsMartialArts, "Duello"),
     NavItem("profile", Icons.Default.Person,            "Profilo")
 )
@@ -52,16 +58,10 @@ fun CuriosilloBottomBar(nav: NavController) {
     val backStack by nav.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
 
-    // Altezza adattiva: base 68dp + padding sistema (gesture bar / tasti)
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
-    val barHeight      = when {
-        screenHeightDp < 640 -> 76.dp   // schermi piccoli
-        else                 -> 89.dp   // schermi normali/grandi
-    }
-    val fabOffset      = when {
-        screenHeightDp < 640 -> (-32).dp
-        else                 -> (-36).dp
-    }
+    // Usiamo heightIn invece di height fissa per permettere l'espansione se il testo va a capo
+    val minBarHeight   = if (screenHeightDp < 640) 80.dp else 94.dp
+    val fabOffset      = if (screenHeightDp < 640) (-34).dp else (-40).dp
 
     Box(
         modifier = Modifier
@@ -69,19 +69,18 @@ fun CuriosilloBottomBar(nav: NavController) {
             .wrapContentHeight(),
         contentAlignment = Alignment.BottomCenter
     ) {
-        // 1. La barra di navigazione con padding per gesture/nav bar di sistema
         NavigationBar(
             containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 12.dp,
             modifier = Modifier
-                .height(barHeight)
+                .heightIn(min = minBarHeight)
                 .navigationBarsPadding()
         ) {
             navItems.forEachIndexed { index, item ->
                 val isSelected = currentRoute == item.route
 
                 if (index == 2) {
-                    // Segnaposto centrale con ETICHETTA ripristinata
+                    // Segnaposto centrale per il FAB - Nessun label per evitare doppioni sotto l'icona
                     NavigationBarItem(
                         selected = isSelected,
                         onClick  = {
@@ -90,17 +89,8 @@ fun CuriosilloBottomBar(nav: NavController) {
                                 launchSingleTop = true
                             }
                         },
-                        // Spacer ridotto per lasciare spazio all'etichetta sotto il FAB
-                        icon  = { Spacer(Modifier.size(40.dp)) },
-                        label = {
-                            Text(
-                                item.label,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
-                        },
+                        icon  = { Spacer(Modifier.size(42.dp)) },
+                        label = null,
                         colors = NavigationBarItemDefaults.colors(
                             indicatorColor = Color.Transparent
                         )
@@ -120,7 +110,10 @@ fun CuriosilloBottomBar(nav: NavController) {
                             Text(
                                 item.label,
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium
+                                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     )
@@ -128,7 +121,6 @@ fun CuriosilloBottomBar(nav: NavController) {
             }
         }
 
-        // 2. Pulsante Home (FAB) rimpicciolito
         val isHomeSelected = currentRoute == "home"
 
         LargeFloatingActionButton(
@@ -150,7 +142,7 @@ fun CuriosilloBottomBar(nav: NavController) {
             Icon(
                 Icons.Default.Home,
                 contentDescription = "Home",
-                modifier = Modifier.size(36.dp) // Icona rimpicciolita (era 42.dp)
+                modifier = Modifier.size(36.dp)
             )
         }
     }

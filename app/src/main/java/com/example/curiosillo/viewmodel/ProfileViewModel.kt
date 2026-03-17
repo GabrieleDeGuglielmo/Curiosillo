@@ -1,9 +1,11 @@
 package com.example.curiosillo.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.curiosillo.data.BadgeSbloccato
+import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.data.GamificationPreferences
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.repository.CuriosityRepository
@@ -33,18 +35,19 @@ data class ProfileUiState(
 )
 
 class ProfileViewModel(
-    private val repo:       CuriosityRepository,
-    private val gamifPrefs: GamificationPreferences
+    private val repo:         CuriosityRepository,
+    private val gamifPrefs:   GamificationPreferences,
+    private val contentPrefs: ContentPreferences
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileUiState())
     val state: StateFlow<ProfileUiState> = _state.asStateFlow()
 
-    init { caricaStatistiche() }
-
     fun caricaStatistiche() {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true)
+            // Mostra spinner solo al primo caricamento (quando non ci sono dati)
+            val primoCaricamento = _state.value.totalCuriosità == 0 && !_state.value.isLoggato
+            if (primoCaricamento) _state.value = _state.value.copy(isLoading = true)
 
             val user     = FirebaseManager.utenteCorrente
             val username = when {
@@ -73,6 +76,8 @@ class ProfileViewModel(
                 isGoogleUser      = FirebaseManager.isGoogleUser(),
                 isLoading         = false
             )
+            Log.d("SyncDebug", "quizNonRisposti: ${repo.quizNonRisposti()}")
+            Log.d("SyncDebug", "quiz_question count: ${repo.countTotaliQuiz()}")
         }
     }
 
@@ -91,8 +96,17 @@ class ProfileViewModel(
     fun cambiaPassword(nuovaPass: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             val res = FirebaseManager.cambiaPassword(nuovaPass)
-            if (res.isSuccess) onSuccess()
-            else onError(res.exceptionOrNull()?.message ?: "Errore nel cambio password")
+            if (res.isSuccess) {
+                onSuccess()
+            } else {
+                val raw = res.exceptionOrNull()?.message ?: ""
+                val msg = when {
+                    "recent login" in raw.lowercase() -> "Per motivi di sicurezza, questa operazione richiede un accesso recente. Disconnettiti e rientra prima di riprovare."
+                    "at least 6 characters" in raw.lowercase() -> "La password deve avere almeno 6 caratteri."
+                    else -> "Errore nel cambio password: $raw"
+                }
+                onError(msg)
+            }
         }
     }
 
@@ -100,6 +114,8 @@ class ProfileViewModel(
         viewModelScope.launch {
             repo.resetProgressi()
             gamifPrefs.reset()
+            FirebaseManager.uid?.let { FirebaseManager.resetProgressiUtente(it) }
+            contentPrefs.resetCloudMigrazione()
             caricaStatistiche()
         }
     }
@@ -109,26 +125,17 @@ class ProfileViewModel(
         onLogout()
     }
 
-    /**
-     * Elimina tutti i dati Firestore dell'utente, poi cancella l'account Firebase Auth.
-     * Infine resetta i dati locali e chiama onEliminato per navigare al login.
-     */
     fun eliminaAccount(onEliminato: () -> Unit) {
         val uid = FirebaseManager.uid ?: return
         viewModelScope.launch {
             _state.value = _state.value.copy(isEliminazioneInCorso = true)
             try {
-                // 1. Anonimizza commenti pubblici
                 FirebaseManager.anonimizzaCommentiUtente(uid)
-                // 2. Cancella dati Firestore
                 FirebaseManager.eliminaDatiUtente(uid)
-                // 2. Resetta dati locali
                 repo.resetProgressi()
                 gamifPrefs.reset()
-                // 3. Cancella account Firebase Auth
                 FirebaseManager.eliminaAccount()
             } catch (_: Exception) {
-                // Se fallisce l'eliminazione dell'account Auth, logout comunque
                 FirebaseManager.logout()
             }
             _state.value = _state.value.copy(isEliminazioneInCorso = false)
@@ -137,11 +144,12 @@ class ProfileViewModel(
     }
 
     class Factory(
-        private val repo:       CuriosityRepository,
-        private val gamifPrefs: GamificationPreferences
+        private val repo:         CuriosityRepository,
+        private val gamifPrefs:   GamificationPreferences,
+        private val contentPrefs: ContentPreferences
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(c: Class<T>): T =
-            ProfileViewModel(repo, gamifPrefs) as T
+            ProfileViewModel(repo, gamifPrefs, contentPrefs) as T
     }
 }

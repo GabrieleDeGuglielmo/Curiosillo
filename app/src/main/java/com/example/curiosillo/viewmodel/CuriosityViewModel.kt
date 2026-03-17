@@ -4,13 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.curiosillo.data.CategoryPreferences
+import com.example.curiosillo.data.GamificationPreferences
 import com.example.curiosillo.data.Curiosity
 import com.example.curiosillo.data.GeminiPreferences
 import com.example.curiosillo.domain.GamificationEngine
 import com.example.curiosillo.domain.RisultatoAzione
 import com.example.curiosillo.repository.CuriosityRepository
-import com.example.curiosillo.ui.screens.SegnalazioneHelper
-import com.example.curiosillo.ui.screens.SegnalazioneUiState
+import com.example.curiosillo.ui.screens.utils.CommentiUiState
+import com.example.curiosillo.ui.screens.utils.SegnalazioneHelper
+import com.example.curiosillo.ui.screens.utils.SegnalazioneUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,15 +23,16 @@ import kotlinx.coroutines.launch
 sealed class CuriosityUiState {
     object Loading : CuriosityUiState()
     object Empty   : CuriosityUiState()
-    data class Success(val curiosity: Curiosity, val readCount: Int) : CuriosityUiState()
+    data class Success(val curiosity: Curiosity, val readCount: Int, val isRecuperata: Boolean = false) : CuriosityUiState()
     object Learned : CuriosityUiState()
 }
 
 class CuriosityViewModel(
-    private val repo:   CuriosityRepository,
-    private val prefs:  CategoryPreferences,
-    private val engine: GamificationEngine,
-    private val geminiPrefs: GeminiPreferences
+    private val repo:        CuriosityRepository,
+    private val prefs:       CategoryPreferences,
+    private val engine:      GamificationEngine,
+    private val geminiPrefs: GeminiPreferences,
+    private val gamifPrefs:  GamificationPreferences
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<CuriosityUiState>(CuriosityUiState.Loading)
@@ -60,7 +63,28 @@ class CuriosityViewModel(
         viewModelScope.launch {
             _state.value = CuriosityUiState.Loading
             val categorie = prefs.categorieAttive.first()
-            val c = repo.getNext(categorie)
+
+            // Prioritizza la curiosita' con cui l'utente ha interagito (bookmark/nota)
+            // se non ancora imparata
+            val lastExtId = gamifPrefs.getLastInteractedExternalId()
+            var isRecuperata = false
+            
+            val c = if (lastExtId != null) {
+                val candidate = repo.getByExternalId(lastExtId)
+                if (candidate != null && !candidate.isRead && !candidate.isIgnorata) {
+                    // Se la pillola non appartiene alle categorie correnti, segnaliamo il recupero
+                    if (categorie.isNotEmpty() && candidate.category !in categorie) {
+                        isRecuperata = true
+                    }
+                    candidate
+                } else {
+                    gamifPrefs.clearLastInteractedExternalId()
+                    repo.getNext(categorie)
+                }
+            } else {
+                repo.getNext(categorie)
+            }
+
             _state.value = if (c != null) {
                 // Se la pillola ha già un approfondimento salvato, caricalo nello stato Gemini
                 if (c.approfondimentoAi != null) {
@@ -68,7 +92,7 @@ class CuriosityViewModel(
                 } else {
                     resetGemini()
                 }
-                CuriosityUiState.Success(c, repo.curiositàImparate())
+                CuriosityUiState.Success(c, repo.curiositàImparate(), isRecuperata = isRecuperata)
             } else CuriosityUiState.Empty
         }
     }
@@ -104,6 +128,7 @@ class CuriosityViewModel(
         val s = _state.value as? CuriosityUiState.Success ?: return
         viewModelScope.launch {
             repo.markAsRead(s.curiosity)
+            gamifPrefs.clearLastInteractedExternalId()
             val risultato = engine.onPillolaLetta()
             _risultatoAzione.value = risultato
             _state.value = CuriosityUiState.Learned
@@ -114,9 +139,13 @@ class CuriosityViewModel(
         val s = _state.value as? CuriosityUiState.Success ?: return
         viewModelScope.launch {
             repo.toggleBookmark(s.curiosity)
-            _state.value = s.copy(
-                curiosity = s.curiosity.copy(isBookmarked = !s.curiosity.isBookmarked)
-            )
+            val nuovoStato = !s.curiosity.isBookmarked
+            _state.value = s.copy(curiosity = s.curiosity.copy(isBookmarked = nuovoStato))
+            if (nuovoStato && !s.curiosity.isRead) {
+                s.curiosity.externalId?.let { gamifPrefs.setLastInteractedExternalId(it) }
+            } else if (!nuovoStato && s.curiosity.nota.isBlank()) {
+                gamifPrefs.clearLastInteractedExternalId()
+            }
         }
     }
 
@@ -125,6 +154,11 @@ class CuriosityViewModel(
         viewModelScope.launch {
             repo.salvaNota(s.curiosity, testo)
             _state.value = s.copy(curiosity = s.curiosity.copy(nota = testo))
+            if (testo.isNotBlank() && !s.curiosity.isRead) {
+                s.curiosity.externalId?.let { gamifPrefs.setLastInteractedExternalId(it) }
+            } else if (testo.isBlank() && !s.curiosity.isBookmarked) {
+                 gamifPrefs.clearLastInteractedExternalId()
+            }
         }
     }
 
@@ -162,6 +196,11 @@ class CuriosityViewModel(
         FirebaseHelper.inviaCommento(viewModelScope, _commentiState, externalId, testo)
     }
 
+    fun dismissRecupero() {
+        val s = _state.value as? CuriosityUiState.Success ?: return
+        _state.value = s.copy(isRecuperata = false)
+    }
+
     fun eliminaCommento(commentoId: String) {
         val s = _state.value as? CuriosityUiState.Success ?: return
         val externalId = s.curiosity.externalId ?: return
@@ -175,13 +214,14 @@ class CuriosityViewModel(
     fun consumaRisultato() { _risultatoAzione.value = null }
 
     class Factory(
-        private val repo:   CuriosityRepository,
-        private val prefs:  CategoryPreferences,
-        private val engine: GamificationEngine,
-        private val geminiPrefs: GeminiPreferences
+        private val repo:        CuriosityRepository,
+        private val prefs:       CategoryPreferences,
+        private val engine:      GamificationEngine,
+        private val geminiPrefs: GeminiPreferences,
+        private val gamifPrefs:  GamificationPreferences
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            CuriosityViewModel(repo, prefs, engine, geminiPrefs) as T
+            CuriosityViewModel(repo, prefs, engine, geminiPrefs, gamifPrefs) as T
     }
 }

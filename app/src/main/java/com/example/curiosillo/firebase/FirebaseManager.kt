@@ -9,7 +9,6 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
 
@@ -70,11 +69,10 @@ object FirebaseManager {
         return try {
             val snapshot = db.collectionGroup("data")
                 .whereEqualTo("username", target)
-                .limit(2)
                 .get().await()
 
             val altri = snapshot.documents.filter { doc ->
-                doc.reference.parent.parent?.id != currentUid
+                doc.id == "profile" && doc.reference.parent.parent?.id != currentUid
             }
             altri.isNotEmpty()
         } catch (e: Exception) {
@@ -159,6 +157,18 @@ object FirebaseManager {
     }
 
     suspend fun eliminaDatiUtente(uid: String) {
+        try {
+            val profilo = db.collection("users").document(uid)
+                .collection("data").document("profile").get().await()
+            val username = profilo.getString("username")
+            if (!username.isNullOrBlank()) {
+                db.collection("usernames").document(username.lowercase()).delete().await()
+                Log.d("FirebaseManager", "Username '$username' rimosso da usernames")
+            }
+        } catch (e: Exception) {
+            Log.e("FirebaseManager", "Errore rimozione username: ${e.message}")
+        }
+
         val ref = db.collection("users").document(uid).collection("data")
         val docs = ref.get().await()
         docs.forEach { ref.document(it.id).delete().await() }
@@ -175,10 +185,12 @@ object FirebaseManager {
                 .whereEqualTo("uid", uid)
                 .get().await()
             snapshot.forEach { doc ->
-                doc.reference.update(mapOf(
-                    "autore" to "Utente eliminato",
-                    "uid"    to ""
-                )).await()
+                if (doc.reference.path.contains("commenti/")) {
+                    doc.reference.update(mapOf(
+                        "autore" to "Utente eliminato",
+                        "uid"    to ""
+                    )).await()
+                }
             }
         } catch (_: Exception) {}
     }
@@ -229,6 +241,139 @@ object FirebaseManager {
         } catch (_: Exception) {}
     }
 
+    // ── Pillole bookmark ─────────────────────────────────────────────────────
+
+    suspend fun caricaBookmark(uid: String): List<String> = try {
+        val doc = db.collection("users").document(uid)
+            .collection("data").document("pillole_bookmark").get().await()
+        @Suppress("UNCHECKED_CAST")
+        (doc.get("ids") as? List<String>) ?: emptyList()
+    } catch (_: Exception) { emptyList() }
+
+    suspend fun aggiungiBookmark(uid: String, externalId: String) {
+        try {
+            val ref = db.collection("users").document(uid)
+                .collection("data").document("pillole_bookmark")
+            val doc = ref.get().await()
+            @Suppress("UNCHECKED_CAST")
+            val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
+            if (externalId !in ids) { ids.add(externalId); ref.set(mapOf("ids" to ids)).await() }
+        } catch (_: Exception) {}
+    }
+
+    suspend fun rimuoviBookmark(uid: String, externalId: String) {
+        try {
+            val ref = db.collection("users").document(uid)
+                .collection("data").document("pillole_bookmark")
+            val doc = ref.get().await()
+            @Suppress("UNCHECKED_CAST")
+            val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
+            if (ids.remove(externalId)) ref.set(mapOf("ids" to ids)).await()
+        } catch (_: Exception) {}
+    }
+
+    // ── Pillole ignorate ──────────────────────────────────────────────────────
+
+    suspend fun caricaIgnorate(uid: String): List<String> = try {
+        val doc = db.collection("users").document(uid)
+            .collection("data").document("pillole_ignorate").get().await()
+        @Suppress("UNCHECKED_CAST")
+        (doc.get("ids") as? List<String>) ?: emptyList()
+    } catch (_: Exception) { emptyList() }
+
+    suspend fun aggiungiIgnorata(uid: String, externalId: String) {
+        try {
+            val ref = db.collection("users").document(uid)
+                .collection("data").document("pillole_ignorate")
+            val doc = ref.get().await()
+            @Suppress("UNCHECKED_CAST")
+            val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
+            if (externalId !in ids) { ids.add(externalId); ref.set(mapOf("ids" to ids)).await() }
+        } catch (_: Exception) {}
+    }
+
+    suspend fun rimuoviIgnorata(uid: String, externalId: String) {
+        try {
+            val ref = db.collection("users").document(uid)
+                .collection("data").document("pillole_ignorate")
+            val doc = ref.get().await()
+            @Suppress("UNCHECKED_CAST")
+            val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
+            if (ids.remove(externalId)) ref.set(mapOf("ids" to ids)).await()
+        } catch (_: Exception) {}
+    }
+
+    // ── Note pillole ──────────────────────────────────────────────────────────
+
+    suspend fun caricaNote(uid: String): Map<String, String> = try {
+        val doc = db.collection("users").document(uid)
+            .collection("data").document("pillole_note").get().await()
+        @Suppress("UNCHECKED_CAST")
+        (doc.data?.filterValues { it is String } as? Map<String, String>) ?: emptyMap()
+    } catch (_: Exception) { emptyMap() }
+
+    suspend fun salvaNota(uid: String, externalId: String, nota: String) {
+        try {
+            val ref = db.collection("users").document(uid)
+                .collection("data").document("pillole_note")
+            if (nota.isBlank()) ref.update(mapOf(externalId to com.google.firebase.firestore.FieldValue.delete())).await()
+            else ref.set(mapOf(externalId to nota), com.google.firebase.firestore.SetOptions.merge()).await()
+        } catch (_: Exception) {}
+    }
+
+    // ── Rimuovi pillola letta (es. reset) ─────────────────────────────────────
+
+    suspend fun rimuoviPillolaLetta(uid: String, externalId: String) {
+        try {
+            val ref = db.collection("users").document(uid)
+                .collection("data").document("pillole_lette")
+            val doc = ref.get().await()
+            @Suppress("UNCHECKED_CAST")
+            val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
+            if (ids.remove(externalId)) ref.set(mapOf("ids" to ids)).await()
+        } catch (_: Exception) {}
+    }
+
+    // ── Quiz risposti ─────────────────────────────────────────────────────────
+
+    suspend fun caricaQuizRisposti(uid: String): List<String> = try {
+        val doc = db.collection("users").document(uid)
+            .collection("data").document("quiz_risposti").get().await()
+        @Suppress("UNCHECKED_CAST")
+        (doc.get("ids") as? List<String>) ?: emptyList()
+    } catch (_: Exception) { emptyList() }
+
+    suspend fun aggiungiQuizRisposto(uid: String, questionId: Int) {
+        try {
+            val ref = db.collection("users").document(uid)
+                .collection("data").document("quiz_risposti")
+            val doc = ref.get().await()
+            @Suppress("UNCHECKED_CAST")
+            val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
+            val idStr = questionId.toString()
+            if (idStr !in ids) { idStr !in ids; ids.add(idStr); ref.set(mapOf("ids" to ids)).await() }
+        } catch (_: Exception) {}
+    }
+
+    // ── Reset progressi utente ───────────────────────────────────────────────
+
+    suspend fun resetProgressiUtente(uid: String) {
+        try {
+            val dataRef = db.collection("users").document(uid).collection("data")
+            listOf("pillole_lette", "pillole_bookmark", "pillole_ignorate",
+                "pillole_note", "quiz_risposti").forEach { doc ->
+                dataRef.document(doc).delete().await()
+            }
+            dataRef.document("profile").set(
+                mapOf("xp" to 0, "streakCorrente" to 0, "streakMassima" to 0),
+                com.google.firebase.firestore.SetOptions.merge()
+            ).await()
+            dataRef.document("badges").delete().await()
+        } catch (e: Exception) {
+            Log.e("FirebaseManager", "Errore reset progressi: ${e.message}")
+        }
+    }
+
     // ── Commenti ──────────────────────────────────────────────────────────────
 
     data class Commento(
@@ -272,7 +417,7 @@ object FirebaseManager {
     suspend fun caricaTuttiICommentiModerazione(): List<Pair<String, List<Commento>>> = try {
         val snapshot = db.collectionGroup("lista").get().await()
         snapshot.documents
-            .filter { it.reference.path.contains("/commenti/") }
+            .filter { it.reference.path.contains("commenti/") }
             .groupBy { it.reference.parent.parent!!.id }
             .map { (exId, docs) ->
                 exId to docs.map { doc ->
@@ -293,7 +438,7 @@ object FirebaseManager {
     suspend fun aggiungiCommento(externalId: String, testo: String): Result<Unit> = try {
         val autore = auth.currentUser?.displayName?.takeIf { it.isNotBlank() } ?: "Anonimo"
         val uid    = auth.currentUser?.uid ?: ""
-        
+
         // Assicuriamoci che il documento padre esista esplicitamente
         db.collection("commenti").document(externalId)
             .set(mapOf("lastUpdate" to System.currentTimeMillis()), SetOptions.merge()).await()
@@ -449,8 +594,8 @@ object FirebaseManager {
             "categoria" to c.categoria,
             "emoji"     to c.emoji,
             "domanda"          to c.domanda,
-            "rispostaCorretta" to c.rispostaCorretta,
-            "risposteErrate"   to c.risposteErrate,
+            "risposta_corretta" to c.rispostaCorretta,
+            "risposte_errate"   to c.risposteErrate,
             "spiegazione"      to c.spiegazione
         )
 
@@ -491,7 +636,7 @@ object FirebaseManager {
             }
             batch.commit().await()
         } catch (e: Exception) {
-            android.util.Log.e("FirebaseManager", "notificaAggiornamento failed", e)
+            Log.e("FirebaseManager", "notificaAggiornamento failed", e)
         }
     }
 
@@ -545,8 +690,8 @@ object FirebaseManager {
                     "categoria"        to c.categoria,
                     "emoji"            to c.emoji,
                     "domanda"          to c.domanda,
-                    "rispostaCorretta" to c.rispostaCorretta,
-                    "risposteErrate"   to c.risposteErrate,
+                    "risposta_corretta" to c.rispostaCorretta,
+                    "risposte_errate"   to c.risposteErrate,
                     "spiegazione"      to c.spiegazione
                 ))
             }
@@ -562,27 +707,44 @@ object FirebaseManager {
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
 
-    /** Carica TUTTI le curiosita dal server */
+    /** Carica TUTTI le curiosita dal server - FORMATO PIATTO */
     suspend fun caricaTutteLeCuriositaRemote(): List<CuriositaRemota> = try {
         val snap = db.collection("curiosita").whereNotEqualTo("__name__", "_meta_").get().await()
         val docs = snap.documents.filter { it.id != "_meta_" }
 
         docs.map { doc ->
+            // Supporta sia formato flat (nuovo) che annidato (vecchio)
+            val quizObj = doc.get("quiz") as? Map<String, Any>
+            
+            val domanda = doc.getString("domanda") ?: quizObj?.get("domanda") as? String
+            
+            val rispostaCorretta = doc.getString("risposta_corretta") 
+                ?: doc.getString("rispostaCorretta")
+                ?: quizObj?.get("risposta_corretta") as? String
+                ?: quizObj?.get("rispostaCorretta") as? String
+                
             @Suppress("UNCHECKED_CAST")
-            val risposteErrate = doc.get("risposteErrate") as? List<String>
+            val risposteErrate = (doc.get("risposte_errate") ?: doc.get("risposteErrate") 
+                ?: quizObj?.get("risposte_errate") ?: quizObj?.get("risposteErrate")) as? List<String>
+                
+            val spiegazione = doc.getString("spiegazione") ?: quizObj?.get("spiegazione") as? String
+
             CuriositaRemota(
                 externalId       = doc.id,
                 titolo           = doc.getString("titolo") ?: "",
                 corpo            = doc.getString("corpo") ?: "",
                 categoria        = doc.getString("categoria") ?: "",
                 emoji            = doc.getString("emoji") ?: "",
-                domanda          = doc.getString("domanda"),
-                rispostaCorretta = doc.getString("rispostaCorretta"),
+                domanda          = domanda?.ifBlank { null },
+                rispostaCorretta = rispostaCorretta?.ifBlank { null },
                 risposteErrate   = risposteErrate,
-                spiegazione      = doc.getString("spiegazione")
+                spiegazione      = spiegazione?.ifBlank { null }
             )
         }
-    } catch (_: Exception) { emptyList() }
+    } catch (e: Exception) { 
+        Log.e("FirebaseManager", "Errore caricaTutteLeCuriositaRemote: ${e.message}")
+        emptyList() 
+    }
 
     private suspend fun incrementaVersione() {
         try {
@@ -624,12 +786,12 @@ object FirebaseManager {
                         if (doc.getString("domanda") == null) {
                             val quizDoc = db.collection("curiosita").document(doc.id)
                                 .collection("quiz").document("domanda").get().await()
-                            
+
                             if (quizDoc.exists()) {
                                 db.collection("curiosita").document(doc.id).update(mapOf(
                                     "domanda"          to quizDoc.getString("domanda"),
-                                    "rispostaCorretta" to quizDoc.getString("rispostaCorretta"),
-                                    "risposteErrate"   to quizDoc.get("risposteErrate"),
+                                    "risposta_corretta" to quizDoc.getString("rispostaCorretta"),
+                                    "risposte_errate"   to quizDoc.get("risposteErrate"),
                                     "spiegazione"      to quizDoc.getString("spiegazione")
                                 )).await()
                                 Log.d("Migration", "Migrato quiz per ${doc.id}")
@@ -639,7 +801,7 @@ object FirebaseManager {
                 }
             }
         } catch (e: Exception) {
-            Log.e("Migration", "Errore migrazione: \${e.message}")
+            Log.e("Migration", "Errore migrazione: ${e.message}")
         }
     }
 }

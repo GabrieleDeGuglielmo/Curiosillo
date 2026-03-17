@@ -13,7 +13,7 @@ import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.network.AppUpdateService
 import com.example.curiosillo.network.ChangelogService
-import com.example.curiosillo.network.FirestoreSyncService
+import com.example.curiosillo.firebase.FirestoreSyncService
 import com.example.curiosillo.network.VersioneChangelog
 import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.delay
@@ -42,13 +42,13 @@ class HomeViewModel(
     private val repo:         CuriosityRepository,
     private val contentPrefs: ContentPreferences,
     private val context:      Context,
-    private val dbRoom:       AppDatabase
+    private val database:     AppDatabase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
 
-    private val syncService      = FirestoreSyncService(repo, contentPrefs, dbRoom)
+    private val syncService      = FirestoreSyncService(repo, contentPrefs, database)
     private val updateService    = AppUpdateService()
     private val changelogService = ChangelogService()
 
@@ -76,17 +76,14 @@ class HomeViewModel(
             .build()
         connectivityManager.registerNetworkCallback(request, networkCallback)
 
-        // All'avvio proviamo sempre a sincronizzare, anche con un piccolo delay 
-        // per dare tempo alla connessione di stabilizzarsi
         refreshDatiCloud()
     }
 
     private fun refreshDatiCloud() {
         viewModelScope.launch {
-            // Se il DB è vuoto, non serve aspettare la propagazione degli indici
             val dbVuoto = repo.totaleCuriosità() == 0
             if (!dbVuoto) delay(1500)
-            
+
             syncContenuti()
             checkAggiornamentoApp()
             caricaChangelog()
@@ -193,10 +190,10 @@ class HomeViewModel(
         private val repo:         CuriosityRepository,
         private val contentPrefs: ContentPreferences,
         private val context:      Context,
-        private val dbRoom:       AppDatabase
+        private val database:     AppDatabase
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(c: Class<T>): T =
-            HomeViewModel(repo, contentPrefs, context, dbRoom) as T
+            HomeViewModel(repo, contentPrefs, context, database) as T
     }
 }

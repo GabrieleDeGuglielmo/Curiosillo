@@ -9,7 +9,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.example.curiosillo.R
 
-// Definiamo la famiglia con tutti i pesi necessari
 val Nunito = FontFamily(
     Font(R.font.nunito_regular, FontWeight.Normal),
     Font(R.font.nunito_medium, FontWeight.Medium),
@@ -18,7 +17,6 @@ val Nunito = FontFamily(
     Font(R.font.nunito_extrabold, FontWeight.ExtraBold)
 )
 
-// Uno stile base per non ripeterci
 private val defaultTextStyle = TextStyle(
     fontFamily = Nunito,
     color      = DarkText,
@@ -26,40 +24,26 @@ private val defaultTextStyle = TextStyle(
 )
 
 val AppTypography = Typography(
-    // ── DISPLAY (Titoli giganti, es: "Curiosillo") ──────────────────────
-    displayLarge = defaultTextStyle.copy(fontSize = 57.sp, fontWeight = FontWeight.ExtraBold),
-    displayMedium = defaultTextStyle.copy(fontSize = 45.sp, fontWeight = FontWeight.ExtraBold),
-    displaySmall = defaultTextStyle.copy(fontSize = 36.sp, fontWeight = FontWeight.Bold),
+    displayLarge = defaultTextStyle.copy(fontSize = 57.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 64.sp),
+    displayMedium = defaultTextStyle.copy(fontSize = 45.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 52.sp),
+    displaySmall = defaultTextStyle.copy(fontSize = 36.sp, fontWeight = FontWeight.Bold, lineHeight = 44.sp),
 
-    // ── HEADLINE (Titoli di sezioni o dialog) ──────────────────────────
-    headlineLarge = defaultTextStyle.copy(fontSize = 32.sp, fontWeight = FontWeight.Bold),
-    headlineMedium = defaultTextStyle.copy(fontSize = 28.sp, fontWeight = FontWeight.Bold),
-    headlineSmall = defaultTextStyle.copy(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+    // Headlines: 22sp - 28sp
+    headlineLarge = defaultTextStyle.copy(fontSize = 28.sp, fontWeight = FontWeight.Bold, lineHeight = 40.sp),
+    headlineMedium = defaultTextStyle.copy(fontSize = 26.sp, fontWeight = FontWeight.Bold, lineHeight = 36.sp),
+    headlineSmall = defaultTextStyle.copy(fontSize = 24.sp, fontWeight = FontWeight.Bold, lineHeight = 34.sp),
 
-    // ── TITLE (Titoli delle Card, TopAppBar) ───────────────────────────
-    titleLarge = defaultTextStyle.copy(fontSize = 22.sp, fontWeight = FontWeight.Bold),
-    titleMedium = defaultTextStyle.copy(fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
-    titleSmall = defaultTextStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
+    titleLarge = defaultTextStyle.copy(fontSize = 22.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp),
+    titleMedium = defaultTextStyle.copy(fontSize = 18.sp, fontWeight = FontWeight.SemiBold, lineHeight = 26.sp),
+    titleSmall = defaultTextStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium, lineHeight = 20.sp),
 
-    // ── BODY (Il cuore dell'app: le pillole) ────────────────────────────
-    bodyLarge = defaultTextStyle.copy(
-        fontSize   = 18.sp,
-        lineHeight = 27.sp,
-        fontWeight = FontWeight.Normal
-    ),
-    bodyMedium = defaultTextStyle.copy(
-        fontSize   = 16.sp,
-        lineHeight = 24.sp,
-        fontWeight = FontWeight.Normal
-    ),
-    bodySmall = defaultTextStyle.copy(
-        fontSize   = 14.sp,
-        lineHeight = 20.sp,
-        fontWeight = FontWeight.Normal
-    ),
+    // Body: 16sp - 18sp. Line Height: ~150%
+    bodyLarge = defaultTextStyle.copy(fontSize = 18.sp, lineHeight = 27.sp, fontWeight = FontWeight.Normal),
+    bodyMedium = defaultTextStyle.copy(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Normal),
+    bodySmall = defaultTextStyle.copy(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Normal),
 
-    // ── LABEL (Tasti, etichette barra in basso, piccoli tag) ───────────
-    labelLarge = defaultTextStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
-    labelMedium = defaultTextStyle.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium),
-    labelSmall = defaultTextStyle.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium)
+    // Captions/Buttons: 12sp - 14sp
+    labelLarge = defaultTextStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 20.sp),
+    labelMedium = defaultTextStyle.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium, lineHeight = 16.sp),
+    labelSmall = defaultTextStyle.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium, lineHeight = 16.sp)
 )
