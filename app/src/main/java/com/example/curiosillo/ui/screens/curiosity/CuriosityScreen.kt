@@ -473,7 +473,7 @@ fun GeminiSheet(state: GeminiUiState) {
             Icon(imageVector = if (state.errore != null) Icons.Default.Warning else Icons.Default.AutoAwesome, contentDescription = null, tint = if (state.errore != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(text = if (state.errore != null && state.rimanenti == 0) "Limite raggiunto" else if (state.errore != null) "Oops! Servizio non disponibile" else "Approfondimento AI", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = if (state.errore != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+                Text(text = if (state.errore != null && state.rimanenti == 0) "Limite raggiunto" else if (state.errore != null) "Oops! Servizio non disponibile" else "Approfondimento da Curiosillo", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = if (state.errore != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
                 Text(text = "Rimanenti oggi: ${state.rimanenti}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
             }
         }
@@ -483,7 +483,7 @@ fun GeminiSheet(state: GeminiUiState) {
         } else if (state.errore != null) {
             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(20.dp)) {
-                    Text("Al momento Gemini non può essere contattato. Riprova più tardi.", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text("Al momento Curiosillo non può essere contattato. Riprova più tardi.", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onErrorContainer)
                     if (state.rimanenti > 0) { Spacer(Modifier.height(12.dp)); Text("Assicurati di avere una connessione internet attiva o riprova tra qualche minuto.\n\nGrazie della comprensione.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)) }
                 }
             }
