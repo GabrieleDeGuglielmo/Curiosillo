@@ -483,7 +483,7 @@ fun GeminiSheet(state: GeminiUiState) {
         } else if (state.errore != null) {
             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(20.dp)) {
-                    Text(state.errore, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text("Al momento Gemini non può essere contattato. Riprova più tardi.", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onErrorContainer)
                     if (state.rimanenti > 0) { Spacer(Modifier.height(12.dp)); Text("Assicurati di avere una connessione internet attiva o riprova tra qualche minuto.\n\nGrazie della comprensione.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)) }
                 }
             }
