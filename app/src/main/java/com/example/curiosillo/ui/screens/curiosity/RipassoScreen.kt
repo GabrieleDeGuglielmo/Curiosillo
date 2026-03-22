@@ -1,6 +1,7 @@
 package com.example.curiosillo.ui.screens.curiosity
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -440,34 +441,39 @@ fun RipassoScreen(nav: NavController) {
             }
 
             // Notifiche segnalazione
-            when (val sState = segnalazioneState) {
-                is SegnalazioneUiState.Successo -> {
+            Box(Modifier.fillMaxSize().padding(bottom = 20.dp), contentAlignment = Alignment.BottomCenter) {
+                AnimatedVisibility(
+                    visible = segnalazioneState is SegnalazioneUiState.Successo,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
                     LaunchedEffect(Unit) {
                         delay(3000)
                         vm.dismissSegnalazione()
                     }
-                    Box(Modifier.fillMaxSize().padding(bottom = 20.dp), contentAlignment = Alignment.BottomCenter) {
-                        Surface(color = Success, shape = RoundedCornerShape(12.dp), shadowElevation = 6.dp) {
-                            Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.CheckCircle, null, tint = Color.White)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Segnalazione inviata. Grazie!", color = Color.White, fontWeight = FontWeight.Bold)
-                            }
+                    Surface(color = Success, shape = RoundedCornerShape(12.dp), shadowElevation = 6.dp) {
+                        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CheckCircle, null, tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Segnalazione inviata. Grazie!", color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
-                is SegnalazioneUiState.Errore -> {
+
+                AnimatedVisibility(
+                    visible = segnalazioneState is SegnalazioneUiState.Errore,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    val sState = segnalazioneState as? SegnalazioneUiState.Errore
                     LaunchedEffect(Unit) {
                         delay(3500)
                         vm.dismissSegnalazione()
                     }
-                    Box(Modifier.fillMaxSize().padding(bottom = 20.dp), contentAlignment = Alignment.BottomCenter) {
-                        Surface(color = MaterialTheme.colorScheme.error, shape = RoundedCornerShape(12.dp), shadowElevation = 6.dp) {
-                            Text(sState.msg, color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp))
-                        }
+                    Surface(color = MaterialTheme.colorScheme.error, shape = RoundedCornerShape(12.dp), shadowElevation = 6.dp) {
+                        Text(sState?.msg ?: "", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp))
                     }
                 }
-                else -> {}
             }
         }
     }

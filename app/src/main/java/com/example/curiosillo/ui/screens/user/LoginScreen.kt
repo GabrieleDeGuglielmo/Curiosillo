@@ -278,7 +278,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
             text = {
                 if (emailInviata) {
                     Text(
-                        "Controlla la tua casella email — ti abbiamo inviato un link per reimpostare la password.",
+                        "Controlla la tua casella email\nTi abbiamo inviato un link per reimpostare la password.",
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyMedium,
                         color     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)

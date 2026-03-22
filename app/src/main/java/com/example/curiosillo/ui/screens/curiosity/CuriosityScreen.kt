@@ -1,13 +1,8 @@
 package com.example.curiosillo.ui.screens.curiosity
 
 import android.content.Intent
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -330,28 +325,33 @@ fun CuriosityScreen(nav: NavController) {
                 }
             }
 
-            when (val sState = segnalazioneState) {
-                is SegnalazioneUiState.Successo -> {
+            Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
+                AnimatedVisibility(
+                    visible = segnalazioneState is SegnalazioneUiState.Successo,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
                     LaunchedEffect(Unit) { delay(3000); vm.dismissSegnalazione() }
-                    Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
-                        Surface(color = Success, shape = RoundedCornerShape(12.dp), shadowElevation = 6.dp) {
-                            Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.CheckCircle, null, tint = Color.White)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Segnalazione inviata. Grazie!", style = MaterialTheme.typography.labelLarge, color = Color.White, fontWeight = FontWeight.Bold)
-                            }
+                    Surface(color = Success, shape = RoundedCornerShape(12.dp), shadowElevation = 6.dp) {
+                        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CheckCircle, null, tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Segnalazione inviata. Grazie!", style = MaterialTheme.typography.labelLarge, color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
-                is SegnalazioneUiState.Errore -> {
+
+                AnimatedVisibility(
+                    visible = segnalazioneState is SegnalazioneUiState.Errore,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    val sState = segnalazioneState as? SegnalazioneUiState.Errore
                     LaunchedEffect(Unit) { delay(3500); vm.dismissSegnalazione() }
-                    Box(Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.BottomCenter) {
-                        Surface(color = MaterialTheme.colorScheme.error, shape = RoundedCornerShape(12.dp), shadowElevation = 6.dp) {
-                            Text(sState.msg, color = Color.White, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp))
-                        }
+                    Surface(color = MaterialTheme.colorScheme.error, shape = RoundedCornerShape(12.dp), shadowElevation = 6.dp) {
+                        Text(sState?.msg ?: "", color = Color.White, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp))
                     }
                 }
-                else -> {}
             }
         }
     }
@@ -394,7 +394,7 @@ private fun CuriosityContent(
         Column(Modifier.padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
-                SuggestionChip(onClick = {}, label = { Text(emojiCategoria(s.curiosity.category) + " " + s.curiosity.category, style = MaterialTheme.typography.labelMedium) })
+                SuggestionChip(onClick = {}, label = { Text(emojiCategoria(s.curiosity.category) + " " + s.curiosity.category, style = MaterialTheme.typography.labelLarge) })
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { mostraNota = true }, modifier = Modifier.minimumInteractiveComponentSize()) {
                         Icon(Icons.Default.EditNote, "Nota", tint = if (s.curiosity.nota.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
