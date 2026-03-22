@@ -64,7 +64,7 @@ class CuriosityViewModel(
             _state.value = CuriosityUiState.Loading
             val categorie = prefs.categorieAttive.first()
 
-            // Prioritizza la curiosita' con cui l'utente ha interagito (bookmark/nota)
+            // Prioritizza la curiosita' con cui l'utente ha interagito (bookmark/nota/approfondimento AI)
             // se non ancora imparata
             val lastExtId = gamifPrefs.getLastInteractedExternalId()
             var isRecuperata = false
@@ -115,6 +115,12 @@ class CuriosityViewModel(
             geminiPrefs = geminiPrefs,
             onPillolaAggiornata = { nuovaPillola ->
                 _state.value = s.copy(curiosity = nuovaPillola)
+                // Se l'approfondimento è stato generato con successo, salviamo l'interazione
+                if (nuovaPillola.approfondimentoAi != null && !nuovaPillola.isRead) {
+                    viewModelScope.launch {
+                        nuovaPillola.externalId?.let { gamifPrefs.setLastInteractedExternalId(it) }
+                    }
+                }
             },
             tagLog = "CuriosityViewModel"
         )
@@ -143,7 +149,7 @@ class CuriosityViewModel(
             _state.value = s.copy(curiosity = s.curiosity.copy(isBookmarked = nuovoStato))
             if (nuovoStato && !s.curiosity.isRead) {
                 s.curiosity.externalId?.let { gamifPrefs.setLastInteractedExternalId(it) }
-            } else if (!nuovoStato && s.curiosity.nota.isBlank()) {
+            } else if (!nuovoStato && s.curiosity.nota.isBlank() && s.curiosity.approfondimentoAi == null) {
                 gamifPrefs.clearLastInteractedExternalId()
             }
         }
@@ -156,7 +162,7 @@ class CuriosityViewModel(
             _state.value = s.copy(curiosity = s.curiosity.copy(nota = testo))
             if (testo.isNotBlank() && !s.curiosity.isRead) {
                 s.curiosity.externalId?.let { gamifPrefs.setLastInteractedExternalId(it) }
-            } else if (testo.isBlank() && !s.curiosity.isBookmarked) {
+            } else if (testo.isBlank() && !s.curiosity.isBookmarked && s.curiosity.approfondimentoAi == null) {
                  gamifPrefs.clearLastInteractedExternalId()
             }
         }
