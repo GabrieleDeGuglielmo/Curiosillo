@@ -2,7 +2,11 @@ package com.example.curiosillo.ui.screens.utils
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Send
@@ -22,9 +26,9 @@ import kotlinx.coroutines.launch
 // ── Shared UI State for Reports ──────────────────────────────────────────────
 
 sealed class SegnalazioneUiState {
-    object Idle     : SegnalazioneUiState()
-    object Loading  : SegnalazioneUiState()
-    object Successo : SegnalazioneUiState()
+    object Idle    : SegnalazioneUiState()
+    object Loading : SegnalazioneUiState()
+    object Successo: SegnalazioneUiState()
     data class Errore(val msg: String) : SegnalazioneUiState()
 }
 
@@ -76,6 +80,8 @@ fun SegnalazioneBottomSheet(
     onDismiss: () -> Unit,
     isLoading: Boolean = false
 ) {
+    // skipPartiallyExpanded = true permette al foglio di aprirsi tutto subito, 
+    // fondamentale quando c'è un campo di testo per evitare conflitti con la tastiera.
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var tipoScelto by remember { mutableStateOf<TipoSegnalazione?>(null) }
     var testo      by remember { mutableStateOf("") }
@@ -83,14 +89,17 @@ fun SegnalazioneBottomSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState       = sheetState
+        sheetState       = sheetState,
+        dragHandle       = { BottomSheetDefaults.DragHandle() }
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
-                .navigationBarsPadding()
+                // imePadding() sposta il contenuto verso l'alto quando appare la tastiera
+                .imePadding()
+                .verticalScroll(rememberScrollState())
         ) {
             // Header
             Row(verticalAlignment = Alignment.CenterVertically) {
