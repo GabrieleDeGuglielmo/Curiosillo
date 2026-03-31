@@ -67,12 +67,12 @@ object FirebaseManager {
         val currentUid = uid
 
         return try {
-            val snapshot = db.collectionGroup("data")
+            val snapshot = db.collection("users")
                 .whereEqualTo("username", target)
                 .get().await()
 
             val altri = snapshot.documents.filter { doc ->
-                doc.id == "profile" && doc.reference.parent.parent?.id != currentUid
+                doc.id != currentUid
             }
             altri.isNotEmpty()
         } catch (e: Exception) {
@@ -93,27 +93,31 @@ object FirebaseManager {
         }
 
         db.collection("users").document(uid)
-            .collection("data").document("profile")
             .set(mapOf(
                 "username"       to cleanNick,
                 "email"          to email,
                 "xp"             to 0,
                 "streakCorrente" to 0,
                 "streakMassima"  to 0,
-                "ultimoAccesso"  to -1L
+                "ultimoAccesso"  to -1L,
+                "isAdmin"        to false,
+                "badges"         to emptyList<String>(),
+                "pillole_bookmark" to emptyList<String>(),
+                "pillole_lette"   to emptyList<String>(),
+                "quiz_risposti"   to emptyList<String>(),
+                "pillole_ignorate" to emptyList<String>(),
+                "pillole_note"    to emptyMap<String, String>()
             ), SetOptions.merge()).await()
     }
 
     suspend fun caricaProfilo(uid: String): Map<String, Any>? = try {
-        val doc = db.collection("users").document(uid)
-            .collection("data").document("profile").get().await()
+        val doc = db.collection("users").document(uid).get().await()
         if (doc.exists()) doc.data else null
     } catch (e: Exception) { null }
 
     suspend fun aggiornaProfilo(uid: String, dati: Map<String, Any>) {
         try {
             db.collection("users").document(uid)
-                .collection("data").document("profile")
                 .set(dati, SetOptions.merge()).await()
         } catch (_: Exception) {}
     }
@@ -158,8 +162,7 @@ object FirebaseManager {
 
     suspend fun eliminaDatiUtente(uid: String) {
         try {
-            val profilo = db.collection("users").document(uid)
-                .collection("data").document("profile").get().await()
+            val profilo = db.collection("users").document(uid).get().await()
             val username = profilo.getString("username")
             if (!username.isNullOrBlank()) {
                 db.collection("usernames").document(username.lowercase()).delete().await()
@@ -169,9 +172,6 @@ object FirebaseManager {
             Log.e("FirebaseManager", "Errore rimozione username: ${e.message}")
         }
 
-        val ref = db.collection("users").document(uid).collection("data")
-        val docs = ref.get().await()
-        docs.forEach { ref.document(it.id).delete().await() }
         db.collection("users").document(uid).delete().await()
     }
 
@@ -198,126 +198,93 @@ object FirebaseManager {
     // ── Badge ─────────────────────────────────────────────────────────────────
 
     suspend fun caricaBadge(uid: String): List<String> = try {
-        val doc = db.collection("users").document(uid)
-            .collection("data").document("badges").get().await()
+        val doc = db.collection("users").document(uid).get().await()
         @Suppress("UNCHECKED_CAST")
-        (doc.get("ids") as? List<String>) ?: emptyList()
+        (doc.get("badges") as? List<String>) ?: emptyList()
     } catch (e: Exception) { emptyList() }
 
     suspend fun aggiungiBadge(uid: String, badgeId: String) {
         try {
-            val ref = db.collection("users").document(uid)
-                .collection("data").document("badges")
-            val doc = ref.get().await()
-            @Suppress("UNCHECKED_CAST")
-            val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
-            if (badgeId !in ids) {
-                ids.add(badgeId)
-                ref.set(mapOf("ids" to ids)).await()
-            }
+            db.collection("users").document(uid)
+                .update("badges", FieldValue.arrayUnion(badgeId)).await()
         } catch (_: Exception) {}
     }
 
     // ── Pillole lette ─────────────────────────────────────────────────────────
 
     suspend fun caricaPilloleLette(uid: String): List<String> = try {
-        val doc = db.collection("users").document(uid)
-            .collection("data").document("pillole_lette").get().await()
+        val doc = db.collection("users").document(uid).get().await()
         @Suppress("UNCHECKED_CAST")
-        (doc.get("ids") as? List<String>) ?: emptyList()
+        (doc.get("pillole_lette") as? List<String>) ?: emptyList()
     } catch (e: Exception) { emptyList() }
 
     suspend fun aggiungiPillolaLetta(uid: String, externalId: String) {
         try {
-            val ref = db.collection("users").document(uid)
-                .collection("data").document("pillole_lette")
-            val doc = ref.get().await()
-            @Suppress("UNCHECKED_CAST")
-            val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
-            if (externalId !in ids) {
-                ids.add(externalId)
-                ref.set(mapOf("ids" to ids)).await()
-            }
+            db.collection("users").document(uid)
+                .update("pillole_lette", FieldValue.arrayUnion(externalId)).await()
         } catch (_: Exception) {}
     }
 
     // ── Pillole bookmark ─────────────────────────────────────────────────────
 
     suspend fun caricaBookmark(uid: String): List<String> = try {
-        val doc = db.collection("users").document(uid)
-            .collection("data").document("pillole_bookmark").get().await()
+        val doc = db.collection("users").document(uid).get().await()
         @Suppress("UNCHECKED_CAST")
-        (doc.get("ids") as? List<String>) ?: emptyList()
+        (doc.get("pillole_bookmark") as? List<String>) ?: emptyList()
     } catch (_: Exception) { emptyList() }
 
     suspend fun aggiungiBookmark(uid: String, externalId: String) {
         try {
-            val ref = db.collection("users").document(uid)
-                .collection("data").document("pillole_bookmark")
-            val doc = ref.get().await()
-            @Suppress("UNCHECKED_CAST")
-            val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
-            if (externalId !in ids) { ids.add(externalId); ref.set(mapOf("ids" to ids)).await() }
+            db.collection("users").document(uid)
+                .update("pillole_bookmark", FieldValue.arrayUnion(externalId)).await()
         } catch (_: Exception) {}
     }
 
     suspend fun rimuoviBookmark(uid: String, externalId: String) {
         try {
-            val ref = db.collection("users").document(uid)
-                .collection("data").document("pillole_bookmark")
-            val doc = ref.get().await()
-            @Suppress("UNCHECKED_CAST")
-            val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
-            if (ids.remove(externalId)) ref.set(mapOf("ids" to ids)).await()
+            db.collection("users").document(uid)
+                .update("pillole_bookmark", FieldValue.arrayRemove(externalId)).await()
         } catch (_: Exception) {}
     }
 
     // ── Pillole ignorate ──────────────────────────────────────────────────────
 
     suspend fun caricaIgnorate(uid: String): List<String> = try {
-        val doc = db.collection("users").document(uid)
-            .collection("data").document("pillole_ignorate").get().await()
+        val doc = db.collection("users").document(uid).get().await()
         @Suppress("UNCHECKED_CAST")
-        (doc.get("ids") as? List<String>) ?: emptyList()
+        (doc.get("pillole_ignorate") as? List<String>) ?: emptyList()
     } catch (_: Exception) { emptyList() }
 
     suspend fun aggiungiIgnorata(uid: String, externalId: String) {
         try {
-            val ref = db.collection("users").document(uid)
-                .collection("data").document("pillole_ignorate")
-            val doc = ref.get().await()
-            @Suppress("UNCHECKED_CAST")
-            val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
-            if (externalId !in ids) { ids.add(externalId); ref.set(mapOf("ids" to ids)).await() }
+            db.collection("users").document(uid)
+                .update("pillole_ignorate", FieldValue.arrayUnion(externalId)).await()
         } catch (_: Exception) {}
     }
 
     suspend fun rimuoviIgnorata(uid: String, externalId: String) {
         try {
-            val ref = db.collection("users").document(uid)
-                .collection("data").document("pillole_ignorate")
-            val doc = ref.get().await()
-            @Suppress("UNCHECKED_CAST")
-            val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
-            if (ids.remove(externalId)) ref.set(mapOf("ids" to ids)).await()
+            db.collection("users").document(uid)
+                .update("pillole_ignorate", FieldValue.arrayRemove(externalId)).await()
         } catch (_: Exception) {}
     }
 
     // ── Note pillole ──────────────────────────────────────────────────────────
 
     suspend fun caricaNote(uid: String): Map<String, String> = try {
-        val doc = db.collection("users").document(uid)
-            .collection("data").document("pillole_note").get().await()
+        val doc = db.collection("users").document(uid).get().await()
         @Suppress("UNCHECKED_CAST")
-        (doc.data?.filterValues { it is String } as? Map<String, String>) ?: emptyMap()
+        (doc.get("pillole_note") as? Map<String, String>) ?: emptyMap()
     } catch (_: Exception) { emptyMap() }
 
     suspend fun salvaNota(uid: String, externalId: String, nota: String) {
         try {
             val ref = db.collection("users").document(uid)
-                .collection("data").document("pillole_note")
-            if (nota.isBlank()) ref.update(mapOf(externalId to com.google.firebase.firestore.FieldValue.delete())).await()
-            else ref.set(mapOf(externalId to nota), com.google.firebase.firestore.SetOptions.merge()).await()
+            if (nota.isBlank()) {
+                ref.update("pillole_note.$externalId", FieldValue.delete()).await()
+            } else {
+                ref.update("pillole_note.$externalId", nota).await()
+            }
         } catch (_: Exception) {}
     }
 
@@ -325,33 +292,23 @@ object FirebaseManager {
 
     suspend fun rimuoviPillolaLetta(uid: String, externalId: String) {
         try {
-            val ref = db.collection("users").document(uid)
-                .collection("data").document("pillole_lette")
-            val doc = ref.get().await()
-            @Suppress("UNCHECKED_CAST")
-            val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
-            if (ids.remove(externalId)) ref.set(mapOf("ids" to ids)).await()
+            db.collection("users").document(uid)
+                .update("pillole_lette", FieldValue.arrayRemove(externalId)).await()
         } catch (_: Exception) {}
     }
 
     // ── Quiz risposti ─────────────────────────────────────────────────────────
 
     suspend fun caricaQuizRisposti(uid: String): List<String> = try {
-        val doc = db.collection("users").document(uid)
-            .collection("data").document("quiz_risposti").get().await()
+        val doc = db.collection("users").document(uid).get().await()
         @Suppress("UNCHECKED_CAST")
-        (doc.get("ids") as? List<String>) ?: emptyList()
+        (doc.get("quiz_risposti") as? List<String>) ?: emptyList()
     } catch (_: Exception) { emptyList() }
 
     suspend fun aggiungiQuizRisposto(uid: String, questionId: Int) {
         try {
-            val ref = db.collection("users").document(uid)
-                .collection("data").document("quiz_risposti")
-            val doc = ref.get().await()
-            @Suppress("UNCHECKED_CAST")
-            val ids = ((doc.get("ids") as? List<String>) ?: emptyList()).toMutableList()
-            val idStr = questionId.toString()
-            if (idStr !in ids) { idStr !in ids; ids.add(idStr); ref.set(mapOf("ids" to ids)).await() }
+            db.collection("users").document(uid)
+                .update("quiz_risposti", FieldValue.arrayUnion(questionId.toString())).await()
         } catch (_: Exception) {}
     }
 
@@ -359,16 +316,17 @@ object FirebaseManager {
 
     suspend fun resetProgressiUtente(uid: String) {
         try {
-            val dataRef = db.collection("users").document(uid).collection("data")
-            listOf("pillole_lette", "pillole_bookmark", "pillole_ignorate",
-                "pillole_note", "quiz_risposti").forEach { doc ->
-                dataRef.document(doc).delete().await()
-            }
-            dataRef.document("profile").set(
-                mapOf("xp" to 0, "streakCorrente" to 0, "streakMassima" to 0),
-                com.google.firebase.firestore.SetOptions.merge()
-            ).await()
-            dataRef.document("badges").delete().await()
+            db.collection("users").document(uid).update(mapOf(
+                "pillole_lette"   to emptyList<String>(),
+                "pillole_bookmark" to emptyList<String>(),
+                "pillole_ignorate" to emptyList<String>(),
+                "pillole_note"    to emptyMap<String, String>(),
+                "quiz_risposti"   to emptyList<String>(),
+                "xp"             to 0,
+                "streakCorrente" to 0,
+                "streakMassima"  to 0,
+                "badges"         to emptyList<String>()
+            )).await()
         } catch (e: Exception) {
             Log.e("FirebaseManager", "Errore reset progressi: ${e.message}")
         }

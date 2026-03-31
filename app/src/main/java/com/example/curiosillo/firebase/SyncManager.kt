@@ -88,7 +88,6 @@ class SyncManager(
         val badgeCloud  = FirebaseManager.caricaBadge(uid)
         val badgeTutti  = (badgeLocali + badgeCloud).distinct()
         if (badgeTutti.isNotEmpty()) {
-            FirebaseManager.aggiornaProfilo(uid, emptyMap()) // no-op per ora
             badgeTutti.forEach { FirebaseManager.aggiungiBadge(uid, it) }
         }
 

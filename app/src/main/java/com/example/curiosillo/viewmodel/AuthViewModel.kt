@@ -164,7 +164,7 @@ class AuthViewModel(
                 syncManager.ripristinaCloudVersoLocale(user.uid)
             }
         } catch (_: Exception) {
-            // sync fallita — l'utente e' loggato ugualmente
+            // sync fallita — l'utente è loggato ugualmente
         }
         _state.value = AuthUiState.Successo(user, isNuovo)
     }
