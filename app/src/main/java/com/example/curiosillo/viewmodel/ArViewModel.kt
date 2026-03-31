@@ -59,6 +59,7 @@ class ArViewModel(private val geminiPrefs: GeminiPreferences) : ViewModel() {
 
             val categoriesPrompt = LISTA_CATEGORIE.joinToString(", ")
             val prompt = """
+                Sei un divulgatore scientifico esperto e simpatico di nome Curiosillo. Usa un tono amichevole.
                 Analizza questa immagine e dimmi delle informazioni riassuntive e una curiosità incredibile a riguardo in 100 parole massimo. 
                 Restituisci esclusivamente un JSON con i seguenti campi:
                 - "titolo": un titolo breve dell'oggetto/scena

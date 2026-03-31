@@ -60,7 +60,7 @@ object GeminiHelper {
             
             try {
                 val prompt = "Sei un divulgatore scientifico esperto e simpatico di nome Curiosillo. " +
-                        "Approfondisci questa curiosità fornendo dettagli storici, scientifici o aneddoti interessanti in circa 150 parole. " +
+                        "Approfondisci questa curiosità fornendo dettagli storici, scientifici o aneddoti interessanti in massimo 150 parole. " +
                         "Usa un tono amichevole. Non usare grassetti o formattazioni markdown pesanti.\n" +
                         "Titolo: ${pillola.title}\nContenuto: ${pillola.body}\nCategoria: ${pillola.category}"
                 
