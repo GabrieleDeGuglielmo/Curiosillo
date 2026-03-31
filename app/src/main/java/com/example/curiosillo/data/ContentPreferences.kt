@@ -1,10 +1,13 @@
 package com.example.curiosillo.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 private val Context.contentDataStore by preferencesDataStore(name = "content_prefs")
 
@@ -13,6 +16,7 @@ class ContentPreferences(private val context: Context) {
     companion object {
         private val KEY_CONTENT_VERSION       = intPreferencesKey("content_version")
         private val KEY_CLOUD_MIGRAZIONE_DONE = intPreferencesKey("cloud_migrazione_done")
+        private val KEY_MOSTRA_POPUP_AR       = booleanPreferencesKey("mostra_popup_ar")
     }
 
     /** Restituisce la versione del contenuto attualmente salvata in locale (0 = mai scaricato). */
@@ -42,5 +46,13 @@ class ContentPreferences(private val context: Context) {
         context.contentDataStore.edit {
             it[androidx.datastore.preferences.core.stringPreferencesKey("ultima_versione_vista")] = versione
         }
+    }
+
+    val mostraPopupAR: Flow<Boolean> = context.contentDataStore.data.map {
+        it[KEY_MOSTRA_POPUP_AR] ?: true
+    }
+
+    suspend fun disabilitaPopupAR() {
+        context.contentDataStore.edit { it[KEY_MOSTRA_POPUP_AR] = false }
     }
 }

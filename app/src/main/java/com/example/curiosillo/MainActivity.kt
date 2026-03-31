@@ -4,6 +4,9 @@ import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -52,7 +55,14 @@ class MainActivity : ComponentActivity() {
                             }
                         })
                     }
-                    composable("home")       { HomeScreen(nav) }
+                    composable(
+                        route = "home",
+                        enterTransition = { fadeIn(tween(300)) },
+                        exitTransition = { fadeOut(tween(300)) },
+                        popEnterTransition = { fadeIn(tween(300)) },
+                        popExitTransition = { fadeOut(tween(300)) }
+                    ) { HomeScreen(nav) }
+                    
                     composable("curiosity")  { CuriosityScreen(nav) }
                     composable("quiz")       { QuizScreen(nav) }
                     composable("profile")    {
@@ -91,6 +101,14 @@ class MainActivity : ComponentActivity() {
                         val dest = back.arguments?.getString("dest") ?: "curiosity"
                         CategoryPickerScreen(nav, dest)
                     }
+                    
+                    composable(
+                        route = "ar_screen",
+                        enterTransition = { fadeIn(tween(300)) },
+                        exitTransition = { fadeOut(tween(300)) },
+                        popEnterTransition = { fadeIn(tween(300)) },
+                        popExitTransition = { fadeOut(tween(300)) }
+                    ) { ArScreen(nav) }
                 }
             }
         }

@@ -26,7 +26,7 @@ android {
         minSdk        = 24
         targetSdk     = 34
         versionCode   = 17
-        versionName   = "3.4.0"
+        versionName   = "4.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -98,6 +98,17 @@ dependencies {
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
+
+    // CameraX
+    val cameraxVersion = "1.3.3"
+    implementation("androidx.camera:camera-core:$cameraxVersion")
+    implementation("androidx.camera:camera-camera2:$cameraxVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
+    implementation("androidx.camera:camera-view:$cameraxVersion")
+    
+    // Coroutine support for ListenableFuture
+    implementation("androidx.concurrent:concurrent-futures-ktx:1.3.0")
+    implementation("com.google.guava:guava:33.5.0-android")
     
     // Gemini AI
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")

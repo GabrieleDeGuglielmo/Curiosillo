@@ -17,7 +17,7 @@ class GeminiPreferences(private val context: Context) {
     companion object {
         private val ULTIMO_UTILIZZO = longPreferencesKey("ultimo_utilizzo_gemini")
         private val CONTEGGIO_GIORNALIERO = intPreferencesKey("conteggio_giornaliero_gemini")
-        private const val LIMITE_GIORNALIERO = 5
+        private const val LIMITE_GIORNALIERO = 10
         private const val ADMIN_EMAIL = "gdg.gabriele@gmail.com"
     }
 
