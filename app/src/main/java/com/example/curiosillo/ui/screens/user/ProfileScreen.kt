@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,12 +46,10 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.data.BadgeCatalogo
-import com.example.curiosillo.data.BadgeDefinizione
 import com.example.curiosillo.data.BadgeSbloccato
 import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.ui.components.GamificationBanner
 import com.example.curiosillo.ui.theme.Error
-import com.example.curiosillo.ui.theme.Success
 import com.example.curiosillo.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
 
@@ -77,7 +76,6 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
     var showResetDialog  by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showEliminaDialog by remember { mutableStateOf(false) }
-    var badgeDettaglio by remember { mutableStateOf<BadgeDefinizione?>(null) }
     var badgeSbloccatoAppena by remember { mutableStateOf<BadgeSbloccato?>(null) }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -319,50 +317,6 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
             }
         }
-    }
-
-    // ── Dialog dettaglio badge ────────────────────────────────────────────────
-    badgeDettaglio?.let { def ->
-        val sbloccato = def.id in state.badgeSbloccati.map { it.id }
-        AlertDialog(
-            onDismissRequest = { badgeDettaglio = null },
-            icon = { Text(def.icona, fontSize = 40.sp) },
-            title = {
-                Text(
-                    def.nome,
-                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
-                )
-            },
-            text = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    if (sbloccato) {
-                        Text(
-                            def.descrizione, textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text("✅ Badge sbloccato!", color = Success)
-                    } else {
-                        Text(
-                            "Per sbloccare questo badge:",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 6.dp),
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            condizioneBadge(def.id), textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { badgeDettaglio = null }) { Text("Chiudi") }
-            }
-        )
     }
 
     // ── Dialog badge appena sbloccato ─────────────────────────────────────────
@@ -614,24 +568,6 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     }
                 }
 
-                /* TODO: PROPIC
-                // ── Avatar + titolo ───────────────────────────────────────────
-                Box(
-                    Modifier
-                        .size(90.dp)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Person, null, Modifier.size(52.dp), tint = Color.White)
-                }
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "Il mio profilo", style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.height(20.dp))
-                */
-
                 // Banner XP
                 GamificationBanner(xpTotali = state.xpTotali, streakCorrente = state.streakCorrente)
                 Spacer(Modifier.height(8.dp))
@@ -727,29 +663,15 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     )
                 }
 
-                // ── Badge ─────────────────────────────────────────────────────
+                // ── Badge personali (Nuova sezione) ───────────────────────────
                 Spacer(Modifier.height(28.dp))
-                Text(
-                    "Badge (${state.badgeSbloccati.size}/${BadgeCatalogo.tutti.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(12.dp))
-                val idSbloccati = state.badgeSbloccati.map { it.id }.toSet()
-                BadgeCatalogo.tutti.chunked(3).forEach { riga ->
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        riga.forEach { def ->
-                            BadgeCard(def, def.id in idSbloccati, Modifier.weight(1f)) {
-                                badgeDettaglio = def
-                            }
-                        }
-                        repeat(3 - riga.size) { Spacer(Modifier.weight(1f)) }
-                    }
-                    Spacer(Modifier.height(10.dp))
+                AzioneItemNav(
+                    icon = Icons.Default.EmojiEvents,
+                    tint = MaterialTheme.colorScheme.primary,
+                    label = "Badge personali",
+                    sub = "Hai sbloccato ${state.badgeSbloccati.size} badge su ${BadgeCatalogo.tutti.size}"
+                ) {
+                    nav.navigate("badges")
                 }
 
                 Spacer(Modifier.height(16.dp))
@@ -833,39 +755,6 @@ private fun AzioneItem(
 }
 
 @Composable
-private fun BadgeCard(
-    def: BadgeDefinizione, sbloccato: Boolean,
-    modifier: Modifier, onClick: () -> Unit
-) {
-    val cardBg = if (sbloccato) Color(0xFF1A1A2E) else MaterialTheme.colorScheme.surfaceVariant
-    val textColor =
-        if (sbloccato) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-    Card(
-        onClick = onClick, modifier = modifier.height(110.dp),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = cardBg),
-        elevation = CardDefaults.cardElevation(if (sbloccato) 4.dp else 0.dp)
-    ) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(if (sbloccato) def.icona else "🔒", fontSize = 28.sp)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                def.nome, style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
-                color = textColor, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-@Composable
 private fun StatCard(modifier: Modifier, valore: String, etichetta: String, colore: Color) {
     Card(
         modifier = modifier, shape = RoundedCornerShape(16.dp),
@@ -886,20 +775,4 @@ private fun StatCard(modifier: Modifier, valore: String, etichetta: String, colo
             )
         }
     }
-}
-
-private fun condizioneBadge(id: String): String = when (id) {
-    "prima_pillola" -> "Leggi la tua prima curiosità e premi \"Ho imparato!\""
-    "prima_risposta" -> "Completa il tuo primo quiz"
-    "streak_3" -> "Leggi almeno una pillola al giorno per 3 giorni consecutivi"
-    "streak_7" -> "Leggi almeno una pillola al giorno per 7 giorni consecutivi"
-    "streak_30" -> "Leggi almeno una pillola al giorno per 30 giorni consecutivi"
-    "perfetto_5" -> "Rispondi correttamente a 5 domande di fila senza sbagliare"
-    "pillole_10" -> "Leggi e impara 10 pillole"
-    "pillole_20" -> "Leggi e impara 20 pillole"
-    "pillole_50" -> "Leggi e impara 50 pillole"
-    "livello_3" -> "Accumula abbastanza XP per raggiungere il livello 3 (250 XP)"
-    "livello_5" -> "Accumula abbastanza XP per raggiungere il livello 5 (1000 XP)"
-    "preferiti_5" -> "Salva 5 pillole nei preferiti usando il segnalibro"
-    else -> "Continua a usare l'app per scoprire come sbloccare questo badge!"
 }

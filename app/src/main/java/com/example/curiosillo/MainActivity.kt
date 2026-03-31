@@ -7,6 +7,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -74,6 +76,22 @@ class MainActivity : ComponentActivity() {
                                 }
                             })
                     }
+                    composable(
+                        route = "badges",
+                        enterTransition = { 
+                            slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn(tween(300)) 
+                        },
+                        exitTransition = { 
+                            slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) + fadeOut(tween(300)) 
+                        },
+                        popEnterTransition = { 
+                            slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) + fadeIn(tween(300)) 
+                        },
+                        popExitTransition = { 
+                            slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut(tween(300)) 
+                        }
+                    ) { BadgeScreen(nav) }
+
                     composable("edit_profile") { EditProfileScreen(nav) }
                     composable("supporto") { SupportoScreen(nav) }
                     composable("supporto_bug") { BugReportScreen(nav) }
