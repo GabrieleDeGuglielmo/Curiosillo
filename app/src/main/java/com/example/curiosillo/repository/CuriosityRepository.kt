@@ -17,6 +17,7 @@ class CuriosityRepository(
     private val quizAnswerDao = db.quizAnswerDao()
     private val badgeDao      = db.badgeDao()
     private val sessionDao    = db.quizSessionDao()
+    private val scopertaDao   = db.scopertaDao()
 
     // Scrive su Firebase in background usando lo scope applicazione:
     // non viene cancellato se il ViewModel viene distrutto
@@ -212,6 +213,29 @@ class CuriosityRepository(
     suspend fun sbloccaBadge(b: BadgeSbloccato)         = badgeDao.inserisci(b)
     suspend fun isBadgeSbloccato(id: String): Boolean  = badgeDao.esiste(id)
 
+    // ── Scoperte ──────────────────────────────────────────────────────────────
+
+    fun getScoperteFlow(): Flow<List<Scoperta>> = scopertaDao.getTutteFlow()
+
+    suspend fun salvaScoperta(s: Scoperta) {
+        val uid = FirebaseManager.uid
+        if (uid != null) {
+            val firestoreId = FirebaseManager.salvaScoperta(uid, s)
+            scopertaDao.inserisci(s.copy(firestoreId = firestoreId))
+        } else {
+            scopertaDao.inserisci(s)
+        }
+    }
+
+    suspend fun syncScoperte() {
+        val uid = FirebaseManager.uid ?: return
+        val remote = FirebaseManager.getScoperte(uid)
+        // Per semplicità facciamo un reset locale e ricarichiamo tutto
+        // In una app reale si farebbe un merge più sofisticato
+        scopertaDao.resetTutte()
+        remote.forEach { scopertaDao.inserisci(it) }
+    }
+
     // ── Statistiche ───────────────────────────────────────────────────────────
 
     suspend fun totaleCuriosità()   = curDao.totaleCuriosità()
@@ -257,5 +281,6 @@ class CuriosityRepository(
         curDao.resetProgressi()
         quizAnswerDao.resetTutto()
         badgeDao.resetTutti()
+        scopertaDao.resetTutte()
     }
 }

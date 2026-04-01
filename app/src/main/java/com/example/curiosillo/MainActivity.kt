@@ -92,6 +92,22 @@ class MainActivity : ComponentActivity() {
                         }
                     ) { BadgeScreen(nav) }
 
+                    composable(
+                        route = "scoperte",
+                        enterTransition = { 
+                            slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn(tween(300)) 
+                        },
+                        exitTransition = { 
+                            slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) + fadeOut(tween(300)) 
+                        },
+                        popEnterTransition = { 
+                            slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) + fadeIn(tween(300)) 
+                        },
+                        popExitTransition = { 
+                            slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut(tween(300)) 
+                        }
+                    ) { ScoperteScreen(nav) }
+
                     composable("edit_profile") { EditProfileScreen(nav) }
                     composable("supporto") { SupportoScreen(nav) }
                     composable("supporto_bug") { BugReportScreen(nav) }

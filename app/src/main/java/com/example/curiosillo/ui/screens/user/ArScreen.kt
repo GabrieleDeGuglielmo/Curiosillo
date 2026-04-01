@@ -62,7 +62,7 @@ fun ArScreen(nav: NavController) {
     val scope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
     
-    val viewModel: ArViewModel = viewModel(factory = ArViewModelFactory(app.geminiPrefs))
+    val viewModel: ArViewModel = viewModel(factory = ArViewModelFactory(app.repository, app.geminiPrefs))
     val uiState by viewModel.uiState.collectAsState()
 
     val mostraPopupPref by app.contentPrefs.mostraPopupAR.collectAsState(initial = null)

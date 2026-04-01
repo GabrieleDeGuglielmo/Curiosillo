@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.curiosillo.BuildConfig
 import com.example.curiosillo.data.GeminiPreferences
+import com.example.curiosillo.data.Scoperta
+import com.example.curiosillo.repository.CuriosityRepository
 import com.example.curiosillo.ui.screens.utils.LISTA_CATEGORIE
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.RequestOptions
@@ -29,7 +31,10 @@ data class ArUiState(
     val remainingUsages: Int = 0
 )
 
-class ArViewModel(private val geminiPrefs: GeminiPreferences) : ViewModel() {
+class ArViewModel(
+    private val repo: CuriosityRepository,
+    private val geminiPrefs: GeminiPreferences
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ArUiState())
     val uiState: StateFlow<ArUiState> = _uiState.asStateFlow()
@@ -88,6 +93,15 @@ class ArViewModel(private val geminiPrefs: GeminiPreferences) : ViewModel() {
                     categoria = json.getString("categoria")
                 )
 
+                // Salva la scoperta
+                repo.salvaScoperta(
+                    Scoperta(
+                        titolo = result.titolo,
+                        descrizione = result.curiosita,
+                        categoria = result.categoria
+                    )
+                )
+
                 geminiPrefs.incrementUsage()
                 _uiState.value = _uiState.value.copy(isLoading = false, result = result)
                 
@@ -105,11 +119,14 @@ class ArViewModel(private val geminiPrefs: GeminiPreferences) : ViewModel() {
     }
 }
 
-class ArViewModelFactory(private val geminiPrefs: GeminiPreferences) : ViewModelProvider.Factory {
+class ArViewModelFactory(
+    private val repo: CuriosityRepository,
+    private val geminiPrefs: GeminiPreferences
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ArViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ArViewModel(geminiPrefs) as T
+            return ArViewModel(repo, geminiPrefs) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

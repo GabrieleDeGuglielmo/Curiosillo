@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -663,8 +664,19 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     )
                 }
 
-                // ── Badge personali (Nuova sezione) ───────────────────────────
+                // ── Scoperte ───────────────────────────────────────────
                 Spacer(Modifier.height(28.dp))
+                AzioneItemNav(
+                    icon = Icons.Default.AutoAwesome,
+                    tint = MaterialTheme.colorScheme.primary,
+                    label = "Scoperte",
+                    sub = "Le tue scoperte"
+                ) {
+                    nav.navigate("scoperte")
+                }
+
+                // ── Badge personali ───────────────────────────
+                Spacer(Modifier.height(8.dp))
                 AzioneItemNav(
                     icon = Icons.Default.EmojiEvents,
                     tint = MaterialTheme.colorScheme.primary,

@@ -13,9 +13,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         QuizQuestion::class,
         QuizAnswer::class,
         BadgeSbloccato::class,
-        QuizSession::class
+        QuizSession::class,
+        Scoperta::class
     ],
-    version      = 8,
+    version      = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -25,6 +26,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun bookmarkDao():     BookmarkDao
     abstract fun badgeDao():        BadgeDao
     abstract fun quizSessionDao():  QuizSessionDao
+    abstract fun scopertaDao():     ScopertaDao
 
     companion object {
         @Volatile
@@ -44,7 +46,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_4_5,
                         MIGRATION_5_6,
                         MIGRATION_6_7,
-                        MIGRATION_7_8
+                        MIGRATION_7_8,
+                        MIGRATION_8_9
                     )
                     .build().also { INSTANCE = it }
             }
@@ -173,6 +176,23 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
                     "ALTER TABLE curiosity ADD COLUMN approfondimentoAi TEXT"
+                )
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS scoperte (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        firestoreId TEXT,
+                        titolo TEXT NOT NULL,
+                        descrizione TEXT NOT NULL,
+                        categoria TEXT NOT NULL,
+                        dataScoperta INTEGER NOT NULL
+                    )
+                """
                 )
             }
         }

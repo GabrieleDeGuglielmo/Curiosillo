@@ -1,6 +1,7 @@
 package com.example.curiosillo.firebase
 
 import android.util.Log
+import com.example.curiosillo.data.Scoperta
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
@@ -327,6 +328,12 @@ object FirebaseManager {
                 "streakMassima"  to 0,
                 "badges"         to emptyList<String>()
             )).await()
+
+            // Elimina anche le scoperte
+            val scoperte = db.collection("users").document(uid).collection("scoperte").get().await()
+            for (doc in scoperte.documents) {
+                doc.reference.delete().await()
+            }
         } catch (e: Exception) {
             Log.e("FirebaseManager", "Errore reset progressi: ${e.message}")
         }
@@ -760,6 +767,53 @@ object FirebaseManager {
             }
         } catch (e: Exception) {
             Log.e("Migration", "Errore migrazione: ${e.message}")
+        }
+    }
+
+    // ── Scoperte AR ───────────────────────────────────────────────────────────
+
+    suspend fun salvaScoperta(uid: String, scoperta: Scoperta): String {
+        val ref = db.collection("users").document(uid).collection("scoperte").document()
+        val data = mapOf(
+            "titolo" to scoperta.titolo,
+            "descrizione" to scoperta.descrizione,
+            "categoria" to scoperta.categoria,
+            "dataScoperta" to scoperta.dataScoperta
+        )
+        ref.set(data).await()
+        return ref.id
+    }
+
+    suspend fun getScoperte(uid: String): List<Scoperta> {
+        return try {
+            val snp = db.collection("users").document(uid).collection("scoperte")
+                .orderBy("dataScoperta", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .get().await()
+            snp.documents.map { doc ->
+                Scoperta(
+                    firestoreId = doc.id,
+                    titolo = doc.getString("titolo") ?: "",
+                    descrizione = doc.getString("descrizione") ?: "",
+                    categoria = doc.getString("categoria") ?: "",
+                    dataScoperta = doc.getLong("dataScoperta") ?: 0L
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("FirebaseManager", "Errore getScoperte", e)
+            emptyList()
+        }
+    }
+
+    suspend fun getCuriositaPerSync(limit: Int = 100): List<CuriositaRemota> {
+        val snp = db.collection("curiosita").limit(limit.toLong()).get().await()
+        return snp.documents.filter { it.id != "_meta_" }.map { doc ->
+            CuriositaRemota(
+                externalId = doc.id,
+                titolo = doc.getString("titolo") ?: "",
+                corpo = doc.getString("corpo") ?: "",
+                categoria = doc.getString("categoria") ?: "Generale",
+                emoji = doc.getString("emoji") ?: "💡"
+            )
         }
     }
 }
