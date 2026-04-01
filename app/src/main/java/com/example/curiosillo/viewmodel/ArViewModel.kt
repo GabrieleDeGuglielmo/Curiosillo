@@ -69,10 +69,10 @@ class ArViewModel(
             val categoriesPrompt = LISTA_CATEGORIE.joinToString(", ")
             val prompt = """
                 Sei un divulgatore scientifico esperto e simpatico di nome Curiosillo. Usa un tono amichevole.
-                Analizza questa immagine e dimmi delle informazioni riassuntive e una curiosità incredibile a riguardo in 100 parole massimo. 
+                Analizza questa immagine e dimmi delle informazioni riassuntive e una curiosità incredibile a riguardo in 100 parole circa. 
                 Restituisci esclusivamente un JSON con i seguenti campi:
                 - "titolo": un titolo breve dell'oggetto/scena
-                - "curiosita": le informazioni e la curiosità (max 100 parole totali)
+                - "curiosita": le informazioni e la curiosità (circa 100 parole totali)
                 - "categoria": una tra queste: $categoriesPrompt
                 
                 Non aggiungere altro testo prima o dopo il JSON.
