@@ -199,5 +199,8 @@ private fun condizioneBadge(id: String): String = when (id) {
     "livello_3" -> "Accumula abbastanza XP per raggiungere il livello 3 (250 XP)"
     "livello_5" -> "Accumula abbastanza XP per raggiungere il livello 5 (1000 XP)"
     "preferiti_5" -> "Salva 5 pillole nei preferiti usando il segnalibro"
+    "scoperta_1" -> "Fai la tua prima scoperta AR!"
+    "scoperte_10" -> "Fai 10 scoperte AR!"
+    "scoperte_50" -> "Fai 50 scoperte AR!"
     else -> "Continua a usare l'app per scoprire come sbloccare questo badge!"
 }
