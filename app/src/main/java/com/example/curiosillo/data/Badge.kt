@@ -32,7 +32,10 @@ object BadgeCatalogo {
         BadgeDefinizione("pillole_50",     "Enciclopedia",       "Hai letto 50 pillole!",                    "🗂️"),
         BadgeDefinizione("livello_3",      "Studioso",           "Hai raggiunto il livello 3!",              "🎓"),
         BadgeDefinizione("livello_5",      "Campione",           "Hai raggiunto il livello 5!",              "🏆"),
-        BadgeDefinizione("preferiti_5",    "Collezionista",      "Hai salvato 5 pillole nei preferiti!",     "🔖")
+        BadgeDefinizione("preferiti_5",    "Collezionista",      "Hai salvato 5 pillole nei preferiti!",     "🔖"),
+        BadgeDefinizione("scoperta_1",     "Esploratore",        "Hai fatto la tua prima scoperta AR!",      "🔍"),
+        BadgeDefinizione("scoperte_10",    "Ricercatore",        "Hai fatto 10 scoperte AR!",                "🔭"),
+        BadgeDefinizione("scoperte_50",    "Pioniere",           "Hai fatto 50 scoperte AR!",                "🗺️")
     )
 
     fun trovaPerId(id: String) = tutti.find { it.id == id }

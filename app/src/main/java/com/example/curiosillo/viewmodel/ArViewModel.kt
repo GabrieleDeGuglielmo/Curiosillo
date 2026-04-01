@@ -5,8 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.curiosillo.BuildConfig
+import com.example.curiosillo.data.BadgeSbloccato
 import com.example.curiosillo.data.GeminiPreferences
 import com.example.curiosillo.data.Scoperta
+import com.example.curiosillo.domain.GamificationEngine
 import com.example.curiosillo.repository.CuriosityRepository
 import com.example.curiosillo.ui.screens.utils.LISTA_CATEGORIE
 import com.google.ai.client.generativeai.GenerativeModel
@@ -28,12 +30,14 @@ data class ArUiState(
     val isLoading: Boolean = false,
     val result: ArResult? = null,
     val error: String? = null,
-    val remainingUsages: Int = 0
+    val remainingUsages: Int = 0,
+    val badgeSbloccato: BadgeSbloccato? = null
 )
 
 class ArViewModel(
     private val repo: CuriosityRepository,
-    private val geminiPrefs: GeminiPreferences
+    private val geminiPrefs: GeminiPreferences,
+    private val engine: GamificationEngine
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ArUiState())
@@ -60,7 +64,7 @@ class ArViewModel(
                 return@launch
             }
 
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null, result = null)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, result = null, badgeSbloccato = null)
 
             val categoriesPrompt = LISTA_CATEGORIE.joinToString(", ")
             val prompt = """
@@ -82,8 +86,6 @@ class ArViewModel(
 
                 val response = generativeModel.generateContent(inputContent)
                 val responseText = response.text ?: ""
-                
-                // Pulisci il testo se Gemini aggiunge markdown tipo ```json ... ```
                 val jsonString = responseText.replace("```json", "").replace("```", "").trim()
                 val json = JSONObject(jsonString)
                 
@@ -93,8 +95,8 @@ class ArViewModel(
                     categoria = json.getString("categoria")
                 )
 
-                // Salva la scoperta
-                repo.salvaScoperta(
+                // 1. Salva la scoperta e ottieni il numero totale
+                val numeroScoperte = repo.salvaScoperta(
                     Scoperta(
                         titolo = result.titolo,
                         descrizione = result.curiosita,
@@ -102,8 +104,15 @@ class ArViewModel(
                     )
                 )
 
+                // 2. Notifica l'engine per XP e Badge
+                val resGamif = engine.onScopertaEffettuata(numeroScoperte)
+
                 geminiPrefs.incrementUsage()
-                _uiState.value = _uiState.value.copy(isLoading = false, result = result)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false, 
+                    result = result,
+                    badgeSbloccato = resGamif.badgeSbloccati.firstOrNull()
+                )
                 
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -115,18 +124,23 @@ class ArViewModel(
     }
 
     fun resetState() {
-        _uiState.value = _uiState.value.copy(result = null, error = null, isLoading = false)
+        _uiState.value = _uiState.value.copy(result = null, error = null, isLoading = false, badgeSbloccato = null)
+    }
+
+    fun dismissBadge() {
+        _uiState.value = _uiState.value.copy(badgeSbloccato = null)
     }
 }
 
 class ArViewModelFactory(
     private val repo: CuriosityRepository,
-    private val geminiPrefs: GeminiPreferences
+    private val geminiPrefs: GeminiPreferences,
+    private val engine: GamificationEngine
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ArViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ArViewModel(repo, geminiPrefs) as T
+            return ArViewModel(repo, geminiPrefs, engine) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

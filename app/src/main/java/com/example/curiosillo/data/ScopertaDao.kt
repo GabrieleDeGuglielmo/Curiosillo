@@ -16,4 +16,7 @@ interface ScopertaDao {
 
     @Query("DELETE FROM scoperte")
     suspend fun resetTutte()
+
+    @Query("SELECT COUNT(*) FROM scoperte")
+    suspend fun countTutte(): Int
 }

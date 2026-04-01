@@ -62,7 +62,9 @@ fun ArScreen(nav: NavController) {
     val scope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
     
-    val viewModel: ArViewModel = viewModel(factory = ArViewModelFactory(app.repository, app.geminiPrefs))
+    val viewModel: ArViewModel = viewModel(
+        factory = ArViewModelFactory(app.repository, app.geminiPrefs, app.gamificationEngine)
+    )
     val uiState by viewModel.uiState.collectAsState()
 
     val mostraPopupPref by app.contentPrefs.mostraPopupAR.collectAsState(initial = null)
@@ -111,6 +113,41 @@ fun ArScreen(nav: NavController) {
         if (mostraPopupPref == true) {
             showDialog = true
         }
+    }
+
+    // Dialog badge sbloccato
+    uiState.badgeSbloccato?.let { badge ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissBadge() },
+            icon = { Text(badge.icona, fontSize = 48.sp) },
+            title = {
+                Text(
+                    "Badge sbloccato!",
+                    modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center
+                )
+            },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        badge.nome, style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        badge.descrizione, textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = { viewModel.dismissBadge() }) {
+                    Text("Ottimo!")
+                }
+            }
+        )
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {

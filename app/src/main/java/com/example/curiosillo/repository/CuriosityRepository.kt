@@ -217,7 +217,7 @@ class CuriosityRepository(
 
     fun getScoperteFlow(): Flow<List<Scoperta>> = scopertaDao.getTutteFlow()
 
-    suspend fun salvaScoperta(s: Scoperta) {
+    suspend fun salvaScoperta(s: Scoperta): Int {
         val uid = FirebaseManager.uid
         if (uid != null) {
             val firestoreId = FirebaseManager.salvaScoperta(uid, s)
@@ -225,6 +225,7 @@ class CuriosityRepository(
         } else {
             scopertaDao.inserisci(s)
         }
+        return scopertaDao.countTutte()
     }
 
     suspend fun syncScoperte() {

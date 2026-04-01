@@ -103,6 +103,37 @@ class GamificationEngine(
         )
     }
 
+    suspend fun onScopertaEffettuata(numeroScoperte: Int): RisultatoAzione {
+        val xp = 25 // Premio per ogni scoperta AR
+        val badgeSbloccati = mutableListOf<BadgeSbloccato>()
+        
+        val xpPrima = prefs.xpTotali.first()
+        prefs.aggiungiXp(xp)
+        val xpDopo = prefs.xpTotali.first()
+        
+        val giaSbloccati = repo.idBadgeSbloccati()
+        
+        badgeSbloccati += controllaBadge(giaSbloccati, "scoperta_1")  { numeroScoperte >= 1 }
+        badgeSbloccati += controllaBadge(giaSbloccati, "scoperte_10") { numeroScoperte >= 10 }
+        badgeSbloccati += controllaBadge(giaSbloccati, "scoperte_50") { numeroScoperte >= 50 }
+        
+        val livelloPrima = LivelloHelper.daXp(xpPrima).numero
+        val livelloDopo  = LivelloHelper.daXp(xpDopo).numero
+        
+        badgeSbloccati.forEach { repo.sbloccaBadge(it) }
+        
+        FirebaseManager.uid?.let { uid ->
+            syncManager.sincronizzaGamification(uid)
+            badgeSbloccati.forEach { FirebaseManager.aggiungiBadge(uid, it.id) }
+        }
+        
+        return RisultatoAzione(
+            xpGuadagnati = xp,
+            badgeSbloccati = badgeSbloccati,
+            nuovoLivello = livelloDopo > livelloPrima
+        )
+    }
+
     private fun controllaBadge(
         giaSbloccati: Set<String>,
         id: String,
