@@ -104,8 +104,8 @@ class ArViewModel(
                     )
                 )
 
-                // 2. Notifica l'engine per XP e Badge
-                val resGamif = engine.onScopertaEffettuata(numeroScoperte)
+                // 2. Notifica l'engine per XP e Badge (passando anche il titolo per i badge leggendari)
+                val resGamif = engine.onScopertaEffettuata(numeroScoperte, result.titolo)
 
                 geminiPrefs.incrementUsage()
                 _uiState.value = _uiState.value.copy(

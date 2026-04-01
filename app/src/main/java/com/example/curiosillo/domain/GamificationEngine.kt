@@ -103,8 +103,8 @@ class GamificationEngine(
         )
     }
 
-    suspend fun onScopertaEffettuata(numeroScoperte: Int): RisultatoAzione {
-        val xp = 25 // Premio per ogni scoperta AR
+    suspend fun onScopertaEffettuata(numeroScoperte: Int, titolo: String): RisultatoAzione {
+        val xp = 25
         val badgeSbloccati = mutableListOf<BadgeSbloccato>()
         
         val xpPrima = prefs.xpTotali.first()
@@ -113,10 +113,23 @@ class GamificationEngine(
         
         val giaSbloccati = repo.idBadgeSbloccati()
         
+        // Badge standard scoperte
         badgeSbloccati += controllaBadge(giaSbloccati, "scoperta_1")  { numeroScoperte >= 1 }
         badgeSbloccati += controllaBadge(giaSbloccati, "scoperte_10") { numeroScoperte >= 10 }
         badgeSbloccati += controllaBadge(giaSbloccati, "scoperte_50") { numeroScoperte >= 50 }
         
+        // --- Badge Leggendari (Monumenti) ---
+        val t = titolo.lowercase()
+        if ("colosseo" in t || "colosseum" in t) badgeSbloccati += controllaBadge(giaSbloccati, "leg_colosseo") { true }
+        if ("pantheon" in t) badgeSbloccati += controllaBadge(giaSbloccati, "leg_pantheon") { true }
+        if ("torre di pisa" in t || "leaning tower" in t) badgeSbloccati += controllaBadge(giaSbloccati, "leg_pisa") { true }
+        if ("duomo di milano" in t || "milan cathedral" in t) badgeSbloccati += controllaBadge(giaSbloccati, "leg_milano") { true }
+        if ("basilica di san pietro" in t || "st. peter's basilica" in t) badgeSbloccati += controllaBadge(giaSbloccati, "leg_pietro") { true }
+        if ("maria del fiore" in t || "florence cathedral" in t) badgeSbloccati += controllaBadge(giaSbloccati, "leg_fiore") { true }
+        if ("pompei" in t || "pompeii" in t) badgeSbloccati += controllaBadge(giaSbloccati, "leg_pompei") { true }
+        if ("san marco" in t || "st. mark's basilica" in t) badgeSbloccati += controllaBadge(giaSbloccati, "leg_marco") { true }
+        if ("reggia di caserta" in t || "royal palace of caserta" in t) badgeSbloccati += controllaBadge(giaSbloccati, "leg_caserta") { true }
+
         val livelloPrima = LivelloHelper.daXp(xpPrima).numero
         val livelloDopo  = LivelloHelper.daXp(xpDopo).numero
         

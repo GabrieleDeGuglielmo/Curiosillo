@@ -1,5 +1,6 @@
 package com.example.curiosillo.ui.screens.user
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,9 +12,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,7 +44,6 @@ fun BadgeScreen(nav: NavController) {
     )
     val state by vm.state.collectAsState()
 
-    // Carica le statistiche se necessario (anche se il profilo dovrebbe averle già caricate)
     LaunchedEffect(Unit) {
         vm.caricaStatistiche()
     }
@@ -108,7 +113,6 @@ fun BadgeScreen(nav: NavController) {
         }
     }
 
-    // Dialog dettaglio badge (copiato da ProfileScreen)
     badgeDettaglio?.let { def ->
         val sbloccato = def.id in state.badgeSbloccati.map { it.id }
         AlertDialog(
@@ -158,30 +162,134 @@ private fun BadgeCard(
     def: BadgeDefinizione, sbloccato: Boolean,
     modifier: Modifier, onClick: () -> Unit
 ) {
-    val cardBg = if (sbloccato) Color(0xFF1A1A2E) else MaterialTheme.colorScheme.surfaceVariant
+    val isLegendaryUnlocked = def.isLeggendario && sbloccato
+
+    val cardBg = when {
+        isLegendaryUnlocked -> Color(0xFF4A148C)
+        sbloccato -> Color(0xFF1A1A2E)
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+
     val textColor =
         if (sbloccato) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-    Card(
-        onClick = onClick, modifier = modifier.height(110.dp),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = cardBg),
-        elevation = CardDefaults.cardElevation(if (sbloccato) 4.dp else 0.dp)
-    ) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(if (sbloccato) def.icona else "🔒", fontSize = 28.sp)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                def.nome, style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
-                color = textColor, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
+
+    val border = if (isLegendaryUnlocked) {
+        androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFFFD700))
+    } else null
+
+    val cardShape = RoundedCornerShape(14.dp)
+    val cardHeight = if (isLegendaryUnlocked) 120.dp else 110.dp
+
+    // ── Legendary 3D animations ──
+    val infiniteTransition = if (isLegendaryUnlocked) {
+        rememberInfiniteTransition(label = "legendary_${def.id}")
+    } else null
+
+    val rotationY by if (isLegendaryUnlocked && infiniteTransition != null) {
+        infiniteTransition.animateFloat(
+            initialValue = -8f,
+            targetValue = 8f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 3000, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "rotationY_${def.id}"
+        )
+    } else {
+        remember { mutableFloatStateOf(0f) }
+    }
+
+    val shimmerAlpha by if (isLegendaryUnlocked && infiniteTransition != null) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.15f,
+            targetValue = 0.5f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 2000, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "shimmer_${def.id}"
+        )
+    } else {
+        remember { mutableFloatStateOf(0f) }
+    }
+
+    val density = LocalDensity.current.density
+
+    val cardModifier = if (isLegendaryUnlocked) {
+        modifier
+            .height(cardHeight)
+            .shadow(
+                elevation = 12.dp,
+                shape = cardShape,
+                ambientColor = Color(0xFF7B1FA2),
+                spotColor = Color(0xFFE040FB)
             )
+            .graphicsLayer {
+                this.rotationY = rotationY
+                this.cameraDistance = 12f * density
+            }
+    } else {
+        modifier.height(cardHeight)
+    }
+
+    Card(
+        onClick = onClick, modifier = cardModifier,
+        shape = cardShape,
+        colors = CardDefaults.cardColors(containerColor = cardBg),
+        border = border,
+        elevation = CardDefaults.cardElevation(
+            if (isLegendaryUnlocked) 8.dp else if (sbloccato) 4.dp else 0.dp
+        )
+    ) {
+        Box(Modifier.fillMaxSize()) {
+            // ── Holographic gradient + shimmer for legendary unlocked ──
+            if (isLegendaryUnlocked) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color(0xFF4A148C),
+                                    Color(0xFFAB47BC),
+                                    Color(0xFF4A148C)
+                                ),
+                                start = Offset.Zero,
+                                end = Offset.Infinite
+                            )
+                        )
+                        .drawBehind {
+                            drawRect(Color(0xFFFFD700).copy(alpha = shimmerAlpha))
+                        }
+                )
+            }
+
+            // ── Badge content ──
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    if (sbloccato) def.icona else "🔒",
+                    fontSize = if (isLegendaryUnlocked) 32.sp else 28.sp
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    def.nome, style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
+                    color = textColor, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (isLegendaryUnlocked) {
+                    Text(
+                        "Leggendario", fontSize = 8.sp, color = Color(0xFFFFD700),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }
