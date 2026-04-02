@@ -97,24 +97,57 @@ fun BadgeScreen(nav: NavController) {
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 32.dp)
                 )
 
                 val idSbloccati = state.badgeSbloccati.map { it.id }.toSet()
-                BadgeCatalogo.tutti.chunked(3).forEach { riga ->
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        riga.forEach { def ->
-                            BadgeCard(def, def.id in idSbloccati, Modifier.weight(1f)) {
-                                badgeDettaglio = def
-                            }
-                        }
-                        repeat(3 - riga.size) { Spacer(Modifier.weight(1f)) }
-                    }
-                    Spacer(Modifier.height(10.dp))
+                val (leggendari, normali) = BadgeCatalogo.tutti.partition { it.isLeggendario }
+
+                // --- SEZIONE: TRAGUARDI DEL SAPERE ---
+                BadgeSection(
+                    titolo = "🎓 Traguardi del Sapere",
+                    badges = normali,
+                    idSbloccati = idSbloccati
+                ) {
+                    badgeDettaglio = it
                 }
+
+                Spacer(Modifier.height(40.dp))
+
+                // --- SEZIONE: OLTRE L'IMMAGINAZIONE ---
+                BadgeSection(
+                    titolo = "🌌 Oltre l'immaginazione",
+                    badges = leggendari,
+                    idSbloccati = idSbloccati
+                ) {
+                    badgeDettaglio = it
+                }
+
+                Spacer(Modifier.height(40.dp))
+
+                // --- SEZIONE: SPIRITO DI BRANCO (VUOTA) ---
+                SectionHeader("🐾 Spirito di Branco")
+                Text(
+                    "Nuovi badge in arrivo per le attività di community!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    textAlign = TextAlign.Start
+                )
+
+                Spacer(Modifier.height(40.dp))
+
+                // --- SEZIONE: MAESTRO DI SETTORE (VUOTA) ---
+                SectionHeader("🏆 Maestro di Settore")
+                Text(
+                    "Dimostra la tua competenza in categorie specifiche sbloccando questi badge futuri!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    textAlign = TextAlign.Start
+                )
+                
+                Spacer(Modifier.height(24.dp))
             }
         }
 
@@ -161,6 +194,46 @@ fun BadgeScreen(nav: NavController) {
                 TextButton(onClick = { badgeDettaglio = null }) { Text("Chiudi") }
             }
         )
+    }
+}
+
+@Composable
+private fun SectionHeader(titolo: String) {
+    Text(
+        titolo,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.ExtraBold,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Start,
+        color = MaterialTheme.colorScheme.primary
+    )
+}
+
+@Composable
+private fun BadgeSection(
+    titolo: String,
+    badges: List<BadgeDefinizione>,
+    idSbloccati: Set<String>,
+    onBadgeClick: (BadgeDefinizione) -> Unit
+) {
+    Column(Modifier.fillMaxWidth()) {
+        SectionHeader(titolo)
+        Spacer(Modifier.height(16.dp))
+        
+        badges.chunked(3).forEach { riga ->
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                riga.forEach { def ->
+                    BadgeCard(def, def.id in idSbloccati, Modifier.weight(1f)) {
+                        onBadgeClick(def)
+                    }
+                }
+                repeat(3 - riga.size) { Spacer(Modifier.weight(1f)) }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
     }
 }
 
