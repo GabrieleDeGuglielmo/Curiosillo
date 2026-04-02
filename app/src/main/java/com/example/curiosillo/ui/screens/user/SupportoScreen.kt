@@ -253,7 +253,7 @@ fun BugReportScreen(nav: NavController) {
                             value = descrizione,
                             onValueChange = { descrizione = it },
                             label = { Text("Descrizione") },
-                            placeholder = { Text("Descrivi il problema riscontrato...") },
+                            placeholder = { Text("Descrivi il problema riscontrato e invia la segnalazione tramite posta elettronica\n(Min. 10 lettere)") },
                             modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
                             shape = RoundedCornerShape(12.dp)
                         )
