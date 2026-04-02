@@ -223,7 +223,9 @@ object FirebaseManager {
         try {
             db.collection("users").document(uid)
                 .update("pillole_lette", FieldValue.arrayUnion(externalId)).await()
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Log.e("FirebaseManager", "Errore aggiungiPillolaLetta: ${e.message}")
+        }
     }
 
     // ── Pillole bookmark ─────────────────────────────────────────────────────
@@ -353,12 +355,39 @@ object FirebaseManager {
         "gdg", "cazzo", "vaffanculo", "stronzo", "stronza", "puttana", "coglione",
         "cogliona", "merda", "fanculo", "minchia", "figlio di puttana", "bastardo",
         "bastarda", "idiota", "imbecille", "deficiente", "ritardato", "ritardata",
-        "frocio", "ricchione", "negro"
+        "frocio", "ricchione", "negro", "troia", "mignotta", "zoccola", "baldracca",
+        "finocchio", "testa di cazzo", "pezzo di merda", "cretino", "cretina",
+        "schifoso", "schifosa", "scemo", "scema", "handicappato", "porco dio",
+        "dio cane", "dio porco", "dio maiale", "bucaiolo", "bagascia", "battona", "bottana",
+        "cessa", "cesso", "culattone", "culatone", "fancazzista", "fica",
+        "figa", "fregna", "gnocca", "infame", "lota", "mignottone",
+        "mona", "picio", "pirla", "pompinara", "porca", "puttaniere",
+        "rottinculo", "sculattone", "sfaccimm", "sfigato", "sfigata",
+        "terrone", "terrona", "vongola", "zoccolone"
     )
 
+    /** Normalizza il testo per facilitare il controllo delle parole vietate.
+     * Rimuove spazi tra le lettere e gestisce il leetspeak. */
+    private fun normalizzaTesto(testo: String): String {
+        val base = testo.lowercase()
+            .replace('4', 'a')
+            .replace('@', 'a')
+            .replace('3', 'e')
+            .replace('1', 'i')
+            .replace('!', 'i')
+            .replace('0', 'o')
+            .replace('5', 's')
+            .replace('$', 's')
+            .replace('7', 't')
+            .replace('+', 't')
+        
+        // Rimuove TUTTI gli spazi e la punteggiatura
+        return base.filter { it.isLetterOrDigit() }
+    }
+
     fun contienePaloroleVietate(testo: String): Boolean {
-        val lower = testo.lowercase()
-        return PAROLE_VIETATE.any { lower.contains(it) }
+        val normalizzato = normalizzaTesto(testo)
+        return PAROLE_VIETATE.any { normalizzato.contains(it) }
     }
 
     suspend fun caricaCommenti(externalId: String): List<Commento> = try {
