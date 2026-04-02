@@ -252,7 +252,7 @@ class DuelloViewModel(
                 mioUser         = mioUser,
                 indiceCorrente  = 0,
                 rispostaData    = null,
-                secondiRimasti  = 10,
+                secondiRimasti  = 30,
                 risposteCorrentiAvversario = 0
             )
             avviaTimer(0, stato)
@@ -294,7 +294,7 @@ class DuelloViewModel(
     private fun avviaTimer(indice: Int, stato: DuelloStato) {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
-            for (s in 10 downTo 0) {
+            for (s in 30 downTo 0) {
                 val cur = _state.value as? DuelloUiState.InCorso ?: return@launch
                 if (cur.indiceCorrente != indice) return@launch
                 _state.value = cur.copy(secondiRimasti = s)
@@ -361,7 +361,7 @@ class DuelloViewModel(
                 mioUser         = pausa.mioUser,
                 indiceCorrente  = prossimo,
                 rispostaData    = null,
-                secondiRimasti  = 10,
+                secondiRimasti  = 30,
                 risposteCorrentiAvversario = 0
             )
             avviaTimer(prossimo, pausa.duello)

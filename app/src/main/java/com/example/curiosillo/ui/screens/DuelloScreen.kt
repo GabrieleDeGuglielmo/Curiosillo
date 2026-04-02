@@ -199,7 +199,7 @@ private fun LobbyContent(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "10 domande • 10 secondi a domanda",
+            "10 domande • 30 secondi a domanda",
             style     = MaterialTheme.typography.bodyMedium,
             color     = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
             textAlign = TextAlign.Center
