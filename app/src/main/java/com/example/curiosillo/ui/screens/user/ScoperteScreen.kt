@@ -1,6 +1,5 @@
 package com.example.curiosillo.ui.screens.user
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -52,77 +51,77 @@ fun ScoperteScreen(nav: NavController) {
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Le mie scoperte") },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (nav.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
-                            nav.popBackStack()
-                        }
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-            )
-        },
-        containerColor = Color.Transparent
-    ) { pad ->
-        val gradientBg = Brush.verticalGradient(
-            listOf(
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                MaterialTheme.colorScheme.background
-            )
+    val gradientBg = Brush.verticalGradient(
+        listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.background
         )
-
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(gradientBg)
-                .padding(pad)
-        ) {
-            if (state.isLoading && state.scoperte.isEmpty()) {
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
-            } else if (state.scoperte.isEmpty()) {
-                Column(
-                    Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        Icons.Default.AutoAwesome,
-                        null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        "Ancora nessuna scoperta!",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                    )
-                    Text(
-                        "Inquadra qualcosa con la fotocamera AR\nper aggiungerlo alla tua collezione.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
-                        modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp)
-                    )
-                }
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(state.scoperte) { scoperta ->
-                        ScopertaCard(scoperta) { scopertaDettaglio = scoperta }
+    )
+    Box(Modifier.fillMaxSize().background(gradientBg)) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Le mie scoperte") },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            if (nav.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
+                                nav.popBackStack()
+                            }
+                        }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                )
+            },
+            containerColor = Color.Transparent
+        ) { pad ->
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(pad)
+            ) {
+                if (state.isLoading && state.scoperte.isEmpty()) {
+                    CircularProgressIndicator(Modifier.align(Alignment.Center))
+                } else if (state.scoperte.isEmpty()) {
+                    Column(
+                        Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "Ancora nessuna scoperta!",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            "Inquadra qualcosa con la fotocamera AR\nper aggiungerlo alla tua collezione.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp)
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(state.scoperte) { scoperta ->
+                            ScopertaCard(scoperta) { scopertaDettaglio = scoperta }
+                        }
                     }
                 }
             }
         }
-    }
+    } // Box gradient
 }
 
 @Composable

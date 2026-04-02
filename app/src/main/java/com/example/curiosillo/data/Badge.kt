@@ -38,11 +38,11 @@ object BadgeCatalogo {
         BadgeDefinizione("scoperte_10",    "Ricercatore",        "Hai fatto 10 scoperte AR!",                "🔭"),
         BadgeDefinizione("scoperte_50",    "Pioniere",           "Hai fatto 50 scoperte AR!",                "🗺️"),
         
-        // --- Badge Leggendari ---
+        // --- Badge Leggendari AR ---
         BadgeDefinizione("leg_colosseo",   "Il Gladiatore",      "Hai scoperto il Colosseo!",                "🏛️", true),
         BadgeDefinizione("leg_pantheon",   "L'Occhio degli Dei", "Hai scoperto il Pantheon!",                "🏛️", true),
         BadgeDefinizione("leg_pisa",       "Equilibrista",       "Hai scoperto la Torre di Pisa!",           "🗼", true),
-        BadgeDefinizione("leg_milano",     "Il Guglia",          "Hai scoperto il Duomo di Milano!",         "⛪", true),
+        BadgeDefinizione("leg_milano",     "La Guglia",          "Hai scoperto il Duomo di Milano!",         "⛪", true),
         BadgeDefinizione("leg_pietro",     "Il Cupolone",        "Hai scoperto la Basilica di San Pietro!",  "⛪", true),
         BadgeDefinizione("leg_fiore",      "Rinascimentale",     "Hai scoperto S. Maria del Fiore!",         "⛪", true),
         BadgeDefinizione("leg_pompei",     "L'Archeologo",       "Hai scoperto gli Scavi di Pompei!",        "🌋", true),

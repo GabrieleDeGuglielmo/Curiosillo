@@ -459,240 +459,241 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Il mio profilo") },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (nav.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
-                            nav.popBackStack()
-                        }
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showSheet = true }) {
-                        Icon(
-                            Icons.Default.MoreVert, "Azioni profilo",
-                            tint = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-            )
-        },
-        bottomBar = { CuriosilloBottomBar(nav) },
-        containerColor = Color.Transparent
-    ) { pad ->
-        val gradientBg = Brush.verticalGradient(
-            listOf(
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                MaterialTheme.colorScheme.background
-            )
+    val gradientBg = Brush.verticalGradient(
+        listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.background
         )
-        if (state.isLoading) {
-            Box(Modifier
-                .fillMaxSize()
-                .background(gradientBg)
-                .padding(pad), Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            Column(
-                Modifier
+    )
+    Box(Modifier.fillMaxSize().background(gradientBg)) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Il mio profilo") },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            if (nav.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
+                                nav.popBackStack()
+                            }
+                        }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showSheet = true }) {
+                            Icon(
+                                Icons.Default.MoreVert, "Azioni profilo",
+                                tint = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                )
+            },
+            bottomBar = { CuriosilloBottomBar(nav) },
+            containerColor = Color.Transparent
+        ) { pad ->
+            if (state.isLoading) {
+                Box(Modifier
                     .fillMaxSize()
                     .background(gradientBg)
-                    .padding(pad)
-                    .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(Modifier.height(12.dp))
+                    .padding(pad), Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .background(gradientBg)
+                        .padding(pad)
+                        .verticalScroll(rememberScrollState())
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(Modifier.height(12.dp))
 
-                // ── Sezione account ───────────────────────────────────────────
-                if (state.isLoggato) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 20.dp),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        ),
-                        elevation = CardDefaults.cardElevation(0.dp)
-                    ) {
-                        Row(
-                            Modifier
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
-                                .fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
+                    // ── Sezione account ───────────────────────────────────────────
+                    if (state.isLoggato) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 20.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            ),
+                            elevation = CardDefaults.cardElevation(0.dp)
                         ) {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
+                                Modifier
+                                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                                    .fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(
-                                    Modifier
-                                        .size(44.dp)
-                                        .background(MaterialTheme.colorScheme.primary, CircleShape),
-                                    contentAlignment = Alignment.Center
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    Text(
-                                        state.username.firstOrNull()?.uppercaseChar()?.toString()
-                                            ?: "?",
-                                        fontWeight = FontWeight.ExtraBold,
-                                        fontSize = 20.sp,
-                                        color = Color.White
-                                    )
-                                }
-                                Spacer(Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        state.username.ifBlank { "Utente" },
-                                        style = MaterialTheme.typography.titleSmall,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                    if (state.email.isNotBlank()) {
+                                    Box(
+                                        Modifier
+                                            .size(44.dp)
+                                            .background(MaterialTheme.colorScheme.primary, CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
                                         Text(
-                                            state.email, style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(
-                                                alpha = 0.7f
-                                            ),
-                                            maxLines = 1, overflow = TextOverflow.Ellipsis
+                                            state.username.firstOrNull()?.uppercaseChar()?.toString()
+                                                ?: "?",
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 20.sp,
+                                            color = Color.White
                                         )
+                                    }
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            state.username.ifBlank { "Utente" },
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                        if (state.email.isNotBlank()) {
+                                            Text(
+                                                state.email, style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(
+                                                    alpha = 0.7f
+                                                ),
+                                                maxLines = 1, overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
 
-                // Banner XP
-                GamificationBanner(xpTotali = state.xpTotali, streakCorrente = state.streakCorrente)
-                Spacer(Modifier.height(8.dp))
+                    // Banner XP
+                    GamificationBanner(xpTotali = state.xpTotali, streakCorrente = state.streakCorrente)
+                    Spacer(Modifier.height(8.dp))
 
-                // Streak massima + info
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        "Streak massima: ${state.streakMassima} ${if (state.streakMassima == 1) "giorno" else "giorni"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    var showStreakInfo by remember { mutableStateOf(false) }
-                    IconButton(
-                        onClick = { showStreakInfo = true },
-                        modifier = Modifier.size(18.dp)
+                    // Streak massima + info
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(
-                            Icons.Default.Info, "Info streak", Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+                        Text(
+                            "Streak massima: ${state.streakMassima} ${if (state.streakMassima == 1) "giorno" else "giorni"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f)
                         )
+                        Spacer(Modifier.width(6.dp))
+                        var showStreakInfo by remember { mutableStateOf(false) }
+                        IconButton(
+                            onClick = { showStreakInfo = true },
+                            modifier = Modifier.size(18.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Info, "Info streak", Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+                            )
+                        }
+                        if (showStreakInfo) {
+                            AlertDialog(
+                                onDismissRequest = { showStreakInfo = false },
+                                icon = { Text("🔥", fontSize = 32.sp) },
+                                title = {
+                                    Text(
+                                        "Come funziona la streak?",
+                                        textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
+                                    )
+                                },
+                                text = {
+                                    Text(
+                                        "La streak conta i giorni consecutivi in cui hai letto almeno " +
+                                                "una pillola e premuto \"Ho imparato!\"\n\nSe salti un giorno, " +
+                                                "la streak riparte da 1.\n\nPiù alta è la streak, più XP bonus " +
+                                                "guadagni ogni giorno!",
+                                        textAlign = TextAlign.Center,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                },
+                                confirmButton = {
+                                    TextButton(onClick = { showStreakInfo = false }) { Text("Capito!") }
+                                }
+                            )
+                        }
                     }
-                    if (showStreakInfo) {
-                        AlertDialog(
-                            onDismissRequest = { showStreakInfo = false },
-                            icon = { Text("🔥", fontSize = 32.sp) },
-                            title = {
-                                Text(
-                                    "Come funziona la streak?",
-                                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
-                                )
-                            },
-                            text = {
-                                Text(
-                                    "La streak conta i giorni consecutivi in cui hai letto almeno " +
-                                            "una pillola e premuto \"Ho imparato!\"\n\nSe salti un giorno, " +
-                                            "la streak riparte da 1.\n\nPiù alta è la streak, più XP bonus " +
-                                            "guadagni ogni giorno!",
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                )
-                            },
-                            confirmButton = {
-                                TextButton(onClick = { showStreakInfo = false }) { Text("Capito!") }
-                            }
-                        )
-                    }
-                }
-                Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(24.dp))
 
-                // ── Statistiche ───────────────────────────────────────────────
-                Text(
-                    "Le mie statistiche", style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StatCard(
-                        Modifier.weight(1f), "${state.curiositàImparate}",
-                        "Curiosità\nimparate", MaterialTheme.colorScheme.primary
-                    )
-                    StatCard(
-                        Modifier.weight(1f), "${state.totalCuriosità}",
-                        "Curiosità\ntotali", MaterialTheme.colorScheme.secondary
-                    )
-                    StatCard(
-                        Modifier.weight(1f), "${state.quizDisponibili}",
-                        "Quiz non\nrisposti", MaterialTheme.colorScheme.tertiary
-                    )
-                }
-                if (state.totalCuriosità > 0) {
-                    Spacer(Modifier.height(20.dp))
-                    val pct = state.curiositàImparate.toFloat() / state.totalCuriosità
+                    // ── Statistiche ───────────────────────────────────────────────
                     Text(
-                        "Progresso complessivo — ${(pct * 100).toInt()}%",
-                        style = MaterialTheme.typography.bodyMedium,
+                        "Le mie statistiche", style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Spacer(Modifier.height(12.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        StatCard(
+                            Modifier.weight(1f), "${state.curiositàImparate}",
+                            "Curiosità\nimparate", MaterialTheme.colorScheme.primary
+                        )
+                        StatCard(
+                            Modifier.weight(1f), "${state.totalCuriosità}",
+                            "Curiosità\ntotali", MaterialTheme.colorScheme.secondary
+                        )
+                        StatCard(
+                            Modifier.weight(1f), "${state.quizDisponibili}",
+                            "Quiz non\nrisposti", MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                    if (state.totalCuriosità > 0) {
+                        Spacer(Modifier.height(20.dp))
+                        val pct = state.curiositàImparate.toFloat() / state.totalCuriosità
+                        Text(
+                            "Progresso complessivo — ${(pct * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { pct },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(10.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    }
+
+                    // ── Scoperte ───────────────────────────────────────────
+                    Spacer(Modifier.height(28.dp))
+                    AzioneItemNav(
+                        icon = Icons.Default.AutoAwesome,
+                        tint = MaterialTheme.colorScheme.primary,
+                        label = "Scoperte",
+                        sub = "Le tue scoperte"
+                    ) {
+                        nav.navigate("scoperte")
+                    }
+
+                    // ── Badge personali ───────────────────────────
                     Spacer(Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = { pct },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(10.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                }
+                    AzioneItemNav(
+                        icon = Icons.Default.EmojiEvents,
+                        tint = MaterialTheme.colorScheme.primary,
+                        label = "Badge personali",
+                        sub = "Hai sbloccato ${state.badgeSbloccati.size} badge su ${BadgeCatalogo.tutti.size}"
+                    ) {
+                        nav.navigate("badges")
+                    }
 
-                // ── Scoperte ───────────────────────────────────────────
-                Spacer(Modifier.height(28.dp))
-                AzioneItemNav(
-                    icon = Icons.Default.AutoAwesome,
-                    tint = MaterialTheme.colorScheme.primary,
-                    label = "Scoperte",
-                    sub = "Le tue scoperte"
-                ) {
-                    nav.navigate("scoperte")
+                    Spacer(Modifier.height(16.dp))
                 }
-
-                // ── Badge personali ───────────────────────────
-                Spacer(Modifier.height(8.dp))
-                AzioneItemNav(
-                    icon = Icons.Default.EmojiEvents,
-                    tint = MaterialTheme.colorScheme.primary,
-                    label = "Badge personali",
-                    sub = "Hai sbloccato ${state.badgeSbloccati.size} badge su ${BadgeCatalogo.tutti.size}"
-                ) {
-                    nav.navigate("badges")
-                }
-
-                Spacer(Modifier.height(16.dp))
             }
         }
-    }
+    } // Box gradient
 }
 
-// ── Componente riga azione nel BottomSheet ────────────────────────────────────
 @Composable
 private fun AzioneItemNav(
     icon:    ImageVector,

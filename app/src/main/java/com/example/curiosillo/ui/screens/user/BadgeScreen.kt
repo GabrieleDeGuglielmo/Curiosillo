@@ -50,68 +50,71 @@ fun BadgeScreen(nav: NavController) {
 
     var badgeDettaglio by remember { mutableStateOf<BadgeDefinizione?>(null) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("I miei badge") },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-            )
-        }
-    ) { pad ->
-        val gradientBg = Brush.verticalGradient(
-            listOf(
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                MaterialTheme.colorScheme.background
-            )
+    val gradientBg = Brush.verticalGradient(
+        listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.background
         )
+    )
 
-        Column(
-            Modifier
-                .fillMaxSize()
-                .background(gradientBg)
-                .padding(pad)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                "In questa sezione puoi vedere tutti i traguardi che hai raggiunto e quelli ancora da sbloccare!",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
-
-            Text(
-                "Sbloccati: ${state.badgeSbloccati.size} / ${BadgeCatalogo.tutti.size}",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            val idSbloccati = state.badgeSbloccati.map { it.id }.toSet()
-            BadgeCatalogo.tutti.chunked(3).forEach { riga ->
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    riga.forEach { def ->
-                        BadgeCard(def, def.id in idSbloccati, Modifier.weight(1f)) {
-                            badgeDettaglio = def
+    Box(Modifier.fillMaxSize().background(gradientBg)) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text("I miei badge") },
+                    navigationIcon = {
+                        IconButton(onClick = { nav.popBackStack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
                         }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                )
+            }
+        ) { pad ->
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(pad)
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "In questa sezione puoi vedere tutti i traguardi che hai raggiunto e quelli ancora da sbloccare!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+
+                Text(
+                    "Sbloccati: ${state.badgeSbloccati.size} / ${BadgeCatalogo.tutti.size}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                val idSbloccati = state.badgeSbloccati.map { it.id }.toSet()
+                BadgeCatalogo.tutti.chunked(3).forEach { riga ->
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        riga.forEach { def ->
+                            BadgeCard(def, def.id in idSbloccati, Modifier.weight(1f)) {
+                                badgeDettaglio = def
+                            }
+                        }
+                        repeat(3 - riga.size) { Spacer(Modifier.weight(1f)) }
                     }
-                    repeat(3 - riga.size) { Spacer(Modifier.weight(1f)) }
+                    Spacer(Modifier.height(10.dp))
                 }
-                Spacer(Modifier.height(10.dp))
             }
         }
-    }
+
+    } // Box gradient
 
     badgeDettaglio?.let { def ->
         val sbloccato = def.id in state.badgeSbloccati.map { it.id }
