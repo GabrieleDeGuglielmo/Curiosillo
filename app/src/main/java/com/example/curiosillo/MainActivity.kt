@@ -67,7 +67,18 @@ class MainActivity : ComponentActivity() {
                     
                     composable("curiosity")  { CuriosityScreen(nav) }
                     composable("quiz")       { QuizScreen(nav) }
-                    composable("profile")    {
+                    
+                    composable(
+                        route = "profile",
+                        exitTransition = {
+                            if (targetState.destination.route == "badges" || targetState.destination.route == "scoperte") {
+                                slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) + fadeOut(tween(100))
+                            } else {
+                                fadeOut(tween(300))
+                            }
+                        },
+                        popExitTransition = { fadeOut(tween(300)) }
+                    ) {
                         ProfileScreen(
                             nav,
                             onLogout = {
@@ -76,6 +87,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             })
                     }
+
                     composable(
                         route = "badges",
                         enterTransition = { 
