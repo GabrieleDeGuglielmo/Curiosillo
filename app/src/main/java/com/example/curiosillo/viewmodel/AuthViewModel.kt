@@ -155,6 +155,13 @@ class AuthViewModel(
     // ── Sync ──────────────────────────────────────────────────────────────────
 
     private suspend fun sincronizzaDopoLogin(user: FirebaseUser, isNuovo: Boolean) {
+        // Controllo Ban
+        if (FirebaseManager.isUtenteBannato(user.uid)) {
+            FirebaseManager.logout()
+            _state.value = AuthUiState.Errore("Il tuo account è stato sospeso.")
+            return
+        }
+
         try {
             if (isNuovo) {
                 syncManager.migraLocaleVersoCloud(user.uid)

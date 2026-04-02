@@ -35,7 +35,8 @@ data class HomeUiState(
     val changelogDaMostrare: List<VersioneChangelog>?             = null,
     val changelogCompleto:   List<VersioneChangelog>              = emptyList(),
     val isOffline:           Boolean                              = false,
-    val notifiche:           List<FirebaseManager.NotificaInApp>  = emptyList()
+    val notifiche:           List<FirebaseManager.NotificaInApp>  = emptyList(),
+    val isBannato:           Boolean                              = false
 )
 
 class HomeViewModel(
@@ -81,6 +82,9 @@ class HomeViewModel(
 
     private fun refreshDatiCloud() {
         viewModelScope.launch {
+            checkBan()
+            if (_state.value.isBannato) return@launch
+
             val dbVuoto = repo.totaleCuriosità() == 0
             if (!dbVuoto) delay(1500)
 
@@ -94,6 +98,17 @@ class HomeViewModel(
     override fun onCleared() {
         super.onCleared()
         try { connectivityManager.unregisterNetworkCallback(networkCallback) } catch (_: Exception) {}
+    }
+
+    private suspend fun checkBan() {
+        val uid = FirebaseManager.uid ?: return
+        if (FirebaseManager.isUtenteBannato(uid)) {
+            _state.value = _state.value.copy(isBannato = true)
+        }
+    }
+
+    fun logout() {
+        FirebaseManager.logout()
     }
 
     fun syncContenuti() {

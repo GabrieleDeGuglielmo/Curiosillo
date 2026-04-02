@@ -100,6 +100,28 @@ fun HomeScreen(nav: NavController) {
         ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName
     } catch (e: Exception) { "N/D" }
 
+    // ── Controllo Ban ────────────────────────────────────────────────────────
+    if (homeState.isBannato) {
+        BackHandler { /* Blocca tasto indietro */ }
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Account Sospeso", fontWeight = FontWeight.Bold) },
+            text = { Text("Il tuo account è stato sospeso a causa di violazioni dei termini di servizio.") },
+            confirmButton = {
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                    homeVm.logout()
+                    nav.navigate("login") {
+                        popUpTo("home") { inclusive = true }
+                    }
+                }) {
+                    Text("Esci")
+                }
+            }
+        )
+    }
+
     // ── Obbligatorio: Aggiornamento App ──────────────────────────────────────
     homeState.aggiornamentoApp?.let { info ->
         BackHandler { /* Disabilitiamo il tasto indietro */ }

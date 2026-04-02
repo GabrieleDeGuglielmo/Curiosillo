@@ -102,6 +102,7 @@ object FirebaseManager {
                 "streakMassima"  to 0,
                 "ultimoAccesso"  to -1L,
                 "isAdmin"        to false,
+                "ban"            to false,
                 "badges"         to emptyList<String>(),
                 "pillole_bookmark" to emptyList<String>(),
                 "pillole_lette"   to emptyList<String>(),
@@ -355,7 +356,7 @@ object FirebaseManager {
         "gdg", "cazzo", "vaffanculo", "stronzo", "stronza", "puttana", "coglione",
         "cogliona", "merda", "fanculo", "minchia", "figlio di puttana", "bastardo",
         "bastarda", "idiota", "imbecille", "deficiente", "ritardato", "ritardata",
-        "frocio", "ricchione", "negro", "troia", "mignotta", "zoccola", "baldracca",
+        "frocio", "ricchione", "negro", "negra", "troia", "mignotta", "zoccola", "baldracca",
         "finocchio", "testa di cazzo", "pezzo di merda", "cretino", "cretina",
         "schifoso", "schifosa", "scemo", "scema", "handicappato", "porco dio",
         "dio cane", "dio porco", "dio maiale", "bucaiolo", "bagascia", "battona", "bottana",
@@ -363,7 +364,7 @@ object FirebaseManager {
         "figa", "fregna", "gnocca", "infame", "lota", "mignottone",
         "mona", "picio", "pirla", "pompinara", "porca", "puttaniere",
         "rottinculo", "sculattone", "sfaccimm", "sfigato", "sfigata",
-        "terrone", "terrona", "vongola", "zoccolone"
+        "terrone", "terrona", "vongola", "zoccolone", "negri", "negre"
     )
 
     /** Normalizza il testo per facilitare il controllo delle parole vietate.
@@ -563,6 +564,11 @@ object FirebaseManager {
             doc.getBoolean("isAdmin") == true
         } catch (_: Exception) { false }
     }
+
+    suspend fun isUtenteBannato(uid: String): Boolean = try {
+        val doc = db.collection("users").document(uid).get().await()
+        doc.getBoolean("ban") == true
+    } catch (_: Exception) { false }
 
     // ── Admin: gestione curiosità ─────────────────────────────────────────────
 
