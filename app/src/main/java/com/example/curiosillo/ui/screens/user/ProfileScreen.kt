@@ -461,11 +461,15 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
 
     val gradientBg = Brush.verticalGradient(
         listOf(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
             MaterialTheme.colorScheme.background
         )
     )
-    Box(Modifier.fillMaxSize().background(gradientBg)) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(gradientBg)
+    ) {
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -496,7 +500,6 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
             if (state.isLoading) {
                 Box(Modifier
                     .fillMaxSize()
-                    .background(gradientBg)
                     .padding(pad), Alignment.Center) {
                     CircularProgressIndicator()
                 }
@@ -504,7 +507,6 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                 Column(
                     Modifier
                         .fillMaxSize()
-                        .background(gradientBg)
                         .padding(pad)
                         .verticalScroll(rememberScrollState())
                         .padding(24.dp),

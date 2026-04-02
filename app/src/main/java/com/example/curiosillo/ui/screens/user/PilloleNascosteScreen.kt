@@ -176,7 +176,7 @@ fun PilloleNascosteScreen(nav: NavController) {
     ) { pad ->
         val gradientBg = Brush.verticalGradient(
             listOf(
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                 MaterialTheme.colorScheme.background
             )
         )

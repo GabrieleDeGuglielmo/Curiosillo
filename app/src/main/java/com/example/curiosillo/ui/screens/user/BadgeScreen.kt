@@ -52,12 +52,16 @@ fun BadgeScreen(nav: NavController) {
 
     val gradientBg = Brush.verticalGradient(
         listOf(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
             MaterialTheme.colorScheme.background
         )
     )
 
-    Box(Modifier.fillMaxSize().background(gradientBg)) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(gradientBg)
+    ) {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
@@ -92,7 +96,7 @@ fun BadgeScreen(nav: NavController) {
                     "Sbloccati: ${state.badgeSbloccati.size} / ${BadgeCatalogo.tutti.size}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
