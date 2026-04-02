@@ -1,5 +1,6 @@
 package com.example.curiosillo.ui.screens.user
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -56,6 +57,12 @@ fun EditProfileScreen(nav: NavController) {
     var usernameCheckLoading  by remember { mutableStateOf(false) }
     var usernameCheckJob      by remember { mutableStateOf<Job?>(null) }
 
+    // Carica i dati quando la schermata viene aperta
+    LaunchedEffect(Unit) {
+        Log.d("EditProfileScreen", "Caricamento dati profilo...")
+        vm.caricaStatistiche()
+    }
+
     LaunchedEffect(state.username) {
         if (usernameInput.isEmpty()) usernameInput = state.username
     }
@@ -87,7 +94,11 @@ fun EditProfileScreen(nav: NavController) {
         ) {
             if (state.isLoading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        Spacer(Modifier.height(16.dp))
+                        Text("Caricamento...", color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             } else {
                 Column(

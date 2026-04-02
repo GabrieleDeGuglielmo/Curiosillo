@@ -44,40 +44,57 @@ class ProfileViewModel(
     val state: StateFlow<ProfileUiState> = _state.asStateFlow()
 
     fun caricaStatistiche() {
+        Log.d("ProfileVM", "caricaStatistiche() chiamata")
         viewModelScope.launch {
-            // Mostra spinner solo al primo caricamento (quando non ci sono dati)
-            val primoCaricamento = _state.value.totalCuriosità == 0 && !_state.value.isLoggato
-            if (primoCaricamento) _state.value = _state.value.copy(isLoading = true)
-
-            val user     = FirebaseManager.utenteCorrente
-            val username = when {
-                user == null             -> ""
-                user.displayName != null -> user.displayName!!
-                else -> {
-                    val profilo = FirebaseManager.caricaProfilo(user.uid)
-                    (profilo?.get("username") as? String) ?: ""
+            try {
+                // Mostra spinner solo al primo caricamento (quando non ci sono dati)
+                val primoCaricamento = _state.value.totalCuriosità == 0 && !_state.value.isLoggato
+                if (primoCaricamento) {
+                    Log.d("ProfileVM", "Primo caricamento, imposto isLoading = true")
+                    _state.value = _state.value.copy(isLoading = true)
                 }
-            }
 
-            _state.value = ProfileUiState(
-                totalCuriosità    = repo.totaleCuriosità(),
-                curiositàImparate = repo.curiositàImparate(),
-                quizDisponibili   = repo.quizNonRisposti(),
-                totaleBookmark    = repo.totaleBookmark(),
-                totaleIgnorate    = repo.totaleIgnorate(),
-                isAdmin           = FirebaseManager.isAdmin(),
-                xpTotali          = gamifPrefs.xpTotali.first(),
-                streakCorrente    = gamifPrefs.streakCorrente.first(),
-                streakMassima     = gamifPrefs.streakMassima.first(),
-                badgeSbloccati    = repo.badgeSbloccati(),
-                username          = username,
-                email             = user?.email ?: "",
-                isLoggato         = user != null,
-                isGoogleUser      = FirebaseManager.isGoogleUser(),
-                isLoading         = false
-            )
-            Log.d("SyncDebug", "quizNonRisposti: ${repo.quizNonRisposti()}")
-            Log.d("SyncDebug", "quiz_question count: ${repo.countTotaliQuiz()}")
+                val user     = FirebaseManager.utenteCorrente
+                Log.d("ProfileVM", "User: ${user?.uid ?: "null"}")
+                
+                val username = when {
+                    user == null             -> ""
+                    user.displayName != null -> user.displayName!!
+                    else -> {
+                        Log.d("ProfileVM", "displayName null, carico profilo da Firestore")
+                        val profilo = FirebaseManager.caricaProfilo(user.uid)
+                        (profilo?.get("username") as? String) ?: ""
+                    }
+                }
+                
+                Log.d("ProfileVM", "Username ottenuto: $username")
+
+                val newState = ProfileUiState(
+                    totalCuriosità    = repo.totaleCuriosità(),
+                    curiositàImparate = repo.curiositàImparate(),
+                    quizDisponibili   = repo.quizNonRisposti(),
+                    totaleBookmark    = repo.totaleBookmark(),
+                    totaleIgnorate    = repo.totaleIgnorate(),
+                    isAdmin           = FirebaseManager.isAdmin(),
+                    xpTotali          = gamifPrefs.xpTotali.first(),
+                    streakCorrente    = gamifPrefs.streakCorrente.first(),
+                    streakMassima     = gamifPrefs.streakMassima.first(),
+                    badgeSbloccati    = repo.badgeSbloccati(),
+                    username          = username,
+                    email             = user?.email ?: "",
+                    isLoggato         = user != null,
+                    isGoogleUser      = FirebaseManager.isGoogleUser(),
+                    isLoading         = false
+                )
+                _state.value = newState
+                Log.d("ProfileVM", "Statistiche caricate con successo")
+                
+                Log.d("SyncDebug", "quizNonRisposti: ${repo.quizNonRisposti()}")
+                Log.d("SyncDebug", "quiz_question count: ${repo.countTotaliQuiz()}")
+            } catch (e: Exception) {
+                Log.e("ProfileVM", "Errore caricamento statistiche", e)
+                _state.value = _state.value.copy(isLoading = false)
+            }
         }
     }
 
