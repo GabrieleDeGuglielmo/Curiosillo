@@ -13,14 +13,24 @@ class ThemePreferences(private val context: Context) {
 
     companion object {
         val DARK_MODE = booleanPreferencesKey("dark_mode")
+        val MUSIC_ENABLED = booleanPreferencesKey("music_enabled")
     }
 
     val isDarkMode: Flow<Boolean> = context.themeStore.data
         .map { prefs -> prefs[DARK_MODE] ?: false }
 
+    val isMusicEnabled: Flow<Boolean> = context.themeStore.data
+        .map { prefs -> prefs[MUSIC_ENABLED] ?: true }
+
     suspend fun setDarkMode(enabled: Boolean) {
         context.themeStore.edit { prefs ->
             prefs[DARK_MODE] = enabled
+        }
+    }
+
+    suspend fun setMusicEnabled(enabled: Boolean) {
+        context.themeStore.edit { prefs ->
+            prefs[MUSIC_ENABLED] = enabled
         }
     }
 }

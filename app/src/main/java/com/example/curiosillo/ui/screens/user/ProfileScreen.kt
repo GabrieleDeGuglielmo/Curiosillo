@@ -11,22 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.Help
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DeleteForever
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ManageAccounts
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -94,12 +79,20 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     .padding(horizontal = 20.dp)
                     .padding(bottom = 32.dp)
             ) {
-                Text(
-                    "Azioni profilo",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 20.dp)
-                )
+                // Impostazioni
+                AzioneItem(
+                    icon = Icons.Default.Settings,
+                    tint = MaterialTheme.colorScheme.primary,
+                    label = "Impostazioni",
+                    sub = "Tema, musica e altre preferenze"
+                ) {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                        showSheet = false
+                        nav.navigate("settings")
+                    }
+                }
+
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
                 // Preferiti
                 AzioneItem(

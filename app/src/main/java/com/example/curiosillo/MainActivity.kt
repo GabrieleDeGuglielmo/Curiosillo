@@ -13,6 +13,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -29,16 +30,32 @@ import com.example.curiosillo.ui.screens.quiz.QuizScreen
 import com.example.curiosillo.ui.screens.quiz.QuizStatsScreen
 import com.example.curiosillo.ui.screens.user.*
 import com.example.curiosillo.ui.theme.CuriosilloTheme
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var musicManager: MusicManager
+    private var isMusicEnabled = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        
+        musicManager = MusicManager(this)
+        
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT
 
         val app = applicationContext as CuriosityApplication
+
+        lifecycleScope.launch {
+            app.themePrefs.isMusicEnabled.collectLatest { enabled ->
+                isMusicEnabled = enabled
+                if (enabled) musicManager.start() else musicManager.stop()
+            }
+        }
 
         setContent {
             val isDarkMode by app.themePrefs.isDarkMode.collectAsState(initial = false)
@@ -155,8 +172,20 @@ class MainActivity : ComponentActivity() {
                         popEnterTransition = { fadeIn(tween(300)) },
                         popExitTransition = { fadeOut(tween(300)) }
                     ) { ArScreen(nav) }
+
+                    composable("settings") { SettingsScreen(nav) }
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (isMusicEnabled) musicManager.start()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        musicManager.stop()
     }
 }
