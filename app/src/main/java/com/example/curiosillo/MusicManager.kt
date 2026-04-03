@@ -10,34 +10,38 @@ import android.util.Log
 
 class MusicManager(private val context: Context) {
 
-    private var mediaPlayer: MediaPlayer? = null
+    // Dual-player setup for gapless playback
+    private var currentPlayer: MediaPlayer? = null
+    private var nextPlayer: MediaPlayer? = null
+
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var focusRequest: AudioFocusRequest? = null
 
+    // Playlist and tracking[cite: 2]
     private val playlist = listOf(R.raw.edu1, R.raw.edu2, R.raw.edu3)
     private var currentTrackIndex = 0
 
-    // Define a standard background volume
+    // Define standard background volumes[cite: 2]
     private val standardVolume = 0.3f
     private val duckVolume = 0.1f
 
     private val afChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
             AudioManager.AUDIOFOCUS_LOSS -> {
-                // Permanent loss of audio focus (e.g., another music app started playing)
+                // Permanent loss of audio focus (e.g., another music app started playing)[cite: 2]
                 stop()
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                // Transient loss of audio focus (e.g., incoming phone call)
+                // Transient loss of audio focus (e.g., incoming phone call)[cite: 2]
                 pause()
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
                 // Another app needs to play a short sound (e.g., a notification)
-                mediaPlayer?.setVolume(duckVolume, duckVolume)
+                currentPlayer?.setVolume(duckVolume, duckVolume)
             }
             AudioManager.AUDIOFOCUS_GAIN -> {
-                // Audio focus regained
-                mediaPlayer?.setVolume(standardVolume, standardVolume)
+                // Audio focus regained[cite: 2]
+                currentPlayer?.setVolume(standardVolume, standardVolume)
                 play()
             }
         }
@@ -50,12 +54,12 @@ class MusicManager(private val context: Context) {
     }
 
     private fun play() {
-        if (mediaPlayer == null) {
-            setupMediaPlayer()
+        if (currentPlayer == null) {
+            setupInitialPlayer()
         }
         try {
-            if (mediaPlayer?.isPlaying == false) {
-                mediaPlayer?.start()
+            if (currentPlayer?.isPlaying == false) {
+                currentPlayer?.start()
             }
         } catch (e: Exception) {
             Log.e("MusicManager", "Error during play", e)
@@ -64,8 +68,8 @@ class MusicManager(private val context: Context) {
 
     fun pause() {
         try {
-            if (mediaPlayer?.isPlaying == true) {
-                mediaPlayer?.pause()
+            if (currentPlayer?.isPlaying == true) {
+                currentPlayer?.pause()
             }
         } catch (e: Exception) {
             Log.e("MusicManager", "Error during pause", e)
@@ -74,28 +78,63 @@ class MusicManager(private val context: Context) {
 
     fun stop() {
         try {
-            mediaPlayer?.stop()
-            mediaPlayer?.release()
-            mediaPlayer = null
+            // Release both players to free memory
+            currentPlayer?.stop()
+            currentPlayer?.release()
+            currentPlayer = null
+
+            nextPlayer?.stop()
+            nextPlayer?.release()
+            nextPlayer = null
+
             abandonAudioFocus()
         } catch (e: Exception) {
             Log.e("MusicManager", "Error during stop", e)
         }
     }
 
-    private fun setupMediaPlayer() {
-        // CRITICAL FIX: Release the existing player before instantiating a new one
-        mediaPlayer?.release()
+    private fun setupInitialPlayer() {
+        currentPlayer?.release()
 
-        mediaPlayer = MediaPlayer.create(context, playlist[currentTrackIndex])
-        mediaPlayer?.isLooping = false
-        mediaPlayer?.setVolume(standardVolume, standardVolume)
-
-        mediaPlayer?.setOnCompletionListener {
-            currentTrackIndex = (currentTrackIndex + 1) % playlist.size
-            setupMediaPlayer()
-            mediaPlayer?.start()
+        // 1. Initialize the current player
+        currentPlayer = MediaPlayer.create(context, playlist[currentTrackIndex]).apply {
+            setVolume(standardVolume, standardVolume)
+            setOnCompletionListener {
+                shiftToNextTrack()
+            }
         }
+
+        // 2. Queue up the next player in the background
+        prepareNextPlayer()
+    }
+
+    private fun prepareNextPlayer() {
+        val nextIndex = (currentTrackIndex + 1) % playlist.size
+
+        // Pre-load the next track
+        nextPlayer = MediaPlayer.create(context, playlist[nextIndex]).apply {
+            setVolume(standardVolume, standardVolume)
+        }
+
+        // Link the next player to the current one for seamless transition
+        currentPlayer?.setNextMediaPlayer(nextPlayer)
+    }
+
+    private fun shiftToNextTrack() {
+        // The current track has finished, and nextPlayer has automatically started.
+        // Clean up the old player and shift variables.
+        currentPlayer?.release()
+
+        currentPlayer = nextPlayer
+        currentTrackIndex = (currentTrackIndex + 1) % playlist.size
+
+        // Set the listener on the new active player
+        currentPlayer?.setOnCompletionListener {
+            shiftToNextTrack()
+        }
+
+        // Prepare the following track to keep the loop going
+        prepareNextPlayer()
     }
 
     private fun requestAudioFocus(): Boolean {
