@@ -17,22 +17,23 @@ class MusicManager(private val context: Context) {
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var focusRequest: AudioFocusRequest? = null
 
-    // Playlist and tracking[cite: 2]
-    private val playlist = listOf(R.raw.edu1, R.raw.edu2, R.raw.edu3)
+    // Base playlist and the active shuffled playlist
+    private val originalPlaylist = listOf(R.raw.edu1, R.raw.edu2, R.raw.edu3)
+    private var activePlaylist = originalPlaylist.shuffled()
     private var currentTrackIndex = 0
 
-    // Define standard background volumes[cite: 2]
+    // Define standard background volumes
     private val standardVolume = 0.3f
     private val duckVolume = 0.1f
 
     private val afChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
             AudioManager.AUDIOFOCUS_LOSS -> {
-                // Permanent loss of audio focus (e.g., another music app started playing)[cite: 2]
+                // Permanent loss of audio focus (e.g., another music app started playing)
                 stop()
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                // Transient loss of audio focus (e.g., incoming phone call)[cite: 2]
+                // Transient loss of audio focus (e.g., incoming phone call)
                 pause()
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
@@ -40,7 +41,7 @@ class MusicManager(private val context: Context) {
                 currentPlayer?.setVolume(duckVolume, duckVolume)
             }
             AudioManager.AUDIOFOCUS_GAIN -> {
-                // Audio focus regained[cite: 2]
+                // Audio focus regained
                 currentPlayer?.setVolume(standardVolume, standardVolume)
                 play()
             }
@@ -96,8 +97,12 @@ class MusicManager(private val context: Context) {
     private fun setupInitialPlayer() {
         currentPlayer?.release()
 
-        // 1. Initialize the current player
-        currentPlayer = MediaPlayer.create(context, playlist[currentTrackIndex]).apply {
+        // Shuffle the playlist every time we start fresh (app launch or toggle re-enable)
+        activePlaylist = originalPlaylist.shuffled()
+        currentTrackIndex = 0
+
+        // 1. Initialize the current player with the first track of the newly shuffled list
+        currentPlayer = MediaPlayer.create(context, activePlaylist[currentTrackIndex]).apply {
             setVolume(standardVolume, standardVolume)
             setOnCompletionListener {
                 shiftToNextTrack()
@@ -109,10 +114,10 @@ class MusicManager(private val context: Context) {
     }
 
     private fun prepareNextPlayer() {
-        val nextIndex = (currentTrackIndex + 1) % playlist.size
+        val nextIndex = (currentTrackIndex + 1) % activePlaylist.size
 
-        // Pre-load the next track
-        nextPlayer = MediaPlayer.create(context, playlist[nextIndex]).apply {
+        // Pre-load the next track from the active shuffled playlist
+        nextPlayer = MediaPlayer.create(context, activePlaylist[nextIndex]).apply {
             setVolume(standardVolume, standardVolume)
         }
 
@@ -126,7 +131,7 @@ class MusicManager(private val context: Context) {
         currentPlayer?.release()
 
         currentPlayer = nextPlayer
-        currentTrackIndex = (currentTrackIndex + 1) % playlist.size
+        currentTrackIndex = (currentTrackIndex + 1) % activePlaylist.size
 
         // Set the listener on the new active player
         currentPlayer?.setOnCompletionListener {
