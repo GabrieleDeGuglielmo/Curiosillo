@@ -35,7 +35,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.curiosillo.firebase.FirebaseManager
-import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.ui.screens.utils.LISTA_CATEGORIE
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,7 +64,7 @@ fun SupportoScreen(nav: NavController) {
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                 )
             },
-            bottomBar = { CuriosilloBottomBar(nav) },
+            // Navbar rimossa
             containerColor = Color.Transparent
         ) { pad ->
             Column(
@@ -123,7 +122,7 @@ fun SupportoScreen(nav: NavController) {
                 Text(
                     text = "Gabriele De Guglielmo aka GDG",
                     fontSize = 12.sp,
-                    color = Color.Gray,
+                    color = Color.White.copy(alpha = 0.5f),
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
             }
