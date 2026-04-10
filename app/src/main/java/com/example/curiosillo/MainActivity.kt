@@ -68,11 +68,14 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(nav, startDestination = startDestination) {
                     composable("login") {
-                        LoginScreen(onLoginSuccesso = {
-                            nav.navigate("home") {
-                                popUpTo("login") { inclusive = true }
+                        LoginScreen(
+                            nav = nav,
+                            onLoginSuccesso = {
+                                nav.navigate("home") {
+                                    popUpTo("login") { inclusive = true }
+                                }
                             }
-                        })
+                        )
                     }
                     composable(
                         route = "home",

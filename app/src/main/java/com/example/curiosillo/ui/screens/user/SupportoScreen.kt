@@ -36,6 +36,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.ui.screens.utils.LISTA_CATEGORIE
+import com.example.curiosillo.ui.screens.utils.LegalConstants
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -363,6 +364,7 @@ fun SuggerimentoCuriositaScreen(nav: NavController) {
             },
             containerColor = Color.Transparent
         ) { pad ->
+            @Suppress("DEPRECATION")
             Column(
                 Modifier
                     .fillMaxSize()
@@ -555,6 +557,12 @@ fun SupportoDetailScreen(nav: NavController, title: String) {
         )
     )
 
+    val content = when (title) {
+        "Privacy Policy" -> LegalConstants.PRIVACY_POLICY_TEXT
+        "Termini di Servizio" -> LegalConstants.TERMS_OF_SERVICE_TEXT
+        else -> "Contenuto non disponibile."
+    }
+
     Box(Modifier.fillMaxSize().background(gradientBg)) {
         Scaffold(
             topBar = {
@@ -570,24 +578,30 @@ fun SupportoDetailScreen(nav: NavController, title: String) {
             },
             containerColor = Color.Transparent
         ) { pad ->
-            Box(
+            Column(
                 Modifier
                     .fillMaxSize()
-                    .padding(pad), 
-                contentAlignment = Alignment.Center
+                    .padding(pad)
+                    .padding(24.dp)
             ) {
                 Card(
-                    modifier = Modifier.padding(24.dp),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
                     elevation = CardDefaults.cardElevation(2.dp)
                 ) {
-                    Text(
-                        "Pagina $title in arrivo...", 
-                        modifier = Modifier.padding(32.dp),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(24.dp)
+                    ) {
+                        Text(
+                            text = content,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
         }

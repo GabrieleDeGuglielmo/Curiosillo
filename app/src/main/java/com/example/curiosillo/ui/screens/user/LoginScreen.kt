@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.curiosillo.firebase.FirebaseManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
@@ -33,14 +35,18 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.R
 import com.example.curiosillo.viewmodel.AuthUiState
@@ -52,7 +58,7 @@ import kotlinx.coroutines.launch
 import androidx.core.net.toUri
 
 @Composable
-fun LoginScreen(onLoginSuccesso: () -> Unit) {
+fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
     val ctx = LocalContext.current
     val app = ctx.applicationContext as CuriosityApplication
 
@@ -99,19 +105,23 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
         }
     }
 
-    var isRegistrazione   by remember { mutableStateOf(false) }
-    var email             by remember { mutableStateOf("") }
-    var password          by remember { mutableStateOf("") }
-    var confermaPassword  by remember { mutableStateOf("") }
+    // Usiamo rememberSaveable per mantenere lo stato anche dopo la navigazione
+    var isRegistrazione   by rememberSaveable { mutableStateOf(false) }
+    var email             by rememberSaveable { mutableStateOf("") }
+    var password          by rememberSaveable { mutableStateOf("") }
+    var confermaPassword  by rememberSaveable { mutableStateOf("") }
     val coroutineScope         = rememberCoroutineScope()
-    var usernameInput         by remember { mutableStateOf("") }
+    var usernameInput         by rememberSaveable { mutableStateOf("") }
     var usernameDisponibile   by remember { mutableStateOf<Boolean?>(null) }
     var usernameCheckLoading  by remember { mutableStateOf(false) }
     var usernameCheckJob      by remember { mutableStateOf<Job?>(null) }
-    var mostraPassword    by remember { mutableStateOf(false) }
+    var mostraPassword    by rememberSaveable { mutableStateOf(false) }
     var showRecuperoDialog by remember { mutableStateOf(false) }
-    var emailRecupero     by remember { mutableStateOf("") }
+    var emailRecupero     by rememberSaveable { mutableStateOf("") }
     var showVerificaDialog by remember { mutableStateOf(false) }
+    
+    // Checkbox state
+    var accettatoTermini by rememberSaveable { mutableStateOf(false) }
 
     // Gestione stato verifica email
     LaunchedEffect(state) {
@@ -502,6 +512,12 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                 else PasswordVisualTransformation(),
                 keyboardOptions      = KeyboardOptions(keyboardType = KeyboardType.Password),
                 shape                = RoundedCornerShape(14.dp),
+                isError              = isRegistrazione && password.isNotEmpty() && password.length < 6,
+                supportingText       = {
+                    if (isRegistrazione && password.isNotEmpty() && password.length < 6) {
+                        Text("Minimo 6 caratteri", color = MaterialTheme.colorScheme.error)
+                    }
+                },
                 modifier             = Modifier.fillMaxWidth()
             )
 
@@ -527,6 +543,58 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                         shape                = RoundedCornerShape(14.dp),
                         modifier             = Modifier.fillMaxWidth()
                     )
+                    
+                    Spacer(Modifier.height(16.dp))
+                    
+                    // Checkbox TOS & Privacy
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Checkbox(
+                            checked = accettatoTermini,
+                            onCheckedChange = { accettatoTermini = it },
+                            colors = CheckboxDefaults.colors(
+                                uncheckedColor = if (!accettatoTermini && email.isNotBlank() && password.length >= 6 && usernameDisponibile == true) 
+                                    MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                        val annotatedText = buildAnnotatedString {
+                            append("Confermo di avere almeno 14 anni e accetto la ")
+                            pushStringAnnotation(tag = "privacy", annotation = "privacy")
+                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) {
+                                append("Privacy Policy")
+                            }
+                            pop()
+                            append(" e i ")
+                            pushStringAnnotation(tag = "tos", annotation = "tos")
+                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) {
+                                append("Termini di Servizio")
+                            }
+                            pop()
+                        }
+                        
+                        ClickableText(
+                            text = annotatedText,
+                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)),
+                            onClick = { offset ->
+                                annotatedText.getStringAnnotations(tag = "privacy", start = offset, end = offset).firstOrNull()?.let {
+                                    nav.navigate("supporto_detail/Privacy Policy")
+                                }
+                                annotatedText.getStringAnnotations(tag = "tos", start = offset, end = offset).firstOrNull()?.let {
+                                    nav.navigate("supporto_detail/Termini di Servizio")
+                                }
+                            }
+                        )
+                    }
+                    if (!accettatoTermini && email.isNotBlank() && password.length >= 6 && usernameDisponibile == true) {
+                        Text(
+                            "Accettazione obbligatoria per proseguire",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(start = 12.dp)
+                        )
+                    }
                 }
             }
 
@@ -559,7 +627,7 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                 onClick = {
                     if (isRegistrazione) {
                         val finalUsername = usernameInput.trim()
-                        if (finalUsername.length >= 3 && usernameDisponibile == true && password == confermaPassword) {
+                        if (finalUsername.length >= 3 && usernameDisponibile == true && password == confermaPassword && accettatoTermini) {
                             vm.registraEmail(email, password, finalUsername)
                         }
                     } else {
@@ -572,7 +640,8 @@ fun LoginScreen(onLoginSuccesso: () -> Unit) {
                         (!isRegistrazione || (usernameInput.trim().length >= 3 &&
                                 usernameDisponibile == true &&
                                 !usernameCheckLoading &&
-                                password == confermaPassword)),
+                                password == confermaPassword &&
+                                accettatoTermini)),
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(14.dp)
             ) {
