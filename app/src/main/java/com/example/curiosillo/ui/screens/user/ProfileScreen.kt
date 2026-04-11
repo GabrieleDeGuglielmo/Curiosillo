@@ -31,7 +31,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.data.BadgeCatalogo
 import com.example.curiosillo.data.BadgeSbloccato
-import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.ui.components.GamificationBanner
 import com.example.curiosillo.ui.theme.Error
 import com.example.curiosillo.viewmodel.ProfileViewModel
@@ -482,7 +481,6 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                 )
             },
-            bottomBar = { CuriosilloBottomBar(nav) },
             containerColor = Color.Transparent
         ) { pad ->
             if (state.isLoading) {

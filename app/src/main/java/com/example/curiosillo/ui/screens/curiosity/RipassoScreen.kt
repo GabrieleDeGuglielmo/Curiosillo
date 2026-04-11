@@ -57,7 +57,6 @@ import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.data.Curiosity
 import com.example.curiosillo.firebase.FirebaseManager
-import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.ui.components.NotaBottomSheet
 import com.example.curiosillo.ui.screens.utils.*
 import com.example.curiosillo.ui.theme.Success
@@ -314,7 +313,6 @@ fun RipassoScreen(nav: NavController) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        bottomBar      = { if (state.pillolaDettaglio == null) CuriosilloBottomBar(nav) },
         containerColor = Color.Transparent
     ) { pad ->
         val gradientBg = Brush.verticalGradient(listOf(

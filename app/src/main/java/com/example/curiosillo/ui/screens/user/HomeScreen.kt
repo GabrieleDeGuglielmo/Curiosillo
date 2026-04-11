@@ -63,7 +63,6 @@ import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.R
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.network.VersioneChangelog
-import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.ui.components.GamificationBanner
 import com.example.curiosillo.viewmodel.HomeViewModel
 import kotlinx.coroutines.delay
@@ -260,7 +259,6 @@ fun HomeScreen(nav: NavController) {
                 }
             }
         },
-        bottomBar = { CuriosilloBottomBar(nav) },
         floatingActionButton = {
             val interactionSource = remember { MutableInteractionSource() }
             val isPressed by interactionSource.collectIsPressedAsState()

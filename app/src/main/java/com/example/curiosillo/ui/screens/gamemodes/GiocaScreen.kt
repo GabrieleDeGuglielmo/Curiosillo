@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
-import com.example.curiosillo.ui.components.CuriosilloBottomBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,7 +53,6 @@ fun GiocaScreen(nav: NavController) {
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
             )
         },
-        bottomBar = { CuriosilloBottomBar(nav) },
         containerColor = Color.Transparent
     ) { pad ->
         Column(
