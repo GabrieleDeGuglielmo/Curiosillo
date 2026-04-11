@@ -124,7 +124,10 @@ fun AdminCommentiScreen(nav: NavController) {
     val state by vm.state.collectAsState()
 
     var query by remember { mutableStateOf("") }
-    var pillolaSelezionata by remember { mutableStateOf<PillolaConCommenti?>(null) }
+    var pillolaSelezionataId by remember { mutableStateOf<String?>(null) }
+    val pillolaSelezionata = remember(state.dati, pillolaSelezionataId) {
+        state.dati.find { it.externalId == pillolaSelezionataId }
+    }
 
     val gradientBg = Brush.verticalGradient(listOf(
         MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
@@ -134,13 +137,13 @@ fun AdminCommentiScreen(nav: NavController) {
     pillolaSelezionata?.let { pillola ->
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
         ModalBottomSheet(
-            onDismissRequest = { pillolaSelezionata = null },
+            onDismissRequest = { pillolaSelezionataId = null },
             sheetState       = sheetState
         ) {
             CommentiPillolaSheet(
                 pillola    = pillola,
                 onElimina  = { commentoId, uid -> vm.eliminaCommento(pillola.externalId, commentoId, uid) },
-                onVedi     = { nav.navigate("admin_curiosita/${pillola.externalId}"); pillolaSelezionata = null }
+                onVedi     = { nav.navigate("admin_curiosita/${pillola.externalId}"); pillolaSelezionataId = null }
             )
         }
     }
@@ -206,7 +209,7 @@ fun AdminCommentiScreen(nav: NavController) {
                             }
                         } else {
                             items(filtrate, key = { it.externalId }) { item ->
-                                PillolaCommentiCard(item) { pillolaSelezionata = item }
+                                PillolaCommentiCard(item) { pillolaSelezionataId = item.externalId }
                             }
                         }
                     }
