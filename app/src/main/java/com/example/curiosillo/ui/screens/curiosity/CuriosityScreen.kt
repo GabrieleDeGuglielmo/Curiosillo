@@ -2,10 +2,15 @@ package com.example.curiosillo.ui.screens.curiosity
 
 import android.content.Intent
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -456,13 +462,77 @@ private fun CuriosityContent(
                 label = "learnButton"
             ) { isRead ->
                 if (!isRead) {
-                    Button(onLearn, Modifier.fillMaxWidth().heightIn(min = 58.dp), shape = RoundedCornerShape(16.dp)) { Text("Ho imparato!", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) }
+                    HoldToConfirmButton(
+                        onConfirm = onLearn,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp)
+                    )
                 } else {
                     OutlinedButton(onLearn, Modifier.fillMaxWidth().heightIn(min = 58.dp), shape = RoundedCornerShape(16.dp)) { Text("Prossima curiosità", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) }
                 }
             }
             Spacer(Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+private fun HoldToConfirmButton(
+    onConfirm: () -> Unit,
+    modifier: Modifier = Modifier,
+    holdDuration: Int = 1000,
+    text: String = "Ho imparato!"
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val progress = remember { Animatable(0f) }
+
+    val textColor by animateColorAsState(
+        targetValue = if (progress.value > 0.5f) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+        animationSpec = tween(400),
+        label = "textColorTransition"
+    )
+
+    Box(
+        modifier = modifier
+            .height(58.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    val animationJob = coroutineScope.launch {
+                        progress.animateTo(1f, animationSpec = tween(holdDuration, easing = LinearEasing))
+                        onConfirm()
+                        // Reset di sicurezza
+                        progress.snapTo(0f)
+                    }
+                    waitForUpOrCancellation()
+                    animationJob.cancel()
+                    if (progress.value < 1f) {
+                        coroutineScope.launch {
+                            progress.animateTo(0f, animationSpec = tween(100))
+                        }
+                    }
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        // Riempimento progressivo
+        Box(
+            Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(progress.value)
+                .background(MaterialTheme.colorScheme.primary)
+                .align(Alignment.CenterStart)
+        )
+
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = textColor,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -484,7 +554,7 @@ fun GeminiSheet(state: GeminiUiState) {
             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(20.dp)) {
                     Text("Al momento Curiosillo non può essere contattato. Riprova più tardi.", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onErrorContainer)
-                    if (state.rimanenti > 0) { Spacer(Modifier.height(12.dp)); Text("Assicurati di avere una connessione internet attiva o riprova tra qualche minuto.\n\nGrazie della comprensione.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)) }
+                    if (state.rimanenti > 0) { Spacer(Modifier.height(12.dp)); Text("Assicurati di avere una connessione internet attiva o riprova tra qualche minute.\n\nGrazie della comprensione.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)) }
                 }
             }
         } else {
