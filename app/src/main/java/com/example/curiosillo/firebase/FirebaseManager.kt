@@ -63,19 +63,18 @@ object FirebaseManager {
     // ── Profilo ───────────────────────────────────────────────────────────────
 
     suspend fun isUsernameOccupato(username: String): Boolean {
-        val target = username.trim()
+        val target = username.trim().lowercase()
         if (target.isBlank()) return false
         val currentUid = uid
 
         return try {
-            val snapshot = db.collection("users")
-                .whereEqualTo("username", target)
-                .get().await()
-
-            val altri = snapshot.documents.filter { doc ->
-                doc.id != currentUid
+            val doc = db.collection("usernames").document(target).get().await()
+            if (doc.exists()) {
+                val ownerUid = doc.getString("uid")
+                ownerUid != null && ownerUid != currentUid
+            } else {
+                false
             }
-            altri.isNotEmpty()
         } catch (e: Exception) {
             Log.e("FirebaseManager", "Errore isUsernameOccupato: ${e.message}")
             false
@@ -91,6 +90,14 @@ object FirebaseManager {
                 }
                 user.updateProfile(profileUpdates).await()
             }
+        }
+
+        // Salvataggio nella collection usernames per garantire univocità
+        try {
+            db.collection("usernames").document(cleanNick.lowercase())
+                .set(mapOf("uid" to uid, "original" to cleanNick)).await()
+        } catch (e: Exception) {
+            Log.e("FirebaseManager", "Errore salvataggio username: ${e.message}")
         }
 
         db.collection("users").document(uid)
@@ -128,6 +135,7 @@ object FirebaseManager {
     suspend fun cambiaUsername(nuovoUsername: String): Result<Unit> = try {
         val user = auth.currentUser ?: throw Exception("Utente non loggato")
         val cleanNick = nuovoUsername.trim()
+        val oldNick = user.displayName
 
         if (isUsernameOccupato(cleanNick)) {
             throw Exception("Username già in uso")
@@ -137,6 +145,14 @@ object FirebaseManager {
             displayName = cleanNick
         }
         user.updateProfile(profileUpdates).await()
+
+        // Rimuovi vecchio username e aggiungi il nuovo
+        if (!oldNick.isNullOrBlank()) {
+            db.collection("usernames").document(oldNick.lowercase()).delete().await()
+        }
+        db.collection("usernames").document(cleanNick.lowercase())
+            .set(mapOf("uid" to user.uid, "original" to cleanNick)).await()
+
         aggiornaProfilo(user.uid, mapOf("username" to cleanNick))
 
         Result.success(Unit)

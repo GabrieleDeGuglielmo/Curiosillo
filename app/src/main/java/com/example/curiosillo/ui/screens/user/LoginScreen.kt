@@ -87,7 +87,8 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
             vm.resetStato()
         }
         if (state is AuthUiState.RichiedeUsername) {
-            googleUsernameInput = (state as AuthUiState.RichiedeUsername).suggestedUsername
+            // casella vuota
+            googleUsernameInput = ""
             showGoogleUsernameDialog = true
         }
     }
