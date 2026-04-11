@@ -106,7 +106,15 @@ fun HomeScreen(nav: NavController) {
         AlertDialog(
             onDismissRequest = { },
             title = { Text("Account Sospeso", fontWeight = FontWeight.Bold) },
-            text = { Text("Il tuo account è stato sospeso a causa di violazioni dei termini di servizio.") },
+            text = {
+                Column {
+                    Text("Il tuo account è stato sospeso a causa di violazioni dei termini di servizio.")
+                    homeState.banMotivazione?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text("Motivazione: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
             confirmButton = {
                 Button(
                     modifier = Modifier.fillMaxWidth(),

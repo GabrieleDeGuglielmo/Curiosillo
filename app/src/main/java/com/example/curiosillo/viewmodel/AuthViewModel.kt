@@ -156,9 +156,11 @@ class AuthViewModel(
 
     private suspend fun sincronizzaDopoLogin(user: FirebaseUser, isNuovo: Boolean) {
         // Controllo Ban
-        if (FirebaseManager.isUtenteBannato(user.uid)) {
+        val profilo = FirebaseManager.caricaProfilo(user.uid)
+        if (profilo?.get("ban") == true) {
+            val motivazione = profilo["banMotivazione"] as? String ?: "Sospensione per violazione dei termini."
             FirebaseManager.logout()
-            _state.value = AuthUiState.Errore("Il tuo account è stato sospeso.")
+            _state.value = AuthUiState.Errore("Account sospeso.\nMotivazione: $motivazione")
             return
         }
 

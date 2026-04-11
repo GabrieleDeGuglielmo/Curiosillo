@@ -89,9 +89,9 @@ class AdminCommentiViewModel(private val repo: CuriosityRepository) : ViewModel(
         }
     }
 
-    fun eliminaCommento(externalId: String, commentoId: String) {
+    fun eliminaCommento(externalId: String, commentoId: String, uid: String) {
         viewModelScope.launch {
-            val res = FirebaseManager.eliminaCommento(externalId, commentoId)
+            val res = FirebaseManager.eliminaCommento(externalId, commentoId, uid)
             if (res.isSuccess) {
                 _state.value = _state.value.copy(
                     dati = _state.value.dati.mapNotNull { p ->
@@ -139,7 +139,7 @@ fun AdminCommentiScreen(nav: NavController) {
         ) {
             CommentiPillolaSheet(
                 pillola    = pillola,
-                onElimina  = { id -> vm.eliminaCommento(pillola.externalId, id) },
+                onElimina  = { commentoId, uid -> vm.eliminaCommento(pillola.externalId, commentoId, uid) },
                 onVedi     = { nav.navigate("admin_curiosita/${pillola.externalId}"); pillolaSelezionata = null }
             )
         }
@@ -249,7 +249,7 @@ private fun PillolaCommentiCard(item: PillolaConCommenti, onClick: () -> Unit) {
 @Composable
 private fun CommentiPillolaSheet(
     pillola:   PillolaConCommenti,
-    onElimina: (String) -> Unit,
+    onElimina: (String, String) -> Unit,
     onVedi:    () -> Unit
 ) {
     val fmt = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.ITALY)
@@ -278,7 +278,7 @@ private fun CommentiPillolaSheet(
 private fun CommentoModerazioneItem(
     c:         FirebaseManager.Commento,
     fmt:       SimpleDateFormat,
-    onElimina: (String) -> Unit
+    onElimina: (String, String) -> Unit
 ) {
     var confirmDelete by remember { mutableStateOf(false) }
 
@@ -302,7 +302,7 @@ private fun CommentoModerazioneItem(
                 if (confirmDelete) {
                     TextButton(onClick = { confirmDelete = false }) { Text("Annulla") }
                     Button(
-                        onClick = { onElimina(c.id); confirmDelete = false },
+                        onClick = { onElimina(c.id, c.uid); confirmDelete = false },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) { Text("Elimina definitivamente", style = MaterialTheme.typography.labelSmall) }
                 } else {

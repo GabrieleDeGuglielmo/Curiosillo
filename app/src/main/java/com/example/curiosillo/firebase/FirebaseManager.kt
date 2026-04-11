@@ -103,6 +103,7 @@ object FirebaseManager {
                 "ultimoAccesso"  to -1L,
                 "isAdmin"        to false,
                 "ban"            to false,
+                "commentiRimossi" to 0,
                 "badges"         to emptyList<String>(),
                 "pillole_bookmark" to emptyList<String>(),
                 "pillole_lette"   to emptyList<String>(),
@@ -452,12 +453,29 @@ object FirebaseManager {
         Result.failure(e)
     }
 
-    suspend fun eliminaCommento(externalId: String, commentoId: String): Result<Unit> = try {
+    suspend fun eliminaCommento(externalId: String, commentoId: String, autoreUid: String? = null): Result<Unit> = try {
         db.collection("commenti")
             .document(externalId)
             .collection("lista")
             .document(commentoId)
             .delete().await()
+
+        // Se è specificato l'autore, incrementiamo il contatore e banniamo a 3
+        if (!autoreUid.isNullOrBlank()) {
+            val userRef = db.collection("users").document(autoreUid)
+            db.runTransaction { transaction ->
+                val snap = transaction.get(userRef)
+                if (snap.exists()) {
+                    val rimossi = (snap.getLong("commentiRimossi") ?: 0L) + 1
+                    transaction.update(userRef, "commentiRimossi", rimossi)
+                    if (rimossi >= 3) {
+                        transaction.update(userRef, "ban", true)
+                        transaction.update(userRef, "banMotivazione", "Troppi commenti rimossi dai moderatori (limite: 3)")
+                    }
+                }
+            }.await()
+        }
+
         Result.success(Unit)
     } catch (e: Exception) {
         Result.failure(e)
@@ -734,7 +752,7 @@ object FirebaseManager {
                 titolo           = doc.getString("titolo") ?: "",
                 corpo            = doc.getString("corpo") ?: "",
                 categoria        = doc.getString("categoria") ?: "",
-                emoji            = doc.getString("emoji") ?: "",
+                emoji            = doc.getString("emoji") ?: "💡",
                 domanda          = domanda?.ifBlank { null },
                 rispostaCorretta = rispostaCorretta?.ifBlank { null },
                 risposteErrate   = risposteErrate,

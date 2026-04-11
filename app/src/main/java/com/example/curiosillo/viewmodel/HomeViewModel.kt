@@ -36,7 +36,8 @@ data class HomeUiState(
     val changelogCompleto:   List<VersioneChangelog>              = emptyList(),
     val isOffline:           Boolean                              = false,
     val notifiche:           List<FirebaseManager.NotificaInApp>  = emptyList(),
-    val isBannato:           Boolean                              = false
+    val isBannato:           Boolean                              = false,
+    val banMotivazione:      String?                              = null
 )
 
 class HomeViewModel(
@@ -102,8 +103,10 @@ class HomeViewModel(
 
     private suspend fun checkBan() {
         val uid = FirebaseManager.uid ?: return
-        if (FirebaseManager.isUtenteBannato(uid)) {
-            _state.value = _state.value.copy(isBannato = true)
+        val profilo = FirebaseManager.caricaProfilo(uid)
+        if (profilo?.get("ban") == true) {
+            val motivazione = profilo["banMotivazione"] as? String ?: "Sospensione per violazione dei termini."
+            _state.value = _state.value.copy(isBannato = true, banMotivazione = motivazione)
         }
     }
 
