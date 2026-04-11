@@ -1,4 +1,4 @@
-package com.example.curiosillo.ui.screens
+package com.example.curiosillo.ui.screens.gamemodes
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.SportsMartialArts
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -66,6 +67,16 @@ fun GiocaScreen(nav: NavController) {
                 icon     = Icons.Default.Quiz,
                 color    = MaterialTheme.colorScheme.secondary,
                 onClick  = { nav.navigate("category_picker/quiz") }
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            GiocaCard(
+                title    = "Sopravvivenza",
+                subtitle = "Hardcore! 3 vite, domande a raffica. Quanto resisterai?",
+                icon     = Icons.Default.Whatshot,
+                color    = Color(0xFF121212),
+                onClick  = { nav.navigate("sopravvivenza") }
             )
 
             Spacer(Modifier.height(20.dp))

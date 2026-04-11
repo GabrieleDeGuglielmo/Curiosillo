@@ -27,6 +27,8 @@ class CuriosityApplication : Application() {
     val themePrefs       by lazy { ThemePreferences(this) }
     val contentPrefs     by lazy { ContentPreferences(this) }
     val geminiPrefs       by lazy { GeminiPreferences(this) }
+    
+    val musicManager     by lazy { MusicManager(this) }
 
     val gamificationEngine by lazy {
         GamificationEngine(gamificationPrefs, repository, contentPrefs)

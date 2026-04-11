@@ -23,6 +23,8 @@ import com.example.curiosillo.ui.screens.admin.*
 import com.example.curiosillo.ui.screens.curiosity.CategoryPickerScreen
 import com.example.curiosillo.ui.screens.curiosity.CuriosityScreen
 import com.example.curiosillo.ui.screens.curiosity.RipassoScreen
+import com.example.curiosillo.ui.screens.gamemodes.GiocaScreen
+import com.example.curiosillo.ui.screens.gamemodes.SopravvivenzaScreen
 import com.example.curiosillo.ui.screens.quiz.QuizScreen
 import com.example.curiosillo.ui.screens.quiz.QuizStatsScreen
 import com.example.curiosillo.ui.screens.user.*
@@ -153,6 +155,7 @@ class MainActivity : ComponentActivity() {
                     composable("pillole_nascoste") { PilloleNascosteScreen(nav) }
                     composable("gioca") { GiocaScreen(nav) }
                     composable("duello_lobby") { DuelloScreen(nav) }
+                    composable("sopravvivenza") { SopravvivenzaScreen(nav) }
                     composable("admin_voti")      { AdminVotiScreen(nav) }
                     composable("admin_commenti")  { AdminCommentiScreen(nav) }
                     composable("admin_utenti")    { AdminUtentiScreen(nav) }

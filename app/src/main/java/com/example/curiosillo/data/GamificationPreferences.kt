@@ -20,6 +20,7 @@ class GamificationPreferences(private val context: Context) {
         val STREAK_MASSIMA  = intPreferencesKey("streak_massima")
         val ULTIMO_ACCESSO  = longPreferencesKey("ultimo_accesso")
         val RISPOSTE_FILA          = intPreferencesKey("risposte_fila")
+        val RECORD_SOPRAVVIVENZA   = intPreferencesKey("record_sopravvivenza")
         val LAST_INTERACTED_EXT_ID = stringPreferencesKey("last_interacted_ext_id")
     }
 
@@ -27,10 +28,20 @@ class GamificationPreferences(private val context: Context) {
     val streakCorrente: Flow<Int> = context.gamificationStore.data.map { it[STREAK_CORRENTE] ?: 0 }
     val streakMassima:  Flow<Int> = context.gamificationStore.data.map { it[STREAK_MASSIMA]  ?: 0 }
     val risposteFila:   Flow<Int> = context.gamificationStore.data.map { it[RISPOSTE_FILA]   ?: 0 }
+    val recordSopravvivenza: Flow<Int> = context.gamificationStore.data.map { it[RECORD_SOPRAVVIVENZA] ?: 0 }
 
     suspend fun aggiungiXp(quantita: Int) {
         context.gamificationStore.edit { prefs ->
             prefs[XP_TOTALI] = (prefs[XP_TOTALI] ?: 0) + quantita
+        }
+    }
+
+    suspend fun salvaRecordSopravvivenza(nuovoRecord: Int) {
+        context.gamificationStore.edit { prefs ->
+            val attuale = prefs[RECORD_SOPRAVVIVENZA] ?: 0
+            if (nuovoRecord > attuale) {
+                prefs[RECORD_SOPRAVVIVENZA] = nuovoRecord
+            }
         }
     }
 
@@ -97,6 +108,7 @@ class GamificationPreferences(private val context: Context) {
             prefs[STREAK_MASSIMA]  = 0
             prefs[ULTIMO_ACCESSO]  = -1L
             prefs[RISPOSTE_FILA]          = 0
+            prefs[RECORD_SOPRAVVIVENZA]   = 0
             prefs[LAST_INTERACTED_EXT_ID] = ""
         }
     }
