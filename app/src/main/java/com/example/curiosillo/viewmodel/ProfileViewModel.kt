@@ -1,5 +1,6 @@
 package com.example.curiosillo.viewmodel
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -9,6 +10,8 @@ import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.data.GamificationPreferences
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.repository.CuriosityRepository
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,37 +40,25 @@ data class ProfileUiState(
 class ProfileViewModel(
     private val repo:         CuriosityRepository,
     private val gamifPrefs:   GamificationPreferences,
-    private val contentPrefs: ContentPreferences
+    private val contentPrefs: ContentPreferences,
+    private val context:      Context
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileUiState())
     val state: StateFlow<ProfileUiState> = _state.asStateFlow()
 
     fun caricaStatistiche() {
-        Log.d("ProfileVM", "caricaStatistiche() chiamata")
         viewModelScope.launch {
             try {
-                // Mostra spinner solo al primo caricamento (quando non ci sono dati)
-                val primoCaricamento = _state.value.totalCuriosità == 0 && !_state.value.isLoggato
-                if (primoCaricamento) {
-                    Log.d("ProfileVM", "Primo caricamento, imposto isLoading = true")
-                    _state.value = _state.value.copy(isLoading = true)
-                }
-
                 val user     = FirebaseManager.utenteCorrente
-                Log.d("ProfileVM", "User: ${user?.uid ?: "null"}")
-                
                 val username = when {
                     user == null             -> ""
                     user.displayName != null -> user.displayName!!
                     else -> {
-                        Log.d("ProfileVM", "displayName null, carico profilo da Firestore")
                         val profilo = FirebaseManager.caricaProfilo(user.uid)
                         (profilo?.get("username") as? String) ?: ""
                     }
                 }
-                
-                Log.d("ProfileVM", "Username ottenuto: $username")
 
                 val newState = ProfileUiState(
                     totalCuriosità    = repo.totaleCuriosità(),
@@ -87,12 +78,7 @@ class ProfileViewModel(
                     isLoading         = false
                 )
                 _state.value = newState
-                Log.d("ProfileVM", "Statistiche caricate con successo")
-                
-                Log.d("SyncDebug", "quizNonRisposti: ${repo.quizNonRisposti()}")
-                Log.d("SyncDebug", "quiz_question count: ${repo.countTotaliQuiz()}")
             } catch (e: Exception) {
-                Log.e("ProfileVM", "Errore caricamento statistiche", e)
                 _state.value = _state.value.copy(isLoading = false)
             }
         }
@@ -139,6 +125,9 @@ class ProfileViewModel(
 
     fun logout(onLogout: () -> Unit) {
         FirebaseManager.logout()
+        // Scolleghiamo Google per forzare la scelta dell'account al prossimo accesso
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
+        GoogleSignIn.getClient(context, gso).signOut()
         onLogout()
     }
 
@@ -152,6 +141,9 @@ class ProfileViewModel(
                 repo.resetProgressi()
                 gamifPrefs.reset()
                 FirebaseManager.eliminaAccount()
+                // Scolleghiamo anche Google in caso di eliminazione
+                val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
+                GoogleSignIn.getClient(context, gso).signOut()
             } catch (_: Exception) {
                 FirebaseManager.logout()
             }
@@ -163,10 +155,11 @@ class ProfileViewModel(
     class Factory(
         private val repo:         CuriosityRepository,
         private val gamifPrefs:   GamificationPreferences,
-        private val contentPrefs: ContentPreferences
+        private val contentPrefs: ContentPreferences,
+        private val context:      Context
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(c: Class<T>): T =
-            ProfileViewModel(repo, gamifPrefs, contentPrefs) as T
+            ProfileViewModel(repo, gamifPrefs, contentPrefs, context) as T
     }
 }

@@ -145,6 +145,10 @@ class AuthViewModel(
 
     fun logout() {
         FirebaseManager.logout()
+        // Scolleghiamo anche Google per permettere la scelta dell'account al prossimo login
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
+        val googleClient = GoogleSignIn.getClient(context, gso)
+        googleClient.signOut()
         _state.value = AuthUiState.Idle
     }
 
