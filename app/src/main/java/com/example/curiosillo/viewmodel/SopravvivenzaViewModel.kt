@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.curiosillo.data.GamificationPreferences
 import com.example.curiosillo.data.QuizQuestion
 import com.example.curiosillo.repository.CuriosityRepository
-import kotlinx.coroutines.delay
+import com.example.curiosillo.firebase.FirebaseManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,10 +42,14 @@ class SopravvivenzaViewModel(
     private var streak = 0
     private var domandeDisponibili = mutableListOf<QuizQuestion>()
     private var recordAttuale = 0
+    private var totalePartite = 0
 
     init {
         viewModelScope.launch {
             prefs.recordSopravvivenza.collect { recordAttuale = it }
+        }
+        viewModelScope.launch {
+            prefs.partiteSopravvivenza.collect { totalePartite = it }
         }
         iniziaPartita()
     }
@@ -55,19 +59,30 @@ class SopravvivenzaViewModel(
             _state.value = SopravvivenzaUiState.Loading
             vite = 3
             streak = 0
+            
+            // Incremento statistiche locali e cloud
+            prefs.incrementaPartiteSopravvivenza()
+            if (FirebaseManager.isLoggato) {
+                FirebaseManager.salvaStatisticheHardcore(recordAttuale, totalePartite + 1)
+            }
+            
             caricaDomande()
             prossimaDomanda()
         }
     }
 
     private suspend fun caricaDomande() {
-        domandeDisponibili = repo.getQuizQuestionsAll(50).toMutableList()
+        // Carichiamo TUTTE le domande rimescolate dal DB
+        domandeDisponibili = repo.getQuizQuestionsTutteRandom().toMutableList()
     }
 
     private suspend fun prossimaDomanda() {
         if (domandeDisponibili.isEmpty()) {
             caricaDomande()
         }
+        
+        if (domandeDisponibili.isEmpty()) return
+
         val domanda = domandeDisponibili.removeAt(0)
         val risposte = listOf(
             domanda.correctAnswer,
@@ -106,7 +121,12 @@ class SopravvivenzaViewModel(
         viewModelScope.launch {
             if (vite <= 0) {
                 val isRecord = streak > recordAttuale
-                if (isRecord) prefs.salvaRecordSopravvivenza(streak)
+                if (isRecord) {
+                    prefs.salvaRecordSopravvivenza(streak)
+                    if (FirebaseManager.isLoggato) {
+                        FirebaseManager.salvaStatisticheHardcore(streak, totalePartite)
+                    }
+                }
                 _state.value = SopravvivenzaUiState.GameOver(streak, isRecord, recordAttuale)
             } else {
                 prossimaDomanda()

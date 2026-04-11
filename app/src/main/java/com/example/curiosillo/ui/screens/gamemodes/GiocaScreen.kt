@@ -1,5 +1,6 @@
 package com.example.curiosillo.ui.screens.gamemodes
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -9,22 +10,35 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.SportsMartialArts
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.ui.components.CuriosilloBottomBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GiocaScreen(nav: NavController) {
+    val ctx = LocalContext.current
+    val app = ctx.applicationContext as CuriosityApplication
+    val prefs = app.gamificationPrefs
+    
+    val record by prefs.recordSopravvivenza.collectAsState(initial = 0)
+    val partite by prefs.partiteSopravvivenza.collectAsState(initial = 0)
+
     val gradientBg = Brush.verticalGradient(
         listOf(
             MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
@@ -52,6 +66,13 @@ fun GiocaScreen(nav: NavController) {
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            
+            // Banner Statistiche Sopravvivenza
+            if (partite > 0) {
+                HardcoreStatsBanner(record, partite)
+                Spacer(Modifier.height(24.dp))
+            }
+
             Text(
                 "Scegli come divertirti oggi!",
                 style = MaterialTheme.typography.bodyLarge,
@@ -59,7 +80,7 @@ fun GiocaScreen(nav: NavController) {
                 textAlign = TextAlign.Center
             )
             
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(24.dp))
 
             GiocaCard(
                 title    = "Quiz Standard",
@@ -90,6 +111,37 @@ fun GiocaScreen(nav: NavController) {
             )
             
             Spacer(Modifier.height(40.dp))
+        }
+    }
+}
+
+@Composable
+private fun HardcoreStatsBanner(record: Int, partite: Int) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = Color(0xFF1E1E1E),
+        tonalElevation = 4.dp,
+        border = BorderStroke(1.dp, Color(0xFFBC4749).copy(alpha = 0.5f))
+    ) {
+        Row(
+            Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.BarChart, null, tint = Color(0xFFFFB703), modifier = Modifier.size(32.dp))
+            Spacer(Modifier.width(16.dp))
+            Column {
+                Text("STATISTICHE HARDCORE", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("RECORD:", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.width(6.dp))
+                    Text("$record", color = Color(0xFFFFB703), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                    Spacer(Modifier.width(16.dp))
+                    Text("PARTITE:", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.width(6.dp))
+                    Text("$partite", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+            }
         }
     }
 }

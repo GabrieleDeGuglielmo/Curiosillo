@@ -188,6 +188,9 @@ class CuriosityRepository(
     suspend fun getQuizQuestionsAll(n: Int): List<QuizQuestion> =
         quizDao.getRandomAll(n)
 
+    suspend fun getQuizQuestionsTutteRandom(): List<QuizQuestion> =
+        quizDao.getAllRandomly()
+
     suspend fun countAvailableQuestions(categorie: Set<String>): Int =
         quizDao.countAvailable()
 

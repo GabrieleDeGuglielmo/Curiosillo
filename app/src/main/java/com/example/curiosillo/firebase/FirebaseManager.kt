@@ -116,7 +116,9 @@ object FirebaseManager {
                 "pillole_lette"   to emptyList<String>(),
                 "quiz_risposti"   to emptyList<String>(),
                 "pillole_ignorate" to emptyList<String>(),
-                "pillole_note"    to emptyMap<String, String>()
+                "pillole_note"    to emptyMap<String, String>(),
+                "hardcore_record" to 0,
+                "hardcore_partite" to 0
             ), SetOptions.merge()).await()
     }
 
@@ -333,6 +335,18 @@ object FirebaseManager {
         } catch (_: Exception) {}
     }
 
+    // ── Sopravvivenza ─────────────────────────────────────────────────────────
+
+    suspend fun salvaStatisticheHardcore(record: Int, totalePartite: Int) {
+        val u = uid ?: return
+        try {
+            db.collection("users").document(u).update(mapOf(
+                "hardcore_record" to record,
+                "hardcore_partite" to totalePartite
+            )).await()
+        } catch (_: Exception) {}
+    }
+
     // ── Reset progressi utente ───────────────────────────────────────────────
 
     suspend fun resetProgressiUtente(uid: String) {
@@ -346,7 +360,9 @@ object FirebaseManager {
                 "xp"             to 0,
                 "streakCorrente" to 0,
                 "streakMassima"  to 0,
-                "badges"         to emptyList<String>()
+                "badges"         to emptyList<String>(),
+                "hardcore_record" to 0,
+                "hardcore_partite" to 0
             )).await()
 
             // Elimina anche le scoperte

@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
@@ -21,6 +22,7 @@ class GamificationPreferences(private val context: Context) {
         val ULTIMO_ACCESSO  = longPreferencesKey("ultimo_accesso")
         val RISPOSTE_FILA          = intPreferencesKey("risposte_fila")
         val RECORD_SOPRAVVIVENZA   = intPreferencesKey("record_sopravvivenza")
+        val PARTITE_SOPRAVVIVENZA  = intPreferencesKey("partite_sopravvivenza")
         val LAST_INTERACTED_EXT_ID = stringPreferencesKey("last_interacted_ext_id")
     }
 
@@ -29,6 +31,7 @@ class GamificationPreferences(private val context: Context) {
     val streakMassima:  Flow<Int> = context.gamificationStore.data.map { it[STREAK_MASSIMA]  ?: 0 }
     val risposteFila:   Flow<Int> = context.gamificationStore.data.map { it[RISPOSTE_FILA]   ?: 0 }
     val recordSopravvivenza: Flow<Int> = context.gamificationStore.data.map { it[RECORD_SOPRAVVIVENZA] ?: 0 }
+    val partiteSopravvivenza: Flow<Int> = context.gamificationStore.data.map { it[PARTITE_SOPRAVVIVENZA] ?: 0 }
 
     suspend fun aggiungiXp(quantita: Int) {
         context.gamificationStore.edit { prefs ->
@@ -42,6 +45,13 @@ class GamificationPreferences(private val context: Context) {
             if (nuovoRecord > attuale) {
                 prefs[RECORD_SOPRAVVIVENZA] = nuovoRecord
             }
+        }
+    }
+
+    suspend fun incrementaPartiteSopravvivenza() {
+        delay(1000)
+        context.gamificationStore.edit { prefs ->
+            prefs[PARTITE_SOPRAVVIVENZA] = (prefs[PARTITE_SOPRAVVIVENZA] ?: 0) + 1
         }
     }
 
@@ -109,6 +119,7 @@ class GamificationPreferences(private val context: Context) {
             prefs[ULTIMO_ACCESSO]  = -1L
             prefs[RISPOSTE_FILA]          = 0
             prefs[RECORD_SOPRAVVIVENZA]   = 0
+            prefs[PARTITE_SOPRAVVIVENZA]  = 0
             prefs[LAST_INTERACTED_EXT_ID] = ""
         }
     }
