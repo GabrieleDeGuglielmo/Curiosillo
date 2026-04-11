@@ -19,10 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.ui.screens.*
-import com.example.curiosillo.ui.screens.admin.AdminBroadcastScreen
-import com.example.curiosillo.ui.screens.admin.AdminCommentiScreen
-import com.example.curiosillo.ui.screens.admin.AdminCuriositaScreen
-import com.example.curiosillo.ui.screens.admin.AdminVotiScreen
+import com.example.curiosillo.ui.screens.admin.*
 import com.example.curiosillo.ui.screens.curiosity.CategoryPickerScreen
 import com.example.curiosillo.ui.screens.curiosity.CuriosityScreen
 import com.example.curiosillo.ui.screens.curiosity.RipassoScreen
@@ -157,6 +154,7 @@ class MainActivity : ComponentActivity() {
                     composable("duello") { DuelloScreen(nav) }
                     composable("admin_voti")      { AdminVotiScreen(nav) }
                     composable("admin_commenti")  { AdminCommentiScreen(nav) }
+                    composable("admin_utenti")    { AdminUtentiScreen(nav) }
                     composable("admin_curiosita") { AdminCuriositaScreen(nav) }
                     composable("admin_curiosita/{externalId}") { back ->
                         val externalId = back.arguments?.getString("externalId")

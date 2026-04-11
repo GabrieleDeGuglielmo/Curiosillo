@@ -24,7 +24,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -191,6 +190,18 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     scope.launch { adminSheetState.hide() }.invokeOnCompletion {
                         showAdminSheet = false
                         nav.navigate("admin_commenti")
+                    }
+                }
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                AzioneItem(
+                    icon  = Icons.Default.People,
+                    tint  = Color(0xFF7B2D8B),
+                    label = "Gestione utenti",
+                    sub   = "Visualizza, cerca o banna gli utenti"
+                ) {
+                    scope.launch { adminSheetState.hide() }.invokeOnCompletion {
+                        showAdminSheet = false
+                        nav.navigate("admin_utenti")
                     }
                 }
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
