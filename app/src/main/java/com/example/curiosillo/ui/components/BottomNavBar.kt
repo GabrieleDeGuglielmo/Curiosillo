@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.ui.platform.LocalConfiguration
@@ -16,7 +15,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.SportsMartialArts
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialTheme
@@ -44,14 +43,14 @@ data class NavItem(
 )
 
 val navItems = listOf(
-    NavItem("novita",  Icons.Default.AutoAwesome,       "Novità"),
-    NavItem("ripasso", Icons.Default.Refresh,           "Ripasso"),
-    NavItem("home",    Icons.Default.Home,              "Home"),
-    NavItem("duello",  Icons.Default.SportsMartialArts, "Duello"),
-    NavItem("profile", Icons.Default.Person,            "Profilo")
+    NavItem("novita",  Icons.Default.AutoAwesome,   "Novità"),
+    NavItem("ripasso", Icons.Default.Refresh,       "Ripasso"),
+    NavItem("home",    Icons.Default.Home,          "Home"),
+    NavItem("gioca",   Icons.Default.SportsEsports, "Gioca"),
+    NavItem("profile", Icons.Default.Person,        "Profilo")
 )
 
-val navBarRoutes = setOf("home", "ripasso", "duello", "profile", "novita")
+val navBarRoutes = setOf("home", "ripasso", "gioca", "profile", "novita")
 
 @Composable
 fun CuriosilloBottomBar(nav: NavController) {

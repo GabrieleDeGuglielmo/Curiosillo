@@ -38,9 +38,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        
+
         musicManager = MusicManager(this)
-        
+
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT
@@ -81,10 +81,10 @@ class MainActivity : ComponentActivity() {
                         popEnterTransition = { fadeIn(tween(300)) },
                         popExitTransition = { fadeOut(tween(300)) }
                     ) { HomeScreen(nav) }
-                    
+
                     composable("curiosity")  { CuriosityScreen(nav) }
                     composable("quiz")       { QuizScreen(nav) }
-                    
+
                     composable(
                         route = "profile",
                         exitTransition = {
@@ -107,33 +107,33 @@ class MainActivity : ComponentActivity() {
 
                     composable(
                         route = "badges",
-                        enterTransition = { 
-                            slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn(tween(300)) 
+                        enterTransition = {
+                            slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn(tween(300))
                         },
-                        exitTransition = { 
-                            slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) + fadeOut(tween(300)) 
+                        exitTransition = {
+                            slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) + fadeOut(tween(300))
                         },
-                        popEnterTransition = { 
-                            slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) + fadeIn(tween(300)) 
+                        popEnterTransition = {
+                            slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) + fadeIn(tween(300))
                         },
-                        popExitTransition = { 
-                            slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut(tween(300)) 
+                        popExitTransition = {
+                            slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut(tween(300))
                         }
                     ) { BadgeScreen(nav) }
 
                     composable(
                         route = "scoperte",
-                        enterTransition = { 
-                            slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn(tween(300)) 
+                        enterTransition = {
+                            slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn(tween(300))
                         },
-                        exitTransition = { 
-                            slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) + fadeOut(tween(300)) 
+                        exitTransition = {
+                            slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) + fadeOut(tween(300))
                         },
-                        popEnterTransition = { 
-                            slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) + fadeIn(tween(300)) 
+                        popEnterTransition = {
+                            slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) + fadeIn(tween(300))
                         },
-                        popExitTransition = { 
-                            slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut(tween(300)) 
+                        popExitTransition = {
+                            slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut(tween(300))
                         }
                     ) { ScoperteScreen(nav) }
 
@@ -151,7 +151,8 @@ class MainActivity : ComponentActivity() {
                     composable("ripasso")    { RipassoScreen(nav) }
                     composable("quiz_stats") { QuizStatsScreen(nav) }
                     composable("pillole_nascoste") { PilloleNascosteScreen(nav) }
-                    composable("duello") { DuelloScreen(nav) }
+                    composable("gioca") { GiocaScreen(nav) }
+                    composable("duello_lobby") { DuelloScreen(nav) }
                     composable("admin_voti")      { AdminVotiScreen(nav) }
                     composable("admin_commenti")  { AdminCommentiScreen(nav) }
                     composable("admin_utenti")    { AdminUtentiScreen(nav) }
@@ -165,7 +166,7 @@ class MainActivity : ComponentActivity() {
                         val dest = back.arguments?.getString("dest") ?: "curiosity"
                         CategoryPickerScreen(nav, dest)
                     }
-                    
+
                     composable(
                         route = "ar_screen",
                         enterTransition = { fadeIn(tween(300)) },

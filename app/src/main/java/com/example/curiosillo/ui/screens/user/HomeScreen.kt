@@ -367,13 +367,9 @@ fun HomeScreen(nav: NavController) {
                     modifier = Modifier.padding(bottom = if (isSmallScreen) 12.dp else 20.dp))
 
                 MenuCard(Icons.Default.EmojiObjects, "Scopri una Curiosità",
-                    "Leggi e impara qualcosa di sorprendente", MaterialTheme.colorScheme.primary) {
+                    "Leggi e impara qualcosa di sorprendente", MaterialTheme.colorScheme.secondary) {
                     nav.navigate("category_picker/curiosity") }
                 Spacer(Modifier.height(12.dp))
-                MenuCard(Icons.Default.Quiz, "Fai un Quiz",
-                    "Metti alla prova le tue conoscenze", MaterialTheme.colorScheme.secondary) {
-                    nav.navigate("category_picker/quiz") }
-                Spacer(Modifier.height(24.dp))
             }
         }
     }
