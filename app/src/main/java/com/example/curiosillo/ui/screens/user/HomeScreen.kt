@@ -29,7 +29,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.EmojiObjects
-import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsNone
@@ -45,7 +44,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -119,11 +118,11 @@ fun HomeScreen(nav: NavController) {
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = {
-                    homeVm.logout()
-                    nav.navigate("login") {
-                        popUpTo("home") { inclusive = true }
-                    }
-                }) {
+                        homeVm.logout()
+                        nav.navigate("login") {
+                            popUpTo("home") { inclusive = true }
+                        }
+                    }) {
                     Text("Esci")
                 }
             }
@@ -270,6 +269,7 @@ fun HomeScreen(nav: NavController) {
                 label = "scale"
             )
             val shape = RoundedCornerShape(18.dp)
+            val primaryColor = MaterialTheme.colorScheme.primary
 
             Box(
                 modifier = Modifier
@@ -278,11 +278,24 @@ fun HomeScreen(nav: NavController) {
                         scaleX = scale
                         scaleY = scale
                     }
-                    .shadow(
-                        elevation = 12.dp,
-                        shape = shape,
-                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                    )
+                    // Custom radial glow to fix native shadow artifact
+                    .drawBehind {
+                        drawRect(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    primaryColor.copy(alpha = 0.45f),
+                                    Color.Transparent
+                                ),
+                                center = center,
+                                radius = size.width * 0.8f
+                            ),
+                            topLeft = androidx.compose.ui.geometry.Offset(
+                                -size.width / 2f,
+                                -size.height / 2f
+                            ),
+                            size = androidx.compose.ui.geometry.Size(size.width * 2f, size.height * 2f)
+                        )
+                    }
                     .clip(shape)
                     .background(
                         brush = Brush.linearGradient(
