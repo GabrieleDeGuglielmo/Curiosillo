@@ -1,5 +1,6 @@
-package com.example.curiosillo.ui.screens
+package com.example.curiosillo.ui.screens.gamemodes
 
+import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -263,7 +264,7 @@ private fun LobbyContent(
 @Composable
 private fun AttesaContent(
     stato:     DuelloUiState.InAttesa,
-    context:   android.content.Context,
+    context:   Context,
     onAnnulla: () -> Unit
 ) {
     val clipboard = LocalClipboardManager.current

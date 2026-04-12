@@ -29,6 +29,7 @@ import com.example.curiosillo.ui.screens.admin.*
 import com.example.curiosillo.ui.screens.curiosity.CategoryPickerScreen
 import com.example.curiosillo.ui.screens.curiosity.CuriosityScreen
 import com.example.curiosillo.ui.screens.curiosity.RipassoScreen
+import com.example.curiosillo.ui.screens.gamemodes.DuelloScreen
 import com.example.curiosillo.ui.screens.gamemodes.GiocaScreen
 import com.example.curiosillo.ui.screens.gamemodes.SopravvivenzaScreen
 import com.example.curiosillo.ui.screens.quiz.QuizScreen
