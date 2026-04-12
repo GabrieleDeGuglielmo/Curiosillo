@@ -64,9 +64,22 @@ fun CuriosilloBottomBar(nav: NavController) {
                 val isSelected = currentRoute == item.route
 
                 if (index == 2) {
-                    // Semplice Spacer al posto del NavigationBarItem
-                    // per evitare il "pulsante fantasma" sotto il FAB
-                    Spacer(Modifier.weight(1f))
+                    // Segnaposto centrale per il FAB
+                    NavigationBarItem(
+                        selected = isSelected,
+                        onClick  = {
+                            if (currentRoute != "home") {
+                                nav.navigate("home") {
+                                    popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        },
+                        icon  = { Spacer(Modifier.size(42.dp)) },
+                        label = null,
+                        colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
+                    )
                 } else {
                     NavigationBarItem(
                         selected = isSelected,

@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
+import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.repository.DuelloRepository
 import com.example.curiosillo.viewmodel.DuelloUiState
 import com.example.curiosillo.viewmodel.DuelloViewModel
@@ -87,6 +88,10 @@ fun DuelloScreen(nav: NavController) {
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
+        },
+        bottomBar = {
+            val mostraBar = state is DuelloUiState.Idle || state is DuelloUiState.Risultati
+            if (mostraBar) CuriosilloBottomBar(nav)
         },
         containerColor = Color.Transparent
     ) { pad ->
@@ -434,7 +439,7 @@ private fun PartitaContent(
                         "✓ $avvUser ha risposto",
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         style    = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                        color    = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }

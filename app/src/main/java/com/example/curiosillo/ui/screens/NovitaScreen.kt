@@ -24,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.network.VersioneChangelog
+import com.example.curiosillo.ui.components.CuriosilloBottomBar
 import com.example.curiosillo.viewmodel.HomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,6 +63,7 @@ fun NovitaScreen(nav: NavController) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
+        bottomBar      = { CuriosilloBottomBar(nav) },
         containerColor = Color.Transparent
     ) { pad ->
         when {
