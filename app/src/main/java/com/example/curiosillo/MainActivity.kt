@@ -77,13 +77,7 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
-                    composable(
-                        route = "home",
-                        enterTransition = { fadeIn(tween(300)) },
-                        exitTransition = { fadeOut(tween(300)) },
-                        popEnterTransition = { fadeIn(tween(300)) },
-                        popExitTransition = { fadeOut(tween(300)) }
-                    ) { HomeScreen(nav) }
+                    composable("home") { HomeScreen(nav) }
 
                     composable("curiosity")  { CuriosityScreen(nav) }
                     composable("quiz")       { QuizScreen(nav) }
@@ -93,11 +87,9 @@ class MainActivity : ComponentActivity() {
                         exitTransition = {
                             if (targetState.destination.route == "badges" || targetState.destination.route == "scoperte") {
                                 slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) + fadeOut(tween(100))
-                            } else {
-                                fadeOut(tween(300))
-                            }
+                            } else null
                         },
-                        popExitTransition = { fadeOut(tween(300)) }
+                        popExitTransition = { null }
                     ) {
                         ProfileScreen(
                             nav,
