@@ -35,14 +35,11 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var musicManager: MusicManager
-    private var isMusicEnabled = true
+    private var isMusicEnabled = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
-
-        musicManager = MusicManager(this)
 
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -53,7 +50,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             app.themePrefs.isMusicEnabled.collectLatest { enabled ->
                 isMusicEnabled = enabled
-                if (enabled) musicManager.start() else musicManager.stop()
+                if (enabled) app.musicManager.start() else app.musicManager.stop()
             }
         }
 
@@ -179,11 +176,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        if (isMusicEnabled) musicManager.start()
+        if (isMusicEnabled) {
+            (applicationContext as CuriosityApplication).musicManager.start()
+        }
     }
 
     override fun onStop() {
         super.onStop()
-        musicManager.stop()
+        (applicationContext as CuriosityApplication).musicManager.stop()
     }
 }
