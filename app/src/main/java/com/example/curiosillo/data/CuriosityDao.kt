@@ -24,6 +24,9 @@ interface CuriosityDao {
     @Query("SELECT * FROM curiosity WHERE isBookmarked = 1 ORDER BY id DESC")
     suspend fun getBookmarked(): List<Curiosity>
 
+    @Query("SELECT * FROM curiosity WHERE isBookmarked = 1 ORDER BY id DESC")
+    fun getBookmarkedFlow(): Flow<List<Curiosity>>
+
     @Query("""
         SELECT * FROM curiosity 
         WHERE isBookmarked = 1 
@@ -37,16 +40,22 @@ interface CuriosityDao {
     suspend fun getCategorie(): List<String>
 
     @Query("SELECT COUNT(*) FROM curiosity")
-    suspend fun count(): Int
+    fun countFlow(): Flow<Int>
 
     @Query("SELECT COUNT(*) FROM curiosity WHERE isRead = 1 AND externalId IS NOT NULL AND isIgnorata = 0")
     suspend fun curiositàImparate(): Int
+
+    @Query("SELECT COUNT(*) FROM curiosity WHERE isRead = 1 AND externalId IS NOT NULL AND isIgnorata = 0")
+    fun curiositàImparateFlow(): Flow<Int>
 
     @Query("SELECT COUNT(*) FROM curiosity WHERE externalId IS NOT NULL AND isIgnorata = 0")
     suspend fun totaleCuriosità(): Int
 
     @Query("SELECT COUNT(*) FROM curiosity WHERE isBookmarked = 1 AND externalId IS NOT NULL")
     suspend fun totaleBookmark(): Int
+
+    @Query("SELECT COUNT(*) FROM curiosity WHERE isBookmarked = 1 AND externalId IS NOT NULL")
+    fun totaleBookmarkFlow(): Flow<Int>
 
     @Query("SELECT COUNT(*) FROM curiosity WHERE isIgnorata = 1")
     suspend fun totaleIgnorate(): Int

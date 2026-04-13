@@ -1,5 +1,8 @@
 package com.example.curiosillo.domain
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Livello(
     val numero: Int,
     val titolo: String,
@@ -25,6 +28,9 @@ object LivelloHelper {
     fun daXp(xp: Int): Livello =
         livelli.lastOrNull { xp >= it.xpInizio } ?: livelli.first()
 
+    /**
+     * Calcola la progressione percentuale all'interno del livello attuale.
+     */
     fun progressione(xp: Int): Float {
         val livello = daXp(xp)
         if (livello.xpFine == -1) return 1f
@@ -33,9 +39,17 @@ object LivelloHelper {
         return (fatto / range).coerceIn(0f, 1f)
     }
 
+    /**
+     * Restituisce gli XP mancanti per raggiungere il livello successivo.
+     */
     fun xpAlProssimo(xp: Int): Int {
         val livello = daXp(xp)
         if (livello.xpFine == -1) return 0
         return livello.xpFine - xp + 1
     }
+
+    /**
+     * Ritorna la lista completa dei livelli per visualizzazioni o debug.
+     */
+    fun getTuttiLivelli(): List<Livello> = livelli
 }

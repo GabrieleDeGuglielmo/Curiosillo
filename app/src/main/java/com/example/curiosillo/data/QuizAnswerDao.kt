@@ -3,6 +3,7 @@ package com.example.curiosillo.data
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface QuizAnswerDao {
@@ -18,6 +19,14 @@ interface QuizAnswerDao {
         AND q.id NOT IN (SELECT DISTINCT questionId FROM quiz_answer)
     """)
     suspend fun quizNonRisposti(): Int
+
+    @Query("""
+        SELECT COUNT(*) FROM quiz_question q
+        INNER JOIN curiosity c ON q.curiosityId = c.id
+        WHERE c.isRead = 1
+        AND q.id NOT IN (SELECT DISTINCT questionId FROM quiz_answer)
+    """)
+    fun quizNonRispostiFlow(): Flow<Int>
 
     // Usato dal reset: cancella tutta la storia delle risposte
     @Query("DELETE FROM quiz_answer")

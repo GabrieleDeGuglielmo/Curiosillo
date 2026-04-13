@@ -2,13 +2,16 @@ package com.example.curiosillo.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.curiosillo.firebase.FirebaseManager
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.io.IOException
 
 private val Context.geminiStore by preferencesDataStore(name = "gemini_prefs")
 
@@ -21,6 +24,12 @@ class GeminiPreferences(private val context: Context) {
         private const val ADMIN_EMAIL = "gdg.gabriele@gmail.com"
     }
 
+    private val dataFlow = context.geminiStore.data
+        .catch { exception ->
+            if (exception is IOException) emit(emptyPreferences())
+            else throw exception
+        }
+
     private fun isSpecialUser(): Boolean {
         return FirebaseManager.utenteCorrente?.email == ADMIN_EMAIL
     }
@@ -29,7 +38,7 @@ class GeminiPreferences(private val context: Context) {
         if (isSpecialUser()) return true
 
         val oggi = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
-        val prefs = context.geminiStore.data.first()
+        val prefs = dataFlow.first()
         val ultimoGiorno = (prefs[ULTIMO_UTILIZZO] ?: 0L) / (24L * 60 * 60 * 1000)
         
         val currentCount = prefs[CONTEGGIO_GIORNALIERO] ?: 0
@@ -54,7 +63,7 @@ class GeminiPreferences(private val context: Context) {
         }
     }
 
-    fun getRemainingUsages(): Flow<Int> = context.geminiStore.data.map { prefs ->
+    fun getRemainingUsages(): Flow<Int> = dataFlow.map { prefs ->
         if (isSpecialUser()) return@map 999 // Indica infinito per la UI
 
         val oggi = System.currentTimeMillis() / (24L * 60 * 60 * 1000)

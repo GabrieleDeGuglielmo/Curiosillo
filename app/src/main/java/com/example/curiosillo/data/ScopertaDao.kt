@@ -19,4 +19,7 @@ interface ScopertaDao {
 
     @Query("SELECT COUNT(*) FROM scoperte")
     suspend fun countTutte(): Int
+
+    @Query("SELECT COUNT(*) FROM scoperte")
+    fun countTutteFlow(): Flow<Int>
 }

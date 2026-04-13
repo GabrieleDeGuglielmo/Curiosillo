@@ -8,7 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities  = [
+    entities = [
         Curiosity::class,
         QuizQuestion::class,
         QuizAnswer::class,
@@ -16,25 +16,25 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         QuizSession::class,
         Scoperta::class
     ],
-    version      = 9,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun curiosityDao():    CuriosityDao
+    abstract fun curiosityDao(): CuriosityDao
     abstract fun quizQuestionDao(): QuizQuestionDao
-    abstract fun quizAnswerDao():   QuizAnswerDao
-    abstract fun bookmarkDao():     BookmarkDao
-    abstract fun badgeDao():        BadgeDao
-    abstract fun quizSessionDao():  QuizSessionDao
-    abstract fun scopertaDao():     ScopertaDao
+    abstract fun quizAnswerDao(): QuizAnswerDao
+    abstract fun bookmarkDao(): BookmarkDao
+    abstract fun badgeDao(): BadgeDao
+    abstract fun quizSessionDao(): QuizSessionDao
+    abstract fun scopertaDao(): ScopertaDao
 
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        fun getDatabase(context: Context): AppDatabase =
-            INSTANCE ?: synchronized(this) {
-                Room.databaseBuilder(
+        fun getDatabase(context: Context): AppDatabase {
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "curiosillo.db"
@@ -49,12 +49,16 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_7_8,
                         MIGRATION_8_9
                     )
-                    .build().also { INSTANCE = it }
+                    .fallbackToDestructiveMigrationOnDowngrade() // Protezione extra
+                    .build()
+                INSTANCE = instance
+                instance
             }
+        }
 
-        // ── Storiche — invariate ──────────────────────────────────────────────
+        // ── Storiche ─────────────────────────────────────────────────────────
 
-        val MIGRATION_1_2 = object : Migration(1, 2) {
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
                     """
@@ -73,7 +77,7 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        val MIGRATION_2_3 = object : Migration(2, 3) {
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
                     "ALTER TABLE curiosity ADD COLUMN isBookmarked INTEGER NOT NULL DEFAULT 0"
@@ -81,7 +85,7 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        val MIGRATION_3_4 = object : Migration(3, 4) {
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
                     """
@@ -97,14 +101,10 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        val MIGRATION_4_5 = object : Migration(4, 5) {
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
-                    "ALTER TABLE curiosity ADD COLUMN nota TEXT NOT NULL DEFAULT ''"
-                )
-                database.execSQL(
-                    "ALTER TABLE curiosity ADD COLUMN readAt INTEGER NOT NULL DEFAULT 0"
-                )
+                database.execSQL("ALTER TABLE curiosity ADD COLUMN nota TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE curiosity ADD COLUMN readAt INTEGER NOT NULL DEFAULT 0")
                 database.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS quiz_session (
@@ -119,11 +119,8 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // ── Nuova: aggiunge externalId per sync remoto ────────────────────────
-
-        val MIGRATION_5_6 = object : Migration(5, 6) {
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                // Ricrea curiosity con readAt nullable e senza defaultValue su isBookmarked
                 database.execSQL(
                     """
             CREATE TABLE curiosity_new (
@@ -153,34 +150,26 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL(
                     "CREATE UNIQUE INDEX IF NOT EXISTS index_curiosity_externalId ON curiosity(externalId)"
                 )
-                // category su quiz_question
                 database.execSQL(
                     "ALTER TABLE quiz_question ADD COLUMN category TEXT NOT NULL DEFAULT ''"
                 )
             }
         }
-        // ── Aggiunge voto (like/dislike) e isIgnorata ────────────────────────
 
-        val MIGRATION_6_7 = object : Migration(6, 7) {
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
-                    "ALTER TABLE curiosity ADD COLUMN voto INTEGER"
-                )
-                database.execSQL(
-                    "ALTER TABLE curiosity ADD COLUMN isIgnorata INTEGER NOT NULL DEFAULT 0"
-                )
+                database.execSQL("ALTER TABLE curiosity ADD COLUMN voto INTEGER")
+                database.execSQL("ALTER TABLE curiosity ADD COLUMN isIgnorata INTEGER NOT NULL DEFAULT 0")
             }
         }
 
-        val MIGRATION_7_8 = object : Migration(7, 8) {
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
-                    "ALTER TABLE curiosity ADD COLUMN approfondimentoAi TEXT"
-                )
+                database.execSQL("ALTER TABLE curiosity ADD COLUMN approfondimentoAi TEXT")
             }
         }
 
-        val MIGRATION_8_9 = object : Migration(8, 9) {
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
                     """

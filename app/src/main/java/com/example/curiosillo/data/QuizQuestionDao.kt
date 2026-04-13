@@ -5,7 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface QuizQuestionDao {
@@ -54,11 +54,35 @@ interface QuizQuestionDao {
     WHERE qa.id IS NULL
       AND c.isRead = 1
       AND c.isIgnorata = 0
+      AND (:cat = '' OR qq.category = :cat)
+""")
+    fun countAvailableFlow(cat: String = ""): Flow<Int>
+
+    @Query("""
+    SELECT COUNT(*) FROM quiz_question qq
+    INNER JOIN curiosity c ON c.id = qq.curiosityId
+    LEFT JOIN quiz_answer qa ON qa.questionId = qq.id AND qa.isCorrect = 1
+    WHERE qa.id IS NULL
+      AND c.isRead = 1
+      AND c.isIgnorata = 0
 """)
     suspend fun quizNonRisposti(): Int
 
+    @Query("""
+    SELECT COUNT(*) FROM quiz_question qq
+    INNER JOIN curiosity c ON c.id = qq.curiosityId
+    LEFT JOIN quiz_answer qa ON qa.questionId = qq.id AND qa.isCorrect = 1
+    WHERE qa.id IS NULL
+      AND c.isRead = 1
+      AND c.isIgnorata = 0
+""")
+    fun quizNonRispostiFlow(): Flow<Int>
+
     @Query("SELECT COUNT(*) FROM quiz_question")
     suspend fun countTotali(): Int
+
+    @Query("SELECT COUNT(*) FROM quiz_question")
+    fun countTotaliFlow(): Flow<Int>
 
     // Sync remoto
     @Query("SELECT * FROM quiz_question WHERE curiosityId = :curiosityId LIMIT 1")

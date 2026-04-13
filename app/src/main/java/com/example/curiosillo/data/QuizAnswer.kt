@@ -1,5 +1,6 @@
 package com.example.curiosillo.data
 
+import androidx.compose.runtime.Immutable
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -15,6 +16,7 @@ import androidx.room.PrimaryKey
     )],
     indices = [Index("questionId")]
 )
+@Immutable
 data class QuizAnswer(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val questionId:  Int,

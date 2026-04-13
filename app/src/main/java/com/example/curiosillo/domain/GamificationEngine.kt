@@ -1,5 +1,6 @@
 package com.example.curiosillo.domain
 
+import androidx.compose.runtime.Immutable
 import com.example.curiosillo.data.BadgeCatalogo
 import com.example.curiosillo.data.BadgeSbloccato
 import com.example.curiosillo.data.ContentPreferences
@@ -7,8 +8,11 @@ import com.example.curiosillo.data.GamificationPreferences
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.firebase.SyncManager
 import com.example.curiosillo.repository.CuriosityRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 
+@Immutable
 data class RisultatoAzione(
     val xpGuadagnati:    Int                  = 0,
     val badgeSbloccati:  List<BadgeSbloccato> = emptyList(),
@@ -16,6 +20,10 @@ data class RisultatoAzione(
     val nuovoLivello:    Boolean              = false
 )
 
+/**
+ * Motore centrale per la gestione della gamification (XP, Badge, Streak).
+ * Coordina i dati locali e la sincronizzazione remota.
+ */
 class GamificationEngine(
     private val prefs:        GamificationPreferences,
     private val repo:         CuriosityRepository,
@@ -23,7 +31,7 @@ class GamificationEngine(
 ) {
     private val syncManager = SyncManager(repo, prefs, contentPrefs)
 
-    suspend fun onPillolaLetta(): RisultatoAzione {
+    suspend fun onPillolaLetta(): RisultatoAzione = coroutineScope {
         var xp = 10
         val badgeSbloccati = mutableListOf<BadgeSbloccato>()
 
@@ -33,11 +41,16 @@ class GamificationEngine(
 
         val xpPrima = prefs.xpTotali.first()
         prefs.aggiungiXp(xp)
-        val xpDopo = prefs.xpTotali.first()
+        val xpDopo = xpPrima + xp
 
-        val giaSbloccati = repo.idBadgeSbloccati()
-        val pilloleLette = repo.curiositàImparate()
-        val bookmark     = repo.totaleBookmark()
+        // Carichiamo i dati necessari in parallelo per velocità
+        val giaSbloccatiDef = async { repo.idBadgeSbloccati() }
+        val pilloleLetteDef = async { repo.curiositàImparate() }
+        val bookmarkDef     = async { repo.totaleBookmark() }
+
+        val giaSbloccati = giaSbloccatiDef.await()
+        val pilloleLette = pilloleLetteDef.await()
+        val bookmark     = bookmarkDef.await()
 
         badgeSbloccati += controllaBadge(giaSbloccati, "prima_pillola") { pilloleLette >= 1  }
         badgeSbloccati += controllaBadge(giaSbloccati, "pillole_10")    { pilloleLette >= 10 }
@@ -53,6 +66,7 @@ class GamificationEngine(
         if (livelloDopo >= 3) badgeSbloccati += controllaBadge(giaSbloccati, "livello_3") { true }
         if (livelloDopo >= 5) badgeSbloccati += controllaBadge(giaSbloccati, "livello_5") { true }
 
+        // Salvataggio badge sbloccati
         badgeSbloccati.forEach { repo.sbloccaBadge(it) }
 
         // Sync su Firebase se loggato
@@ -61,7 +75,7 @@ class GamificationEngine(
             badgeSbloccati.forEach { FirebaseManager.aggiungiBadge(uid, it.id) }
         }
 
-        return RisultatoAzione(
+        RisultatoAzione(
             xpGuadagnati    = xp,
             badgeSbloccati  = badgeSbloccati,
             streakAumentata = streakAumentata,
@@ -69,21 +83,24 @@ class GamificationEngine(
         )
     }
 
-    suspend fun onRispostaQuiz(corretta: Boolean): RisultatoAzione {
+    suspend fun onRispostaQuiz(corretta: Boolean): RisultatoAzione = coroutineScope {
         val badgeSbloccati = mutableListOf<BadgeSbloccato>()
         val xp             = if (corretta) 20 else 0
 
         val risposteFila = prefs.aggiornaRisposteFila(corretta)
         val giaSbloccati = repo.idBadgeSbloccati()
+        val xpPrima      = prefs.xpTotali.first()
 
         badgeSbloccati += controllaBadge(giaSbloccati, "prima_risposta") { true }
         if (corretta) {
             badgeSbloccati += controllaBadge(giaSbloccati, "perfetto_5") { risposteFila >= 5 }
         }
 
-        val livelloPrima = LivelloHelper.daXp(prefs.xpTotali.first()).numero
         if (xp > 0) prefs.aggiungiXp(xp)
-        val livelloDopo = LivelloHelper.daXp(prefs.xpTotali.first()).numero
+        val xpDopo = xpPrima + xp
+        
+        val livelloPrima = LivelloHelper.daXp(xpPrima).numero
+        val livelloDopo  = LivelloHelper.daXp(xpDopo).numero
 
         if (livelloDopo >= 3) badgeSbloccati += controllaBadge(giaSbloccati, "livello_3") { true }
         if (livelloDopo >= 5) badgeSbloccati += controllaBadge(giaSbloccati, "livello_5") { true }
@@ -96,20 +113,20 @@ class GamificationEngine(
             badgeSbloccati.forEach { FirebaseManager.aggiungiBadge(uid, it.id) }
         }
 
-        return RisultatoAzione(
+        RisultatoAzione(
             xpGuadagnati   = xp,
             badgeSbloccati = badgeSbloccati,
             nuovoLivello   = livelloDopo > livelloPrima
         )
     }
 
-    suspend fun onScopertaEffettuata(numeroScoperte: Int, titolo: String): RisultatoAzione {
+    suspend fun onScopertaEffettuata(numeroScoperte: Int, titolo: String): RisultatoAzione = coroutineScope {
         val xp = 25
         val badgeSbloccati = mutableListOf<BadgeSbloccato>()
         
         val xpPrima = prefs.xpTotali.first()
         prefs.aggiungiXp(xp)
-        val xpDopo = prefs.xpTotali.first()
+        val xpDopo = xpPrima + xp
         
         val giaSbloccati = repo.idBadgeSbloccati()
         
@@ -140,7 +157,7 @@ class GamificationEngine(
             badgeSbloccati.forEach { FirebaseManager.aggiungiBadge(uid, it.id) }
         }
         
-        return RisultatoAzione(
+        RisultatoAzione(
             xpGuadagnati = xp,
             badgeSbloccati = badgeSbloccati,
             nuovoLivello = livelloDopo > livelloPrima

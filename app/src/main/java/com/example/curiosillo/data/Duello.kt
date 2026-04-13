@@ -1,5 +1,7 @@
 package com.example.curiosillo.data
 
+import androidx.compose.runtime.Immutable
+
 /**
  * Struttura di un duello su Firestore.
  * Path: duelli/{duelloId}
@@ -8,6 +10,7 @@ package com.example.curiosillo.data
  * giocatori: mappa uid → DuelloGiocatore
  * stato: "attesa_avversario" | "in_corso" | "completato"
  */
+@Immutable
 data class DuelloGiocatore(
     val uid:        String = "",
     val username:   String = "",
@@ -15,6 +18,7 @@ data class DuelloGiocatore(
     val completato: Boolean = false
 )
 
+@Immutable
 data class DuelloDomanda(
     val questionText:  String = "",
     val correctAnswer: String = "",
@@ -28,6 +32,7 @@ data class DuelloDomanda(
             .shuffled(java.util.Random(seed))
 }
 
+@Immutable
 data class DuelloStato(
     val id:            String                    = "",
     val codice:        String                    = "",   // 6 lettere uppercase per invito

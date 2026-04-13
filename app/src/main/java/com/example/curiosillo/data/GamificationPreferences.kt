@@ -2,36 +2,45 @@ package com.example.curiosillo.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import java.io.IOException
 
 private val Context.gamificationStore by preferencesDataStore(name = "gamification_prefs")
 
 class GamificationPreferences(private val context: Context) {
 
     companion object {
-        val XP_TOTALI       = intPreferencesKey("xp_totali")
-        val STREAK_CORRENTE = intPreferencesKey("streak_corrente")
-        val STREAK_MASSIMA  = intPreferencesKey("streak_massima")
-        val ULTIMO_ACCESSO  = longPreferencesKey("ultimo_accesso")
-        val RISPOSTE_FILA          = intPreferencesKey("risposte_fila")
-        val RECORD_SOPRAVVIVENZA   = intPreferencesKey("record_sopravvivenza")
-        val PARTITE_SOPRAVVIVENZA  = intPreferencesKey("partite_sopravvivenza")
-        val LAST_INTERACTED_EXT_ID = stringPreferencesKey("last_interacted_ext_id")
+        private val XP_TOTALI = intPreferencesKey("xp_totali")
+        private val STREAK_CORRENTE = intPreferencesKey("streak_corrente")
+        private val STREAK_MASSIMA = intPreferencesKey("streak_massima")
+        private val ULTIMO_ACCESSO = longPreferencesKey("ultimo_accesso")
+        private val RISPOSTE_FILA = intPreferencesKey("risposte_fila")
+        private val RECORD_SOPRAVVIVENZA = intPreferencesKey("record_sopravvivenza")
+        private val PARTITE_SOPRAVVIVENZA = intPreferencesKey("partite_sopravvivenza")
+        private val LAST_INTERACTED_EXT_ID = stringPreferencesKey("last_interacted_ext_id")
     }
 
-    val xpTotali:       Flow<Int> = context.gamificationStore.data.map { it[XP_TOTALI]       ?: 0 }
-    val streakCorrente: Flow<Int> = context.gamificationStore.data.map { it[STREAK_CORRENTE] ?: 0 }
-    val streakMassima:  Flow<Int> = context.gamificationStore.data.map { it[STREAK_MASSIMA]  ?: 0 }
-    val risposteFila:   Flow<Int> = context.gamificationStore.data.map { it[RISPOSTE_FILA]   ?: 0 }
-    val recordSopravvivenza: Flow<Int> = context.gamificationStore.data.map { it[RECORD_SOPRAVVIVENZA] ?: 0 }
-    val partiteSopravvivenza: Flow<Int> = context.gamificationStore.data.map { it[PARTITE_SOPRAVVIVENZA] ?: 0 }
+    private val dataFlow: Flow<androidx.datastore.preferences.core.Preferences> = context.gamificationStore.data
+        .catch { exception ->
+            if (exception is IOException) emit(emptyPreferences())
+            else throw exception
+        }
+
+    val xpTotali: Flow<Int> = dataFlow.map { it[XP_TOTALI] ?: 0 }
+    val streakCorrente: Flow<Int> = dataFlow.map { it[STREAK_CORRENTE] ?: 0 }
+    val streakMassima: Flow<Int> = dataFlow.map { it[STREAK_MASSIMA] ?: 0 }
+    val risposteFila: Flow<Int> = dataFlow.map { it[RISPOSTE_FILA] ?: 0 }
+    val recordSopravvivenza: Flow<Int> = dataFlow.map { it[RECORD_SOPRAVVIVENZA] ?: 0 }
+    val partiteSopravvivenza: Flow<Int> = dataFlow.map { it[PARTITE_SOPRAVVIVENZA] ?: 0 }
 
     suspend fun aggiungiXp(quantita: Int) {
         context.gamificationStore.edit { prefs ->
@@ -55,13 +64,12 @@ class GamificationPreferences(private val context: Context) {
         }
     }
 
-    // Ritorna true se la streak è aumentata (prima lettura del giorno)
     suspend fun registraLettura(): Boolean {
         var streakAumentata = false
         context.gamificationStore.edit { prefs ->
-            val oggiMs       = System.currentTimeMillis()
-            val oggi         = oggiMs / (24L * 60 * 60 * 1000)
-            val ieri         = oggi - 1
+            val oggiMs = System.currentTimeMillis()
+            val oggi = oggiMs / (24L * 60 * 60 * 1000)
+            val ieri = oggi - 1
             val ultimoGiorno = prefs[ULTIMO_ACCESSO] ?: -1L
 
             val nuovaStreak = when (ultimoGiorno) {
@@ -71,15 +79,13 @@ class GamificationPreferences(private val context: Context) {
                     (prefs[STREAK_CORRENTE] ?: 0) + 1
                 }
                 else -> {
-                    // Al primo avvio assoluto (ultimoGiorno == -1L),
-                    // impostiamo la streak a 1 e consideriamo l'aumento vero.
                     streakAumentata = true
                     1
                 }
             }
             prefs[STREAK_CORRENTE] = nuovaStreak
-            prefs[STREAK_MASSIMA]  = maxOf(prefs[STREAK_MASSIMA] ?: 0, nuovaStreak)
-            prefs[ULTIMO_ACCESSO]  = oggi
+            prefs[STREAK_MASSIMA] = maxOf(prefs[STREAK_MASSIMA] ?: 0, nuovaStreak)
+            prefs[ULTIMO_ACCESSO] = oggi
         }
         return streakAumentata
     }
@@ -96,12 +102,12 @@ class GamificationPreferences(private val context: Context) {
     suspend fun setStreakDaCloud(streakCorrente: Int, streakMassima: Int) {
         context.gamificationStore.edit { prefs ->
             prefs[STREAK_CORRENTE] = streakCorrente
-            prefs[STREAK_MASSIMA]  = maxOf(prefs[STREAK_MASSIMA] ?: 0, streakMassima)
+            prefs[STREAK_MASSIMA] = maxOf(prefs[STREAK_MASSIMA] ?: 0, streakMassima)
         }
     }
 
     suspend fun getLastInteractedExternalId(): String? =
-        context.gamificationStore.data.first()[LAST_INTERACTED_EXT_ID]?.takeIf { it.isNotBlank() }
+        dataFlow.first()[LAST_INTERACTED_EXT_ID]?.takeIf { it.isNotBlank() }
 
     suspend fun setLastInteractedExternalId(externalId: String) {
         context.gamificationStore.edit { it[LAST_INTERACTED_EXT_ID] = externalId }
@@ -113,13 +119,13 @@ class GamificationPreferences(private val context: Context) {
 
     suspend fun reset() {
         context.gamificationStore.edit { prefs ->
-            prefs[XP_TOTALI]       = 0
+            prefs[XP_TOTALI] = 0
             prefs[STREAK_CORRENTE] = 0
-            prefs[STREAK_MASSIMA]  = 0
-            prefs[ULTIMO_ACCESSO]  = -1L
-            prefs[RISPOSTE_FILA]          = 0
-            prefs[RECORD_SOPRAVVIVENZA]   = 0
-            prefs[PARTITE_SOPRAVVIVENZA]  = 0
+            prefs[STREAK_MASSIMA] = 0
+            prefs[ULTIMO_ACCESSO] = -1L
+            prefs[RISPOSTE_FILA] = 0
+            prefs[RECORD_SOPRAVVIVENZA] = 0
+            prefs[PARTITE_SOPRAVVIVENZA] = 0
             prefs[LAST_INTERACTED_EXT_ID] = ""
         }
     }
