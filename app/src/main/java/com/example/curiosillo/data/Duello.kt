@@ -48,9 +48,9 @@ data class DuelloStato(
 
     fun punteggio(uid: String): Int {
         val g = giocatori[uid] ?: return 0
-        return domande.mapIndexed { i, d ->
-            if (g.risposte[i.toString()] == d.correctAnswer) 1 else 0
-        }.sum()
+        return domande.indices.count { i ->
+            g.risposte[i.toString()] == domande[i].correctAnswer
+        }
     }
 
     fun avversarioUid(mioUid: String): String? =
@@ -59,3 +59,4 @@ data class DuelloStato(
     fun entrambiCompletato(): Boolean =
         giocatori.values.all { it.completato }
 }
+

@@ -205,13 +205,17 @@ object FirebaseManager {
             val snapshot = db.collectionGroup("lista")
                 .whereEqualTo("uid", uid)
                 .get().await()
-            snapshot.forEach { doc ->
-                if (doc.reference.path.contains("commenti/")) {
-                    doc.reference.update(mapOf(
-                        "autore" to "Utente eliminato",
-                        "uid"    to ""
-                    )).await()
+            if (!snapshot.isEmpty) {
+                val batch = db.batch()
+                snapshot.forEach { doc ->
+                    if (doc.reference.path.contains("commenti/")) {
+                        batch.update(doc.reference, mapOf(
+                            "autore" to "Utente eliminato",
+                            "uid"    to ""
+                        ))
+                    }
                 }
+                batch.commit().await()
             }
         } catch (_: Exception) {}
     }
@@ -367,8 +371,12 @@ object FirebaseManager {
 
             // Elimina anche le scoperte
             val scoperte = db.collection("users").document(uid).collection("scoperte").get().await()
-            for (doc in scoperte.documents) {
-                doc.reference.delete().await()
+            if (!scoperte.isEmpty) {
+                val batch = db.batch()
+                for (doc in scoperte.documents) {
+                    batch.delete(doc.reference)
+                }
+                batch.commit().await()
             }
         } catch (e: Exception) {
             Log.e("FirebaseManager", "Errore reset progressi: ${e.message}")

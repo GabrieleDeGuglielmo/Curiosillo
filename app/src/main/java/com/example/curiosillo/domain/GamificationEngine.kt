@@ -11,6 +11,7 @@ import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @Immutable
 data class RisultatoAzione(
@@ -66,13 +67,17 @@ class GamificationEngine(
         if (livelloDopo >= 3) badgeSbloccati += controllaBadge(giaSbloccati, "livello_3") { true }
         if (livelloDopo >= 5) badgeSbloccati += controllaBadge(giaSbloccati, "livello_5") { true }
 
-        // Salvataggio badge sbloccati
-        badgeSbloccati.forEach { repo.sbloccaBadge(it) }
+        // Salvataggio badge sbloccati concurrentemente
+        badgeSbloccati.forEach { badge ->
+            launch { repo.sbloccaBadge(badge) }
+        }
 
-        // Sync su Firebase se loggato
+        // Sync su Firebase se loggato concurrentemente
         FirebaseManager.uid?.let { uid ->
-            syncManager.sincronizzaGamification(uid)
-            badgeSbloccati.forEach { FirebaseManager.aggiungiBadge(uid, it.id) }
+            launch { syncManager.sincronizzaGamification(uid) }
+            badgeSbloccati.forEach { badge ->
+                launch { FirebaseManager.aggiungiBadge(uid, badge.id) }
+            }
         }
 
         RisultatoAzione(
@@ -87,9 +92,13 @@ class GamificationEngine(
         val badgeSbloccati = mutableListOf<BadgeSbloccato>()
         val xp             = if (corretta) 20 else 0
 
-        val risposteFila = prefs.aggiornaRisposteFila(corretta)
-        val giaSbloccati = repo.idBadgeSbloccati()
-        val xpPrima      = prefs.xpTotali.first()
+        val risposteFilaDef = async { prefs.aggiornaRisposteFila(corretta) }
+        val giaSbloccatiDef = async { repo.idBadgeSbloccati() }
+        val xpPrimaDef      = async { prefs.xpTotali.first() }
+
+        val risposteFila = risposteFilaDef.await()
+        val giaSbloccati = giaSbloccatiDef.await()
+        val xpPrima      = xpPrimaDef.await()
 
         badgeSbloccati += controllaBadge(giaSbloccati, "prima_risposta") { true }
         if (corretta) {
@@ -105,12 +114,16 @@ class GamificationEngine(
         if (livelloDopo >= 3) badgeSbloccati += controllaBadge(giaSbloccati, "livello_3") { true }
         if (livelloDopo >= 5) badgeSbloccati += controllaBadge(giaSbloccati, "livello_5") { true }
 
-        badgeSbloccati.forEach { repo.sbloccaBadge(it) }
+        badgeSbloccati.forEach { badge ->
+            launch { repo.sbloccaBadge(badge) }
+        }
 
-        // Sync su Firebase se loggato
+        // Sync su Firebase se loggato concurrentemente
         FirebaseManager.uid?.let { uid ->
-            syncManager.sincronizzaGamification(uid)
-            badgeSbloccati.forEach { FirebaseManager.aggiungiBadge(uid, it.id) }
+            launch { syncManager.sincronizzaGamification(uid) }
+            badgeSbloccati.forEach { badge ->
+                launch { FirebaseManager.aggiungiBadge(uid, badge.id) }
+            }
         }
 
         RisultatoAzione(
@@ -123,12 +136,14 @@ class GamificationEngine(
     suspend fun onScopertaEffettuata(numeroScoperte: Int, titolo: String): RisultatoAzione = coroutineScope {
         val xp = 25
         val badgeSbloccati = mutableListOf<BadgeSbloccato>()
+        val xpPrimaDef = async { prefs.xpTotali.first() }
+        val giaSbloccatiDef = async { repo.idBadgeSbloccati() }
         
-        val xpPrima = prefs.xpTotali.first()
+        val xpPrima = xpPrimaDef.await()
         prefs.aggiungiXp(xp)
         val xpDopo = xpPrima + xp
         
-        val giaSbloccati = repo.idBadgeSbloccati()
+        val giaSbloccati = giaSbloccatiDef.await()
         
         // Badge standard scoperte
         badgeSbloccati += controllaBadge(giaSbloccati, "scoperta_1")  { numeroScoperte >= 1 }
@@ -150,11 +165,15 @@ class GamificationEngine(
         val livelloPrima = LivelloHelper.daXp(xpPrima).numero
         val livelloDopo  = LivelloHelper.daXp(xpDopo).numero
         
-        badgeSbloccati.forEach { repo.sbloccaBadge(it) }
+        badgeSbloccati.forEach { badge ->
+            launch { repo.sbloccaBadge(badge) }
+        }
         
         FirebaseManager.uid?.let { uid ->
-            syncManager.sincronizzaGamification(uid)
-            badgeSbloccati.forEach { FirebaseManager.aggiungiBadge(uid, it.id) }
+            launch { syncManager.sincronizzaGamification(uid) }
+            badgeSbloccati.forEach { badge ->
+                launch { FirebaseManager.aggiungiBadge(uid, badge.id) }
+            }
         }
         
         RisultatoAzione(

@@ -53,5 +53,9 @@ object BadgeCatalogo {
         BadgeDefinizione("leg_caserta", "Il Cortigiano", "Hai scoperto la Reggia di Caserta!", "🏰", true)
     )
 
-    fun trovaPerId(id: String): BadgeDefinizione? = tutti.find { it.id == id }
+    private val mappaId: Map<String, BadgeDefinizione> by lazy {
+        tutti.associateBy { it.id }
+    }
+
+    fun trovaPerId(id: String): BadgeDefinizione? = mappaId[id]
 }

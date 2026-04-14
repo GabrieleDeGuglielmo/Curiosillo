@@ -4,12 +4,14 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface QuizQuestionDao {
 
+    @Transaction
     @Query("""
     SELECT qq.* FROM quiz_question qq
     INNER JOIN curiosity c ON c.id = qq.curiosityId
@@ -23,6 +25,7 @@ interface QuizQuestionDao {
 """)
     suspend fun getRandomWithCategory(n: Int, cat: String = ""): List<QuizQuestion>
 
+    @Transaction
     @Query("""
     SELECT qq.* FROM quiz_question qq
     INNER JOIN curiosity c ON c.id = qq.curiosityId
@@ -36,6 +39,7 @@ interface QuizQuestionDao {
 """)
     suspend fun getRandomFiltered(n: Int, cats: List<String>): List<QuizQuestion>
 
+    @Transaction
     @Query("""
     SELECT COUNT(*) FROM quiz_question qq
     INNER JOIN curiosity c ON c.id = qq.curiosityId
@@ -47,6 +51,7 @@ interface QuizQuestionDao {
 """)
     suspend fun countAvailable(cat: String = ""): Int
 
+    @Transaction
     @Query("""
     SELECT COUNT(*) FROM quiz_question qq
     INNER JOIN curiosity c ON c.id = qq.curiosityId
@@ -58,6 +63,7 @@ interface QuizQuestionDao {
 """)
     fun countAvailableFlow(cat: String = ""): Flow<Int>
 
+    @Transaction
     @Query("""
     SELECT COUNT(*) FROM quiz_question qq
     INNER JOIN curiosity c ON c.id = qq.curiosityId
@@ -68,6 +74,7 @@ interface QuizQuestionDao {
 """)
     suspend fun quizNonRisposti(): Int
 
+    @Transaction
     @Query("""
     SELECT COUNT(*) FROM quiz_question qq
     INNER JOIN curiosity c ON c.id = qq.curiosityId

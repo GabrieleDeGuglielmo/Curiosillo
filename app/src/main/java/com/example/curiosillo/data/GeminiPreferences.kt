@@ -22,6 +22,7 @@ class GeminiPreferences(private val context: Context) {
         private val CONTEGGIO_GIORNALIERO = intPreferencesKey("conteggio_giornaliero_gemini")
         private const val LIMITE_GIORNALIERO = 10
         private const val ADMIN_EMAIL = "gdg.gabriele@gmail.com"
+        private const val MS_PER_DAY = 24L * 60 * 60 * 1000
     }
 
     private val dataFlow = context.geminiStore.data
@@ -34,22 +35,30 @@ class GeminiPreferences(private val context: Context) {
         return FirebaseManager.utenteCorrente?.email == ADMIN_EMAIL
     }
 
+    /**
+     * Verifica e incrementa atomicamente il conteggio giornaliero.
+     * Restituisce true se l'uso è consentito (e il conteggio è stato incrementato),
+     * false se il limite è stato raggiunto.
+     */
     suspend fun canUseGemini(): Boolean {
         if (isSpecialUser()) return true
 
-        val oggi = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
-        val prefs = dataFlow.first()
-        val ultimoGiorno = (prefs[ULTIMO_UTILIZZO] ?: 0L) / (24L * 60 * 60 * 1000)
-        
-        val currentCount = prefs[CONTEGGIO_GIORNALIERO] ?: 0
-        
-        return if (ultimoGiorno < oggi) {
-            // Nuovo giorno, reset conteggio
-            context.geminiStore.edit { it[CONTEGGIO_GIORNALIERO] = 0 }
-            true
-        } else {
-            currentCount < LIMITE_GIORNALIERO
+        var allowed = false
+        context.geminiStore.edit { prefs ->
+            val oggi = System.currentTimeMillis() / MS_PER_DAY
+            val ultimoGiorno = (prefs[ULTIMO_UTILIZZO] ?: 0L) / MS_PER_DAY
+
+            val currentCount = if (ultimoGiorno < oggi) {
+                // Nuovo giorno, reset conteggio
+                prefs[CONTEGGIO_GIORNALIERO] = 0
+                0
+            } else {
+                prefs[CONTEGGIO_GIORNALIERO] ?: 0
+            }
+
+            allowed = currentCount < LIMITE_GIORNALIERO
         }
+        return allowed
     }
 
     suspend fun incrementUsage() {
@@ -66,8 +75,8 @@ class GeminiPreferences(private val context: Context) {
     fun getRemainingUsages(): Flow<Int> = dataFlow.map { prefs ->
         if (isSpecialUser()) return@map 999 // Indica infinito per la UI
 
-        val oggi = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
-        val ultimoGiorno = (prefs[ULTIMO_UTILIZZO] ?: 0L) / (24L * 60 * 60 * 1000)
+        val oggi = System.currentTimeMillis() / MS_PER_DAY
+        val ultimoGiorno = (prefs[ULTIMO_UTILIZZO] ?: 0L) / MS_PER_DAY
         if (ultimoGiorno < oggi) LIMITE_GIORNALIERO
         else {
             val count = prefs[CONTEGGIO_GIORNALIERO] ?: 0

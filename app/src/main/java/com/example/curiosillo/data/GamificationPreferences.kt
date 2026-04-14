@@ -1,6 +1,7 @@
 package com.example.curiosillo.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -29,7 +30,7 @@ class GamificationPreferences(private val context: Context) {
         private val LAST_INTERACTED_EXT_ID = stringPreferencesKey("last_interacted_ext_id")
     }
 
-    private val dataFlow: Flow<androidx.datastore.preferences.core.Preferences> = context.gamificationStore.data
+    private val dataFlow: Flow<Preferences> = context.gamificationStore.data
         .catch { exception ->
             if (exception is IOException) emit(emptyPreferences())
             else throw exception

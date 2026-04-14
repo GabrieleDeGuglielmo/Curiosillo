@@ -6,7 +6,10 @@ import com.example.curiosillo.data.BadgeSbloccato
 import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.data.GamificationPreferences
 import com.example.curiosillo.repository.CuriosityRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * Al primo login sincronizza i progressi locali (XP, streak, badge, pillole lette)
@@ -22,41 +25,38 @@ class SyncManager(
      * Migrazione one-shot per utenti esistenti: carica tutto il locale su Firebase.
      * Viene eseguita una sola volta dopo l'aggiornamento dell'app.
      */
-    suspend fun migraLocaleVersoCloudSeNecessario(uid: String) {
-        if (contentPrefs.isCloudMigrazioneDone()) return
+    suspend fun migraLocaleVersoCloudSeNecessario(uid: String) = coroutineScope {
+        if (contentPrefs.isCloudMigrazioneDone()) return@coroutineScope
 
-        // XP e streak
-        val xp           = gamifPrefs.xpTotali.first()
-        val streak       = gamifPrefs.streakCorrente.first()
-        val streakMassima = gamifPrefs.streakMassima.first()
+        // Fetch locali in parallelo
+        val xpDef            = async { gamifPrefs.xpTotali.first() }
+        val streakDef        = async { gamifPrefs.streakCorrente.first() }
+        val streakMassimaDef = async { gamifPrefs.streakMassima.first() }
+        val badgeLocaliDef   = async { repo.idBadgeSbloccati().toList() }
+        val pilloleLetteDef  = async { repo.getPilloleLette().mapNotNull { it.externalId } }
+        val bookmarkDef      = async { repo.getBookmarked().mapNotNull { it.externalId } }
+        val ignorateDef      = async { repo.getPilloleIgnorate().mapNotNull { it.externalId } }
+        val noteDef          = async { repo.getTutteLeCuriosita().filter { !it.nota.isNullOrBlank() && it.externalId != null } }
+
+        val xp            = xpDef.await()
+        val streak        = streakDef.await()
+        val streakMassima = streakMassimaDef.await()
+
         if (xp > 0 || streak > 0) {
-            FirebaseManager.aggiornaProfilo(uid, mapOf(
-                "xp"             to xp,
-                "streakCorrente" to streak,
-                "streakMassima"  to streakMassima
-            ))
+            launch {
+                FirebaseManager.aggiornaProfilo(uid, mapOf(
+                    "xp"             to xp,
+                    "streakCorrente" to streak,
+                    "streakMassima"  to streakMassima
+                ))
+            }
         }
 
-        // Badge
-        val badgeLocali = repo.idBadgeSbloccati().toList()
-        badgeLocali.forEach { FirebaseManager.aggiungiBadge(uid, it) }
-
-        // Pillole lette
-        val pilloleLette = repo.getPilloleLette().mapNotNull { it.externalId }
-        pilloleLette.forEach { FirebaseManager.aggiungiPillolaLetta(uid, it) }
-
-        // Bookmark
-        val bookmark = repo.getBookmarked().mapNotNull { it.externalId }
-        bookmark.forEach { FirebaseManager.aggiungiBookmark(uid, it) }
-
-        // Pillole ignorate
-        val ignorate = repo.getPilloleIgnorate().mapNotNull { it.externalId }
-        ignorate.forEach { FirebaseManager.aggiungiIgnorata(uid, it) }
-
-        // Note
-        repo.getTutteLeCuriosita()
-            .filter { !it.nota.isNullOrBlank() && it.externalId != null }
-            .forEach { FirebaseManager.salvaNota(uid, it.externalId!!, it.nota!!) }
+        badgeLocaliDef.await().forEach { launch { FirebaseManager.aggiungiBadge(uid, it) } }
+        pilloleLetteDef.await().forEach { launch { FirebaseManager.aggiungiPillolaLetta(uid, it) } }
+        bookmarkDef.await().forEach { launch { FirebaseManager.aggiungiBookmark(uid, it) } }
+        ignorateDef.await().forEach { launch { FirebaseManager.aggiungiIgnorata(uid, it) } }
+        noteDef.await().forEach { launch { FirebaseManager.salvaNota(uid, it.externalId!!, it.nota!!) } }
 
         contentPrefs.setCloudMigrazioneCompletata()
     }
@@ -65,122 +65,135 @@ class SyncManager(
      * Chiamato una volta sola al primo login.
      * Carica i dati locali su Firestore senza sovrascrivere dati cloud esistenti.
      */
-    suspend fun migraLocaleVersoCloud(uid: String) {
-        val profiloCloud = FirebaseManager.caricaProfilo(uid)
+    suspend fun migraLocaleVersoCloud(uid: String) = coroutineScope {
+        val profiloCloudDef = async { FirebaseManager.caricaProfilo(uid) }
+        val fetchXpLocali   = async { gamifPrefs.xpTotali.first() }
+        val fetchStreak     = async { gamifPrefs.streakCorrente.first() }
+        val fetchStreakMax  = async { gamifPrefs.streakMassima.first() }
+        
+        val badgeLocaliDef  = async { repo.idBadgeSbloccati().toList() }
+        val badgeCloudDef   = async { FirebaseManager.caricaBadge(uid) }
+        
+        val pilloleCloudDef = async { FirebaseManager.caricaPilloleLette(uid) }
+        val pilloleLocaliDef= async { repo.getPilloleLette().mapNotNull { it.externalId } }
 
-        // XP e streak: prendi il massimo tra locale e cloud
-        val xpLocale      = gamifPrefs.xpTotali.first()
-        val streakLocale   = gamifPrefs.streakCorrente.first()
-        val streakMaxLocale = gamifPrefs.streakMassima.first()
+        val profiloCloud    = profiloCloudDef.await()
+
+        val xpLocale        = fetchXpLocali.await()
+        val streakLocale    = fetchStreak.await()
+        val streakMaxLocale = fetchStreakMax.await()
 
         val xpCloud        = (profiloCloud?.get("xp") as? Long)?.toInt() ?: 0
         val streakCloud    = (profiloCloud?.get("streakCorrente") as? Long)?.toInt() ?: 0
         val streakMaxCloud = (profiloCloud?.get("streakMassima") as? Long)?.toInt() ?: 0
 
-        FirebaseManager.aggiornaProfilo(uid, mapOf(
-            "xp"             to maxOf(xpLocale, xpCloud),
-            "streakCorrente" to maxOf(streakLocale, streakCloud),
-            "streakMassima"  to maxOf(streakMaxLocale, streakMaxCloud)
-        ))
-
-        // Badge: unione di locali e cloud
-        val badgeLocali = repo.idBadgeSbloccati().toList()
-        val badgeCloud  = FirebaseManager.caricaBadge(uid)
-        val badgeTutti  = (badgeLocali + badgeCloud).distinct()
-        if (badgeTutti.isNotEmpty()) {
-            badgeTutti.forEach { FirebaseManager.aggiungiBadge(uid, it) }
+        launch {
+            FirebaseManager.aggiornaProfilo(uid, mapOf(
+                "xp"             to maxOf(xpLocale, xpCloud),
+                "streakCorrente" to maxOf(streakLocale, streakCloud),
+                "streakMassima"  to maxOf(streakMaxLocale, streakMaxCloud)
+            ))
         }
 
-        // Pillole lette: carica gli externalId letti localmente
-        val pilloleCloud = FirebaseManager.caricaPilloleLette(uid)
-        val pilloleLocali = repo.getPilloleLette()
-            .mapNotNull { it.externalId }
-            .filter { it !in pilloleCloud }
-        pilloleLocali.forEach { FirebaseManager.aggiungiPillolaLetta(uid, it) }
+        val badgeTutti  = (badgeLocaliDef.await() + badgeCloudDef.await()).distinct()
+        if (badgeTutti.isNotEmpty()) {
+            badgeTutti.forEach { launch { FirebaseManager.aggiungiBadge(uid, it) } }
+        }
+
+        val pilloleCloud  = pilloleCloudDef.await()
+        val pilloleLocali = pilloleLocaliDef.await().filter { it !in pilloleCloud }
+        pilloleLocali.forEach { launch { FirebaseManager.aggiungiPillolaLetta(uid, it) } }
     }
 
     /**
      * Sincronizza XP e streak su Firestore dopo ogni azione gamification.
      */
-    suspend fun sincronizzaGamification(uid: String) {
-        val xp           = gamifPrefs.xpTotali.first()
-        val streak       = gamifPrefs.streakCorrente.first()
-        val streakMassima = gamifPrefs.streakMassima.first()
-        FirebaseManager.aggiornaProfilo(uid, mapOf(
-            "xp"             to xp,
-            "streakCorrente" to streak,
-            "streakMassima"  to streakMassima
-        ))
+    suspend fun sincronizzaGamification(uid: String) = coroutineScope {
+        val xpDef            = async { gamifPrefs.xpTotali.first() }
+        val streakDef        = async { gamifPrefs.streakCorrente.first() }
+        val streakMassimaDef = async { gamifPrefs.streakMassima.first() }
+        
+        launch {
+            FirebaseManager.aggiornaProfilo(uid, mapOf(
+                "xp"             to xpDef.await(),
+                "streakCorrente" to streakDef.await(),
+                "streakMassima"  to streakMassimaDef.await()
+            ))
+        }
     }
 
     /**
      * Al login su un nuovo dispositivo, scarica i progressi dal cloud
      * e li applica in locale.
      */
-    suspend fun ripristinaCloudVersoLocale(uid: String) {
-        val profilo = FirebaseManager.caricaProfilo(uid) ?: return
+    suspend fun ripristinaCloudVersoLocale(uid: String) = coroutineScope {
+        val profiloDef       = async { FirebaseManager.caricaProfilo(uid) }
+        val badgeCloudDef    = async { FirebaseManager.caricaBadge(uid) }
+        val pilloleLetteDef  = async { FirebaseManager.caricaPilloleLette(uid) }
+        val bookmarkCloudDef = async { FirebaseManager.caricaBookmark(uid) }
+        val ignorateCloudDef = async { FirebaseManager.caricaIgnorate(uid) }
+        val noteCloudDef     = async { FirebaseManager.caricaNote(uid) }
+        val quizRispostiDef  = async { FirebaseManager.caricaQuizRisposti(uid) }
+        
+        val xpLocaleDef        = async { gamifPrefs.xpTotali.first() }
+        val streakMaxLocaleDef = async { gamifPrefs.streakMassima.first() }
+        val badgeLocaliIdsDef  = async { repo.idBadgeSbloccati() }
+        val tutteLocaliDef     = async { repo.getTutteLeCuriosita() }
 
-        // 1. XP
+        val profilo = profiloDef.await() ?: return@coroutineScope
+
         val xpCloud  = (profilo["xp"] as? Long)?.toInt() ?: 0
-        val xpLocale = gamifPrefs.xpTotali.first()
-        if (xpCloud > xpLocale) gamifPrefs.aggiungiXp(xpCloud - xpLocale)
+        val xpLocale = xpLocaleDef.await()
+        if (xpCloud > xpLocale) launch { gamifPrefs.aggiungiXp(xpCloud - xpLocale) }
 
-        // 2. Streak
         val streakCloud     = (profilo["streakCorrente"] as? Long)?.toInt() ?: 0
         val streakMaxCloud  = (profilo["streakMassima"] as? Long)?.toInt() ?: 0
-        val streakMaxLocale = gamifPrefs.streakMassima.first()
+        val streakMaxLocale = streakMaxLocaleDef.await()
         if (streakMaxCloud > streakMaxLocale) {
-            gamifPrefs.setStreakDaCloud(streakCloud, streakMaxCloud)
+            launch { gamifPrefs.setStreakDaCloud(streakCloud, streakMaxCloud) }
         }
 
-        // 3. Badge
-        val badgeCloud     = FirebaseManager.caricaBadge(uid)
-        val badgeLocaliIds = repo.idBadgeSbloccati()
+        val badgeCloud     = badgeCloudDef.await()
+        val badgeLocaliIds = badgeLocaliIdsDef.await()
         badgeCloud.forEach { id ->
             if (id !in badgeLocaliIds) {
                 val def = BadgeCatalogo.trovaPerId(id)
-                if (def != null) repo.sbloccaBadge(BadgeSbloccato(
-                    id = def.id, nome = def.nome,
-                    descrizione = def.descrizione, icona = def.icona
-                ))
+                if (def != null) {
+                    launch {
+                        repo.sbloccaBadge(BadgeSbloccato(
+                            id = def.id, nome = def.nome,
+                            descrizione = def.descrizione, icona = def.icona
+                        ))
+                    }
+                }
             }
         }
 
-        // 4. Pillole lette -> isRead in Room
-        val tutteLocali    = repo.getTutteLeCuriosita()
+        val tutteLocali     = tutteLocaliDef.await()
         val mappaExternalId = tutteLocali.associateBy { it.externalId ?: "" }
 
-        val pilloleLette = FirebaseManager.caricaPilloleLette(uid)
-        pilloleLette.forEach { exId ->
+        pilloleLetteDef.await().forEach { exId ->
             val c = mappaExternalId[exId]
-            if (c != null && !c.isRead) repo.markAsReadSilent(c)
+            if (c != null && !c.isRead) launch { repo.markAsReadSilent(c) }
         }
 
-        // 5. Bookmark
-        val bookmarkCloud = FirebaseManager.caricaBookmark(uid)
-        bookmarkCloud.forEach { exId ->
+        bookmarkCloudDef.await().forEach { exId ->
             val c = mappaExternalId[exId]
-            if (c != null && !c.isBookmarked) repo.setBookmarkSilent(c, true)
+            if (c != null && !c.isBookmarked) launch { repo.setBookmarkSilent(c, true) }
         }
 
-        // 6. Ignorate
-        val ignorateCloud = FirebaseManager.caricaIgnorate(uid)
-        ignorateCloud.forEach { exId ->
+        ignorateCloudDef.await().forEach { exId ->
             val c = mappaExternalId[exId]
-            if (c != null && !c.isIgnorata) repo.setIgnorataSilent(c, true)
+            if (c != null && !c.isIgnorata) launch { repo.setIgnorataSilent(c, true) }
         }
 
-        // 7. Note
-        val noteCloud = FirebaseManager.caricaNote(uid)
-        noteCloud.forEach { (exId, nota) ->
+        noteCloudDef.await().forEach { (exId, nota) ->
             val c = mappaExternalId[exId]
-            if (c != null && c.nota != nota) repo.setNotaSilent(c, nota)
+            if (c != null && c.nota != nota) launch { repo.setNotaSilent(c, nota) }
         }
 
-        // 8. Quiz risposti
-        val quizRisposti = FirebaseManager.caricaQuizRisposti(uid)
-        quizRisposti.forEach { idStr ->
-            idStr.toIntOrNull()?.let { repo.salvaRispostaSilent(it) }
+        quizRispostiDef.await().forEach { idStr ->
+            idStr.toIntOrNull()?.let { launch { repo.salvaRispostaSilent(it) } }
         }
     }
 }

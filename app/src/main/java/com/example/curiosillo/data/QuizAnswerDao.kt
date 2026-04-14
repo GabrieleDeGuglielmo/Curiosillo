@@ -3,6 +3,7 @@ package com.example.curiosillo.data
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -11,7 +12,7 @@ interface QuizAnswerDao {
     @Insert
     suspend fun inserisci(answer: QuizAnswer)
 
-    // Domande su curiosità lette ma mai risposte
+    @Transaction
     @Query("""
         SELECT COUNT(*) FROM quiz_question q
         INNER JOIN curiosity c ON q.curiosityId = c.id
@@ -20,6 +21,7 @@ interface QuizAnswerDao {
     """)
     suspend fun quizNonRisposti(): Int
 
+    @Transaction
     @Query("""
         SELECT COUNT(*) FROM quiz_question q
         INNER JOIN curiosity c ON q.curiosityId = c.id

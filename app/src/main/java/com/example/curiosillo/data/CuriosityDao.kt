@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
@@ -88,6 +89,7 @@ interface CuriosityDao {
     @Query("SELECT * FROM curiosity WHERE externalId = :externalId LIMIT 1")
     suspend fun getByExternalId(externalId: String): Curiosity?
 
+    @Transaction
     @Query("DELETE FROM curiosity WHERE externalId NOT IN (:ids) AND externalId IS NOT NULL")
     suspend fun deleteMissing(ids: List<String>)
 
@@ -96,6 +98,7 @@ interface CuriosityDao {
 
     // ── Scrittura ─────────────────────────────────────────────────────────────
 
+    @Transaction
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(items: List<Curiosity>): List<Long>
 
@@ -105,6 +108,7 @@ interface CuriosityDao {
     @Update
     suspend fun update(item: Curiosity)
 
+    @Transaction
     @Query("UPDATE curiosity SET isRead = 0, isBookmarked = 0, nota = '', readAt = NULL, voto = NULL, isIgnorata = 0 WHERE 1=1")
     suspend fun resetProgressi()
 }

@@ -19,18 +19,16 @@ class ThemePreferences(private val context: Context) {
         private val MUSIC_ENABLED = booleanPreferencesKey("music_enabled")
     }
 
-    val isDarkMode: Flow<Boolean> = context.themeStore.data
+    private val dataFlow = context.themeStore.data
         .catch { exception ->
             if (exception is IOException) emit(emptyPreferences())
             else throw exception
         }
+
+    val isDarkMode: Flow<Boolean> = dataFlow
         .map { prefs -> prefs[DARK_MODE] ?: false }
 
-    val isMusicEnabled: Flow<Boolean> = context.themeStore.data
-        .catch { exception ->
-            if (exception is IOException) emit(emptyPreferences())
-            else throw exception
-        }
+    val isMusicEnabled: Flow<Boolean> = dataFlow
         .map { prefs -> prefs[MUSIC_ENABLED] ?: true }
 
     suspend fun setDarkMode(enabled: Boolean) {
