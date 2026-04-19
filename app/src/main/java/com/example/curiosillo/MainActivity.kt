@@ -7,6 +7,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.collectAsState
@@ -28,6 +30,7 @@ import com.example.curiosillo.ui.screens.gamemodes.GiocaScreen
 import com.example.curiosillo.ui.screens.gamemodes.SopravvivenzaScreen
 import com.example.curiosillo.ui.screens.quiz.QuizScreen
 import com.example.curiosillo.ui.screens.quiz.QuizStatsScreen
+import com.example.curiosillo.ui.screens.gamemodes.ScalataScreen
 import com.example.curiosillo.ui.screens.user.*
 import com.example.curiosillo.ui.theme.CuriosilloTheme
 import kotlinx.coroutines.flow.collectLatest
@@ -146,6 +149,21 @@ class MainActivity : ComponentActivity() {
                     composable("gioca") { GiocaScreen(nav) }
                     composable("duello_lobby") { DuelloScreen(nav) }
                     composable("sopravvivenza") { SopravvivenzaScreen(nav) }
+                    composable(
+                        route = "scalata",
+                        enterTransition = {
+                            scaleIn(animationSpec = tween(400), initialScale = 0.9f) + fadeIn(animationSpec = tween(400))
+                        },
+                        exitTransition = {
+                            scaleOut(animationSpec = tween(400), targetScale = 0.9f) + fadeOut(animationSpec = tween(400))
+                        },
+                        popEnterTransition = {
+                            scaleIn(animationSpec = tween(400), initialScale = 1.1f) + fadeIn(animationSpec = tween(400))
+                        },
+                        popExitTransition = {
+                            scaleOut(animationSpec = tween(400), targetScale = 1.1f) + fadeOut(animationSpec = tween(400))
+                        }
+                    ) { ScalataScreen(nav) }
                     composable("admin_voti")      { AdminVotiScreen(nav) }
                     composable("admin_commenti")  { AdminCommentiScreen(nav) }
                     composable("admin_utenti")    { AdminUtentiScreen(nav) }

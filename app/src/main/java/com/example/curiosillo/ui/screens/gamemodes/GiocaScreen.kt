@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.SportsMartialArts
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -36,8 +37,10 @@ fun GiocaScreen(nav: NavController) {
     val app = ctx.applicationContext as CuriosityApplication
     val prefs = app.gamificationPrefs
     
-    val record by prefs.recordSopravvivenza.collectAsState(initial = 0)
-    val partite by prefs.partiteSopravvivenza.collectAsState(initial = 0)
+    val recordSopravvivenza by prefs.recordSopravvivenza.collectAsState(initial = 0)
+    val recordScalata by prefs.recordScalata.collectAsState(initial = 0)
+    val partiteSopravvivenza by prefs.partiteSopravvivenza.collectAsState(initial = 0)
+    val partiteScalata by prefs.partiteScalata.collectAsState(initial = 0)
 
     val gradientBg = Brush.verticalGradient(
         listOf(
@@ -67,9 +70,9 @@ fun GiocaScreen(nav: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             
-            // Banner Statistiche Sopravvivenza
-            if (partite > 0) {
-                HardcoreStatsBanner(record, partite)
+            // Banner Statistiche
+            if (partiteSopravvivenza > 0 || partiteScalata > 0) {
+                StatsBanner(recordSopravvivenza, recordScalata)
                 Spacer(Modifier.height(24.dp))
             }
 
@@ -88,6 +91,16 @@ fun GiocaScreen(nav: NavController) {
                 icon     = Icons.Default.Quiz,
                 color    = MaterialTheme.colorScheme.secondary,
                 onClick  = { nav.navigate("category_picker/quiz") }
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            GiocaCard(
+                title    = "Scalata Infernale",
+                subtitle = "Timer spietato e moltiplicatori. Le fiamme ti attendono!",
+                icon     = Icons.Default.LocalFireDepartment,
+                color    = Color(0xFFB71C1C),
+                onClick  = { nav.navigate("scalata") }
             )
 
             Spacer(Modifier.height(20.dp))
@@ -116,30 +129,29 @@ fun GiocaScreen(nav: NavController) {
 }
 
 @Composable
-private fun HardcoreStatsBanner(record: Int, partite: Int) {
+private fun StatsBanner(recSopravvivenza: Int, recScalata: Int) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         color = Color(0xFF1E1E1E),
         tonalElevation = 4.dp,
-        border = BorderStroke(1.dp, Color(0xFFBC4749).copy(alpha = 0.5f))
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
     ) {
-        Row(
-            Modifier.padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Default.BarChart, null, tint = Color(0xFFFFB703), modifier = Modifier.size(32.dp))
-            Spacer(Modifier.width(16.dp))
-            Column {
-                Text("STATISTICHE HARDCORE", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), fontWeight = FontWeight.Bold)
+        Column(Modifier.padding(20.dp)) {
+            Text("I TUOI RECORD", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("RECORD:", color = Color.White, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.width(6.dp))
-                    Text("$record", color = Color(0xFFFFB703), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                    Spacer(Modifier.width(16.dp))
-                    Text("PARTITE:", color = Color.White, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.width(6.dp))
-                    Text("$partite", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.Whatshot, null, tint = Color(0xFFBC4749), modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Sopravvivenza: ", color = Color.White, style = MaterialTheme.typography.bodySmall)
+                    Text("$recSopravvivenza", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.LocalFireDepartment, null, tint = Color(0xFFFFB703), modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Scalata: ", color = Color.White, style = MaterialTheme.typography.bodySmall)
+                    Text("$recScalata", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
         }

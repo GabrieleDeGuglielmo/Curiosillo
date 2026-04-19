@@ -1,5 +1,6 @@
 package com.example.curiosillo.ui.screens.gamemodes
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -46,6 +47,53 @@ fun SopravvivenzaScreen(nav: NavController) {
     )
     val state by vm.state.collectAsState()
     
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    // Intercetta il tasto indietro del sistema
+    BackHandler(enabled = state is SopravvivenzaUiState.InCorso) {
+        showExitDialog = true
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = {
+                Text(
+                    text = "Abbandonare la sfida?",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    color = BiancoGhiaccio
+                )
+            },
+            text = {
+                Text(
+                    text = "Se esci ora perderai tutti i progressi di questa partita.",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    color = BiancoGhiaccio
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { 
+                    showExitDialog = false
+                    nav.popBackStack() 
+                }) {
+                    Text("ESCI", color = RossoLava, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) {
+                    Text("RESTA", color = Color.White)
+                }
+            },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = GrigioAntracite,
+            titleContentColor = Color.White,
+            textContentColor = Color.White.copy(alpha = 0.8f)
+        )
+    }
+
     // Gestione Musica
     val isMusicEnabled by app.themePrefs.isMusicEnabled.collectAsState(initial = true)
     DisposableEffect(Unit) {
@@ -60,7 +108,10 @@ fun SopravvivenzaScreen(nav: NavController) {
             TopAppBar(
                 title = { Text("Sopravvivenza", color = BiancoGhiaccio, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
+                    IconButton(onClick = { 
+                        if (state is SopravvivenzaUiState.InCorso) showExitDialog = true
+                        else nav.popBackStack()
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Esci", tint = BiancoGhiaccio)
                     }
                 },

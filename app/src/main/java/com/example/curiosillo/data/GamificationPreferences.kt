@@ -27,6 +27,8 @@ class GamificationPreferences(private val context: Context) {
         private val RISPOSTE_FILA = intPreferencesKey("risposte_fila")
         private val RECORD_SOPRAVVIVENZA = intPreferencesKey("record_sopravvivenza")
         private val PARTITE_SOPRAVVIVENZA = intPreferencesKey("partite_sopravvivenza")
+        private val RECORD_SCALATA = intPreferencesKey("record_scalata")
+        private val PARTITE_SCALATA = intPreferencesKey("partite_scalata")
         private val LAST_INTERACTED_EXT_ID = stringPreferencesKey("last_interacted_ext_id")
     }
 
@@ -42,6 +44,8 @@ class GamificationPreferences(private val context: Context) {
     val risposteFila: Flow<Int> = dataFlow.map { it[RISPOSTE_FILA] ?: 0 }
     val recordSopravvivenza: Flow<Int> = dataFlow.map { it[RECORD_SOPRAVVIVENZA] ?: 0 }
     val partiteSopravvivenza: Flow<Int> = dataFlow.map { it[PARTITE_SOPRAVVIVENZA] ?: 0 }
+    val recordScalata: Flow<Int> = dataFlow.map { it[RECORD_SCALATA] ?: 0 }
+    val partiteScalata: Flow<Int> = dataFlow.map { it[PARTITE_SCALATA] ?: 0 }
 
     suspend fun aggiungiXp(quantita: Int) {
         context.gamificationStore.edit { prefs ->
@@ -59,9 +63,24 @@ class GamificationPreferences(private val context: Context) {
     }
 
     suspend fun incrementaPartiteSopravvivenza() {
-        delay(1000)
+        delay(100)
         context.gamificationStore.edit { prefs ->
             prefs[PARTITE_SOPRAVVIVENZA] = (prefs[PARTITE_SOPRAVVIVENZA] ?: 0) + 1
+        }
+    }
+
+    suspend fun salvaRecordScalata(nuovoRecord: Int) {
+        context.gamificationStore.edit { prefs ->
+            val attuale = prefs[RECORD_SCALATA] ?: 0
+            if (nuovoRecord > attuale) {
+                prefs[RECORD_SCALATA] = nuovoRecord
+            }
+        }
+    }
+
+    suspend fun incrementaPartiteScalata() {
+        context.gamificationStore.edit { prefs ->
+            prefs[PARTITE_SCALATA] = (prefs[PARTITE_SOPRAVVIVENZA] ?: 0) + 1
         }
     }
 
@@ -127,6 +146,8 @@ class GamificationPreferences(private val context: Context) {
             prefs[RISPOSTE_FILA] = 0
             prefs[RECORD_SOPRAVVIVENZA] = 0
             prefs[PARTITE_SOPRAVVIVENZA] = 0
+            prefs[RECORD_SCALATA] = 0
+            prefs[PARTITE_SCALATA] = 0
             prefs[LAST_INTERACTED_EXT_ID] = ""
         }
     }

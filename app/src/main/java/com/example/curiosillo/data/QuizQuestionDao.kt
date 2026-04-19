@@ -103,6 +103,16 @@ interface QuizQuestionDao {
     @Query("SELECT * FROM quiz_question ORDER BY RANDOM()")
     suspend fun getAllRandomly(): List<QuizQuestion>
 
+    /** Per la modalità Scalata: solo domande da pillole già lette */
+    @Transaction
+    @Query("""
+        SELECT qq.* FROM quiz_question qq
+        INNER JOIN curiosity c ON c.id = qq.curiosityId
+        WHERE c.isRead = 1 AND c.isIgnorata = 0
+        ORDER BY RANDOM()
+    """)
+    suspend fun getDomandeLetteRandom(): List<QuizQuestion>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(items: List<QuizQuestion>)
 
