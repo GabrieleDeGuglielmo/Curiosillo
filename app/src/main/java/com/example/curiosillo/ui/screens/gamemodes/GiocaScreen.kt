@@ -130,28 +130,55 @@ fun GiocaScreen(nav: NavController) {
 
 @Composable
 private fun StatsBanner(recSopravvivenza: Int, recScalata: Int) {
+    val violaProfondo = Color(0xFF2D0052)
+    val oro = Color(0xFFFFD700)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        color = Color(0xFF1E1E1E),
-        tonalElevation = 4.dp,
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+        color = violaProfondo,
+        tonalElevation = 8.dp,
+        border = BorderStroke(2.dp, oro.copy(alpha = 0.3f))
     ) {
         Column(Modifier.padding(20.dp)) {
-            Text("I TUOI RECORD", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), fontWeight = FontWeight.Bold)
+            Text(
+                "I TUOI RECORD", 
+                style = MaterialTheme.typography.labelSmall, 
+                color = Color.White.copy(alpha = 0.7f), 
+                fontWeight = FontWeight.ExtraBold
+            )
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Whatshot, null, tint = Color(0xFFBC4749), modifier = Modifier.size(18.dp))
+                    Icon(
+                        Icons.Default.Whatshot, 
+                        null, 
+                        tint = oro, 
+                        modifier = Modifier.size(20.dp)
+                    )
                     Spacer(Modifier.width(8.dp))
                     Text("Sopravvivenza: ", color = Color.White, style = MaterialTheme.typography.bodySmall)
-                    Text("$recSopravvivenza", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(
+                        "$recSopravvivenza", 
+                        color = oro, 
+                        fontWeight = FontWeight.ExtraBold, 
+                        fontSize = 16.sp
+                    )
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.LocalFireDepartment, null, tint = Color(0xFFFFB703), modifier = Modifier.size(18.dp))
+                    Icon(
+                        Icons.Default.LocalFireDepartment, 
+                        null, 
+                        tint = oro, 
+                        modifier = Modifier.size(20.dp)
+                    )
                     Spacer(Modifier.width(8.dp))
                     Text("Scalata: ", color = Color.White, style = MaterialTheme.typography.bodySmall)
-                    Text("$recScalata", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(
+                        "$recScalata", 
+                        color = oro,
+                        fontWeight = FontWeight.ExtraBold, 
+                        fontSize = 16.sp
+                    )
                 }
             }
         }

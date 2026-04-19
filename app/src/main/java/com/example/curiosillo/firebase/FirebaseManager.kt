@@ -128,7 +128,9 @@ object FirebaseManager {
                                 "pillole_ignorate" to emptyList<String>(),
                                 "pillole_note" to emptyMap<String, String>(),
                                 "hardcore_record" to 0,
-                                "hardcore_partite" to 0
+                                "hardcore_partite" to 0,
+                                "scalata_record" to 0,
+                                "scalata_partite" to 0
                         ),
                         SetOptions.merge()
                 )
@@ -400,6 +402,18 @@ object FirebaseManager {
         } catch (_: Exception) {}
     }
 
+    // ── Scalata Infernale ─────────────────────────────────────────────────────
+
+    suspend fun salvaStatisticheScalata(record: Int, totalePartite: Int) {
+        val u = uid ?: return
+        try {
+            db.collection("users")
+                    .document(u)
+                    .update(mapOf("scalata_record" to record, "scalata_partite" to totalePartite))
+                    .await()
+        } catch (_: Exception) {}
+    }
+
     // ── Reset progressi utente ───────────────────────────────────────────────
 
     suspend fun resetProgressiUtente(uid: String) {
@@ -418,7 +432,9 @@ object FirebaseManager {
                                     "streakMassima" to 0,
                                     "badges" to emptyList<String>(),
                                     "hardcore_record" to 0,
-                                    "hardcore_partite" to 0
+                                    "hardcore_partite" to 0,
+                                    "scalata_record" to 0,
+                                    "scalata_partite" to 0
                             )
                     )
                     .await()

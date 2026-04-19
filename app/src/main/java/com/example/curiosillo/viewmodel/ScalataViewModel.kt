@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.curiosillo.data.GamificationPreferences
 import com.example.curiosillo.data.QuizQuestion
+import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.repository.CuriosityRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +50,7 @@ class ScalataViewModel(
     private var maxStreakInPartita = 0
     private var domandeDisponibili = mutableListOf<QuizQuestion>()
     private var recordAttuale = 0
+    private var totalePartite = 0
     private var timerJob: Job? = null
 
     private val TIMER_SECONDS = 7
@@ -56,6 +58,9 @@ class ScalataViewModel(
     init {
         viewModelScope.launch {
             prefs.recordScalata.collect { recordAttuale = it }
+        }
+        viewModelScope.launch {
+            prefs.partiteScalata.collect { totalePartite = it }
         }
         iniziaPartita()
     }
@@ -68,6 +73,9 @@ class ScalataViewModel(
             maxStreakInPartita = 0
 
             prefs.incrementaPartiteScalata()
+            if (FirebaseManager.isLoggato) {
+                FirebaseManager.salvaStatisticheScalata(recordAttuale, totalePartite + 1)
+            }
 
             caricaDomande()
             if (domandeDisponibili.isEmpty()) {
@@ -195,6 +203,9 @@ class ScalataViewModel(
             val isRecord = punteggio > recordAttuale
             if (isRecord) {
                 prefs.salvaRecordScalata(punteggio)
+                if (FirebaseManager.isLoggato) {
+                    FirebaseManager.salvaStatisticheScalata(punteggio, totalePartite)
+                }
             }
             _state.value = ScalataUiState.GameOver(punteggio, maxStreakInPartita, isRecord, recordAttuale, completata)
         }

@@ -80,7 +80,7 @@ class GamificationPreferences(private val context: Context) {
 
     suspend fun incrementaPartiteScalata() {
         context.gamificationStore.edit { prefs ->
-            prefs[PARTITE_SCALATA] = (prefs[PARTITE_SOPRAVVIVENZA] ?: 0) + 1
+            prefs[PARTITE_SCALATA] = (prefs[PARTITE_SCALATA] ?: 0) + 1
         }
     }
 
