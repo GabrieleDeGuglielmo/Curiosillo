@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
-import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.ui.components.CuriosilloBottomBar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,10 +35,6 @@ fun GiocaScreen(nav: NavController) {
     
     val recordSopravvivenza by prefs.recordSopravvivenza.collectAsState(initial = 0)
     val recordScalata by prefs.recordScalata.collectAsState(initial = 0)
-    val partiteSopravvivenza by prefs.partiteSopravvivenza.collectAsState(initial = 0)
-    val partiteScalata by prefs.partiteScalata.collectAsState(initial = 0)
-
-    val isLoggato = FirebaseManager.isLoggato
 
     val gradientBg = Brush.verticalGradient(
         listOf(
@@ -69,16 +64,14 @@ fun GiocaScreen(nav: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             
-            // Banner Statistiche (riflette ora i record sincronizzati col Cloud)
-            if (partiteSopravvivenza > 0 || partiteScalata > 0) {
-                StatsBanner(
-                    recSopravvivenza = recordSopravvivenza,
-                    recScalata = recordScalata,
-                    isCloud = isLoggato,
-                    onViewLeaderboard = { nav.navigate("leaderboard") }
-                )
-                Spacer(Modifier.height(24.dp))
-            }
+            // Banner Statistiche: Sempre visibile
+            StatsBanner(
+                recSopravvivenza = recordSopravvivenza,
+                recScalata = recordScalata,
+                onViewLeaderboard = { nav.navigate("leaderboard") }
+            )
+            
+            Spacer(Modifier.height(24.dp))
 
             Text(
                 "Scegli come divertirti oggi!",
@@ -136,7 +129,6 @@ fun GiocaScreen(nav: NavController) {
 private fun StatsBanner(
     recSopravvivenza: Int, 
     recScalata: Int, 
-    isCloud: Boolean,
     onViewLeaderboard: () -> Unit
 ) {
     val violaProfondo = Color(0xFF2D0052)
@@ -153,20 +145,11 @@ private fun StatsBanner(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        if (isCloud) "RECORD CLOUD" else "I TUOI RECORD",
+                        "I TUOI RECORD",
                         style = MaterialTheme.typography.labelSmall, 
                         color = Color.White.copy(alpha = 0.7f), 
                         fontWeight = FontWeight.ExtraBold
                     )
-                    if (isCloud) {
-                        Spacer(Modifier.width(4.dp))
-                        Icon(
-                            Icons.Default.CloudDone,
-                            null,
-                            tint = Color.White.copy(alpha = 0.5f),
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
