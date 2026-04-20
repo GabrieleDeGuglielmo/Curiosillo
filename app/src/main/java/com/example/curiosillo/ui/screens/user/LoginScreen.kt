@@ -63,7 +63,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
     val app = ctx.applicationContext as CuriosityApplication
 
     val vm: AuthViewModel = viewModel(
-        factory = AuthViewModel.Factory(app.repository, app.gamificationPrefs, app.contentPrefs, ctx)
+        factory = AuthViewModel.Factory(app.repository, app.gamificationPrefs, app.contentPrefs, ctx, app.database)
     )
     val homeVm: HomeViewModel = viewModel(
         factory = HomeViewModel.Factory(

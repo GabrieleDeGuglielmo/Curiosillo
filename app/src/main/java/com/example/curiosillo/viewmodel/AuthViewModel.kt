@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.curiosillo.data.AppDatabase
 import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.data.GamificationPreferences
 import com.example.curiosillo.firebase.FirebaseManager
@@ -33,7 +34,8 @@ class AuthViewModel(
     private val repo:         CuriosityRepository,
     private val gamifPrefs:   GamificationPreferences,
     private val contentPrefs: ContentPreferences,
-    private val context:      Context
+    private val context:      Context,
+    private val database:     AppDatabase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
@@ -144,12 +146,17 @@ class AuthViewModel(
     // ── Logout ────────────────────────────────────────────────────────────────
 
     fun logout() {
-        FirebaseManager.logout()
-        // Scolleghiamo anche Google per permettere la scelta dell'account al prossimo login
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
-        val googleClient = GoogleSignIn.getClient(context, gso)
-        googleClient.signOut()
-        _state.value = AuthUiState.Idle
+        viewModelScope.launch {
+            FirebaseManager.logout()
+            repo.resetProgressi()
+            gamifPrefs.reset()
+            contentPrefs.resetCloudMigrazione()
+            // Scolleghiamo anche Google per permettere la scelta dell'account al prossimo login
+            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
+            val googleClient = GoogleSignIn.getClient(context, gso)
+            googleClient.signOut()
+            _state.value = AuthUiState.Idle
+        }
     }
 
     fun resetStato() {
@@ -167,6 +174,10 @@ class AuthViewModel(
             _state.value = AuthUiState.Errore("Account sospeso.\nMotivazione: $motivazione")
             return
         }
+
+        // RESET LOCALE PRIMA DEL SYNC: essenziale per evitare merge di record tra account diversi
+        repo.resetProgressi()
+        gamifPrefs.reset()
 
         try {
             if (isNuovo) {
@@ -201,10 +212,11 @@ class AuthViewModel(
         private val repo:         CuriosityRepository,
         private val gamifPrefs:   GamificationPreferences,
         private val contentPrefs: ContentPreferences,
-        private val context:      Context
+        private val context:      Context,
+        private val database:     AppDatabase
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(c: Class<T>): T =
-            AuthViewModel(repo, gamifPrefs, contentPrefs, context) as T
+            AuthViewModel(repo, gamifPrefs, contentPrefs, context, database) as T
     }
 }

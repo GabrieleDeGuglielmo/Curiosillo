@@ -7,11 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Quiz
-import androidx.compose.material.icons.filled.SportsMartialArts
-import androidx.compose.material.icons.filled.Whatshot
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.Leaderboard
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -28,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
+import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.ui.components.CuriosilloBottomBar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,6 +38,8 @@ fun GiocaScreen(nav: NavController) {
     val recordScalata by prefs.recordScalata.collectAsState(initial = 0)
     val partiteSopravvivenza by prefs.partiteSopravvivenza.collectAsState(initial = 0)
     val partiteScalata by prefs.partiteScalata.collectAsState(initial = 0)
+
+    val isLoggato = FirebaseManager.isLoggato
 
     val gradientBg = Brush.verticalGradient(
         listOf(
@@ -70,9 +69,14 @@ fun GiocaScreen(nav: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             
-            // Banner Statistiche
+            // Banner Statistiche (riflette ora i record sincronizzati col Cloud)
             if (partiteSopravvivenza > 0 || partiteScalata > 0) {
-                StatsBanner(recordSopravvivenza, recordScalata, onViewLeaderboard = { nav.navigate("leaderboard") })
+                StatsBanner(
+                    recSopravvivenza = recordSopravvivenza,
+                    recScalata = recordScalata,
+                    isCloud = isLoggato,
+                    onViewLeaderboard = { nav.navigate("leaderboard") }
+                )
                 Spacer(Modifier.height(24.dp))
             }
 
@@ -129,7 +133,12 @@ fun GiocaScreen(nav: NavController) {
 }
 
 @Composable
-private fun StatsBanner(recSopravvivenza: Int, recScalata: Int, onViewLeaderboard: () -> Unit) {
+private fun StatsBanner(
+    recSopravvivenza: Int, 
+    recScalata: Int, 
+    isCloud: Boolean,
+    onViewLeaderboard: () -> Unit
+) {
     val violaProfondo = Color(0xFF2D0052)
     val oro = Color(0xFFFFD700)
     Surface(
@@ -142,12 +151,23 @@ private fun StatsBanner(recSopravvivenza: Int, recScalata: Int, onViewLeaderboar
     ) {
         Column(Modifier.padding(20.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "I TUOI RECORD", 
-                    style = MaterialTheme.typography.labelSmall, 
-                    color = Color.White.copy(alpha = 0.7f), 
-                    fontWeight = FontWeight.ExtraBold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (isCloud) "RECORD CLOUD" else "I TUOI RECORD",
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = Color.White.copy(alpha = 0.7f), 
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    if (isCloud) {
+                        Spacer(Modifier.width(4.dp))
+                        Icon(
+                            Icons.Default.CloudDone,
+                            null,
+                            tint = Color.White.copy(alpha = 0.5f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "CLASSIFICHE",

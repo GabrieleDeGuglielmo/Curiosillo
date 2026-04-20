@@ -32,6 +32,11 @@ class SyncManager(
         val xpDef            = async { gamifPrefs.xpTotali.first() }
         val streakDef        = async { gamifPrefs.streakCorrente.first() }
         val streakMassimaDef = async { gamifPrefs.streakMassima.first() }
+        val recordSopravDef  = async { gamifPrefs.recordSopravvivenza.first() }
+        val partiteSopravDef = async { gamifPrefs.partiteSopravvivenza.first() }
+        val recordScalataDef = async { gamifPrefs.recordScalata.first() }
+        val partiteScalataDef = async { gamifPrefs.partiteScalata.first() }
+
         val badgeLocaliDef   = async { repo.idBadgeSbloccati().toList() }
         val pilloleLetteDef  = async { repo.getPilloleLette().mapNotNull { it.externalId } }
         val bookmarkDef      = async { repo.getBookmarked().mapNotNull { it.externalId } }
@@ -41,15 +46,26 @@ class SyncManager(
         val xp            = xpDef.await()
         val streak        = streakDef.await()
         val streakMassima = streakMassimaDef.await()
+        val recordSoprav  = recordSopravDef.await()
+        val partiteSoprav = partiteSopravDef.await()
+        val recordScalata  = recordScalataDef.await()
+        val partiteScalata = partiteScalataDef.await()
 
-        if (xp > 0 || streak > 0) {
-            launch {
-                FirebaseManager.aggiornaProfilo(uid, mapOf(
-                    "xp"             to xp,
-                    "streakCorrente" to streak,
-                    "streakMassima"  to streakMassima
-                ))
-            }
+        launch {
+            FirebaseManager.aggiornaProfilo(uid, mutableMapOf<String, Any>(
+                "xp"             to xp,
+                "streakCorrente" to streak,
+                "streakMassima"  to streakMassima
+            ).apply {
+                if (recordSoprav > 0) {
+                    put("hardcore_record", recordSoprav)
+                    put("hardcore_partite", partiteSoprav)
+                }
+                if (recordScalata > 0) {
+                    put("scalata_record", recordScalata)
+                    put("scalata_partite", partiteScalata)
+                }
+            })
         }
 
         badgeLocaliDef.await().forEach { launch { FirebaseManager.aggiungiBadge(uid, it) } }
@@ -71,6 +87,11 @@ class SyncManager(
         val fetchStreak     = async { gamifPrefs.streakCorrente.first() }
         val fetchStreakMax  = async { gamifPrefs.streakMassima.first() }
         
+        val recordSopravDef  = async { gamifPrefs.recordSopravvivenza.first() }
+        val partiteSopravDef = async { gamifPrefs.partiteSopravvivenza.first() }
+        val recordScalataDef = async { gamifPrefs.recordScalata.first() }
+        val partiteScalataDef = async { gamifPrefs.partiteScalata.first() }
+
         val badgeLocaliDef  = async { repo.idBadgeSbloccati().toList() }
         val badgeCloudDef   = async { FirebaseManager.caricaBadge(uid) }
         
@@ -82,16 +103,28 @@ class SyncManager(
         val xpLocale        = fetchXpLocali.await()
         val streakLocale    = fetchStreak.await()
         val streakMaxLocale = fetchStreakMax.await()
+        val recSopravLoc    = recordSopravDef.await()
+        val partSopravLoc   = partiteSopravDef.await()
+        val recScalataLoc   = recordScalataDef.await()
+        val partScalataLoc  = partiteScalataDef.await()
 
         val xpCloud        = (profiloCloud?.get("xp") as? Long)?.toInt() ?: 0
         val streakCloud    = (profiloCloud?.get("streakCorrente") as? Long)?.toInt() ?: 0
         val streakMaxCloud = (profiloCloud?.get("streakMassima") as? Long)?.toInt() ?: 0
+        val recSopravCloud = (profiloCloud?.get("hardcore_record") as? Long)?.toInt() ?: 0
+        val partSopravCloud = (profiloCloud?.get("hardcore_partite") as? Long)?.toInt() ?: 0
+        val recScalataCloud = (profiloCloud?.get("scalata_record") as? Long)?.toInt() ?: 0
+        val partScalataCloud = (profiloCloud?.get("scalata_partite") as? Long)?.toInt() ?: 0
 
         launch {
             FirebaseManager.aggiornaProfilo(uid, mapOf(
                 "xp"             to maxOf(xpLocale, xpCloud),
                 "streakCorrente" to maxOf(streakLocale, streakCloud),
-                "streakMassima"  to maxOf(streakMaxLocale, streakMaxCloud)
+                "streakMassima"  to maxOf(streakMaxLocale, streakMaxCloud),
+                "hardcore_record" to maxOf(recSopravLoc, recSopravCloud),
+                "hardcore_partite" to maxOf(partSopravLoc, partSopravCloud),
+                "scalata_record" to maxOf(recScalataLoc, recScalataCloud),
+                "scalata_partite" to maxOf(partScalataLoc, partScalataCloud)
             ))
         }
 
@@ -151,6 +184,19 @@ class SyncManager(
         val streakMaxLocale = streakMaxLocaleDef.await()
         if (streakMaxCloud > streakMaxLocale) {
             launch { gamifPrefs.setStreakDaCloud(streakCloud, streakMaxCloud) }
+        }
+
+        // Ripristino Record Modalità
+        val recSopravCloud  = (profilo["hardcore_record"] as? Long)?.toInt() ?: 0
+        val partSopravCloud = (profilo["hardcore_partite"] as? Long)?.toInt() ?: 0
+        if (recSopravCloud > 0 || partSopravCloud > 0) {
+            launch { gamifPrefs.setSopravvivenzaDaCloud(recSopravCloud, partSopravCloud) }
+        }
+
+        val recScalataCloud  = (profilo["scalata_record"] as? Long)?.toInt() ?: 0
+        val partScalataCloud = (profilo["scalata_partite"] as? Long)?.toInt() ?: 0
+        if (recScalataCloud > 0 || partScalataCloud > 0) {
+            launch { gamifPrefs.setScalataDaCloud(recScalataCloud, partScalataCloud) }
         }
 
         val badgeCloud     = badgeCloudDef.await()

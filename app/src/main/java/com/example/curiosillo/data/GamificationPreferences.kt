@@ -126,6 +126,20 @@ class GamificationPreferences(private val context: Context) {
         }
     }
 
+    suspend fun setSopravvivenzaDaCloud(record: Int, partite: Int) {
+        context.gamificationStore.edit { prefs ->
+            prefs[RECORD_SOPRAVVIVENZA] = maxOf(prefs[RECORD_SOPRAVVIVENZA] ?: 0, record)
+            prefs[PARTITE_SOPRAVVIVENZA] = maxOf(prefs[PARTITE_SOPRAVVIVENZA] ?: 0, partite)
+        }
+    }
+
+    suspend fun setScalataDaCloud(record: Int, partite: Int) {
+        context.gamificationStore.edit { prefs ->
+            prefs[RECORD_SCALATA] = maxOf(prefs[RECORD_SCALATA] ?: 0, record)
+            prefs[PARTITE_SCALATA] = maxOf(prefs[PARTITE_SCALATA] ?: 0, partite)
+        }
+    }
+
     suspend fun getLastInteractedExternalId(): String? =
         dataFlow.first()[LAST_INTERACTED_EXT_ID]?.takeIf { it.isNotBlank() }
 
