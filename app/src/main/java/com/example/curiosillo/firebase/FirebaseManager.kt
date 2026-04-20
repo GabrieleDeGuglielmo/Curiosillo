@@ -6,12 +6,18 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.userProfileChangeRequest
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 object FirebaseManager {
 
@@ -390,6 +396,95 @@ object FirebaseManager {
         } catch (_: Exception) {}
     }
 
+    // ── Leaderboard ───────────────────────────────────────────────────────────
+
+    data class LeaderboardEntry(
+            val uid: String = "",
+            val username: String = "",
+            val photoUrl: String? = null,
+            val score: Int = 0,
+            val timestamp: Long = 0,
+            val rank: Int = 0
+    )
+
+    enum class LeaderboardMode(val id: String) {
+        SOPRAVVIVENZA("sopravvivenza"),
+        SCALATA("scalata")
+    }
+
+    /** Ritorna il periodo corrente in formato YYYY-Www (es. 2024-W16) */
+    private fun getPeriodoCorrente(): String {
+        val cal = Calendar.getInstance()
+        val year = cal.get(Calendar.YEAR)
+        val week = cal.get(Calendar.WEEK_OF_YEAR)
+        return String.format(Locale.US, "%d-W%02d", year, week)
+    }
+
+    suspend fun aggiornaLeaderboard(mode: LeaderboardMode, score: Int) {
+        val currentUid = uid ?: return
+        val currentUsername = utenteCorrente?.displayName ?: "Anonimo"
+        val photoUrl = utenteCorrente?.photoUrl?.toString()
+        val timestamp = System.currentTimeMillis()
+        val period = getPeriodoCorrente()
+
+        val entry =
+                mapOf(
+                        "uid" to currentUid,
+                        "username" to currentUsername,
+                        "photoUrl" to photoUrl,
+                        "score" to score,
+                        "timestamp" to timestamp
+                )
+
+        try {
+            val batch = db.batch()
+
+            // 1. All-time leaderboard
+            val allTimeRef =
+                    db.collection("leaderboards").document(mode.id).collection("punteggi").document(
+                            currentUid
+                    )
+            batch.set(allTimeRef, entry, SetOptions.merge())
+
+            // 2. Weekly leaderboard
+            val weeklyRef =
+                    db.collection("leaderboards")
+                            .document("${mode.id}_$period")
+                            .collection("punteggi")
+                            .document(currentUid)
+            batch.set(weeklyRef, entry, SetOptions.merge())
+
+            batch.commit().await()
+        } catch (e: Exception) {
+            Log.e("FirebaseManager", "Errore aggiornamento leaderboard: ${e.message}")
+        }
+    }
+
+    suspend fun caricaLeaderboard(
+            modeId: String,
+            period: String? = null,
+            limit: Int = 50,
+            startAfter: DocumentSnapshot? = null
+    ): List<DocumentSnapshot> =
+            try {
+                val collectionName = if (period == null) modeId else "${modeId}_$period"
+                var query =
+                        db.collection("leaderboards")
+                                .document(collectionName)
+                                .collection("punteggi")
+                                .orderBy("score", Query.Direction.DESCENDING)
+                                .limit(limit.toLong())
+
+                if (startAfter != null) {
+                    query = query.startAfter(startAfter)
+                }
+
+                query.get().await().documents
+            } catch (e: Exception) {
+                Log.e("FirebaseManager", "Errore caricaLeaderboard: ${e.message}")
+                emptyList()
+            }
+
     // ── Sopravvivenza ─────────────────────────────────────────────────────────
 
     suspend fun salvaStatisticheHardcore(record: Int, totalePartite: Int) {
@@ -399,6 +494,9 @@ object FirebaseManager {
                     .document(u)
                     .update(mapOf("hardcore_record" to record, "hardcore_partite" to totalePartite))
                     .await()
+
+            // Aggiorniamo anche la leaderboard se è un record
+            aggiornaLeaderboard(LeaderboardMode.SOPRAVVIVENZA, record)
         } catch (_: Exception) {}
     }
 
@@ -411,6 +509,9 @@ object FirebaseManager {
                     .document(u)
                     .update(mapOf("scalata_record" to record, "scalata_partite" to totalePartite))
                     .await()
+
+            // Aggiorniamo anche la leaderboard se è un record
+            aggiornaLeaderboard(LeaderboardMode.SCALATA, record)
         } catch (_: Exception) {}
     }
 

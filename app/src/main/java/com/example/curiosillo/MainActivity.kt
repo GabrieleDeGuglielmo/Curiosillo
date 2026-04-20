@@ -31,6 +31,7 @@ import com.example.curiosillo.ui.screens.gamemodes.SopravvivenzaScreen
 import com.example.curiosillo.ui.screens.quiz.QuizScreen
 import com.example.curiosillo.ui.screens.quiz.QuizStatsScreen
 import com.example.curiosillo.ui.screens.gamemodes.ScalataScreen
+import com.example.curiosillo.ui.screens.gamemodes.LeaderboardScreen
 import com.example.curiosillo.ui.screens.user.*
 import com.example.curiosillo.ui.theme.CuriosilloTheme
 import kotlinx.coroutines.flow.collectLatest
@@ -164,6 +165,7 @@ class MainActivity : ComponentActivity() {
                             scaleOut(animationSpec = tween(400), targetScale = 1.1f) + fadeOut(animationSpec = tween(400))
                         }
                     ) { ScalataScreen(nav) }
+                    composable("leaderboard") { LeaderboardScreen(nav) }
                     composable("admin_voti")      { AdminVotiScreen(nav) }
                     composable("admin_commenti")  { AdminCommentiScreen(nav) }
                     composable("admin_utenti")    { AdminUtentiScreen(nav) }

@@ -10,8 +10,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.SportsMartialArts
 import androidx.compose.material.icons.filled.Whatshot
-import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -72,7 +72,7 @@ fun GiocaScreen(nav: NavController) {
             
             // Banner Statistiche
             if (partiteSopravvivenza > 0 || partiteScalata > 0) {
-                StatsBanner(recordSopravvivenza, recordScalata)
+                StatsBanner(recordSopravvivenza, recordScalata, onViewLeaderboard = { nav.navigate("leaderboard") })
                 Spacer(Modifier.height(24.dp))
             }
 
@@ -129,10 +129,11 @@ fun GiocaScreen(nav: NavController) {
 }
 
 @Composable
-private fun StatsBanner(recSopravvivenza: Int, recScalata: Int) {
+private fun StatsBanner(recSopravvivenza: Int, recScalata: Int, onViewLeaderboard: () -> Unit) {
     val violaProfondo = Color(0xFF2D0052)
     val oro = Color(0xFFFFD700)
     Surface(
+        onClick = onViewLeaderboard,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         color = violaProfondo,
@@ -140,12 +141,24 @@ private fun StatsBanner(recSopravvivenza: Int, recScalata: Int) {
         border = BorderStroke(2.dp, oro.copy(alpha = 0.3f))
     ) {
         Column(Modifier.padding(20.dp)) {
-            Text(
-                "I TUOI RECORD", 
-                style = MaterialTheme.typography.labelSmall, 
-                color = Color.White.copy(alpha = 0.7f), 
-                fontWeight = FontWeight.ExtraBold
-            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "I TUOI RECORD", 
+                    style = MaterialTheme.typography.labelSmall, 
+                    color = Color.White.copy(alpha = 0.7f), 
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "CLASSIFICHE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = oro.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Icon(Icons.Default.Leaderboard, null, tint = oro.copy(alpha = 0.8f), modifier = Modifier.size(18.dp))
+                }
+            }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
