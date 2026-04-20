@@ -85,14 +85,6 @@ fun BadgeScreen(nav: NavController) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "In questa sezione puoi vedere tutti i traguardi che hai raggiunto e quelli ancora da sbloccare!",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 24.dp)
-                )
-
-                Text(
                     "Sbloccati: ${state.badgeSbloccati.size} / ${BadgeCatalogo.tutti.size}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
