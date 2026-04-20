@@ -219,6 +219,9 @@ object FirebaseManager {
             Log.e("FirebaseManager", "Errore rimozione username: ${e.message}")
         }
 
+        // Rimuovi utente dalle classifiche
+        rimuoviUtenteDaLeaderboards(uid)
+
         db.collection("users").document(uid).delete().await()
     }
 
@@ -485,6 +488,23 @@ object FirebaseManager {
                 emptyList()
             }
 
+    private suspend fun rimuoviUtenteDaLeaderboards(uid: String) {
+        try {
+            // Cerchiamo tutti i documenti dell'utente nelle classifiche tramite collectionGroup
+            val snapshots =
+                    db.collectionGroup("punteggi").whereEqualTo("uid", uid).get().await()
+
+            if (!snapshots.isEmpty) {
+                val batch = db.batch()
+                snapshots.forEach { batch.delete(it.reference) }
+                batch.commit().await()
+                Log.d("FirebaseManager", "Utente $uid rimosso da tutte le classifiche")
+            }
+        } catch (e: Exception) {
+            Log.e("FirebaseManager", "Errore rimozione utente leaderboards: ${e.message}")
+        }
+    }
+
     // ── Sopravvivenza ─────────────────────────────────────────────────────────
 
     suspend fun salvaStatisticheHardcore(record: Int, totalePartite: Int) {
@@ -531,11 +551,8 @@ object FirebaseManager {
                                     "xp" to 0,
                                     "streakCorrente" to 0,
                                     "streakMassima" to 0,
-                                    "badges" to emptyList<String>(),
-                                    "hardcore_record" to 0,
-                                    "hardcore_partite" to 0,
-                                    "scalata_record" to 0,
-                                    "scalata_partite" to 0
+                                    "badges" to emptyList<String>()
+                                    // Non resettiamo hardcore_record, scalata_record ecc. come richiesto
                             )
                     )
                     .await()
