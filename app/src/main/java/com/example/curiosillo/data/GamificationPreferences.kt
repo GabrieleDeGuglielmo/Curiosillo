@@ -30,6 +30,7 @@ class GamificationPreferences(private val context: Context) {
         private val RECORD_SCALATA = intPreferencesKey("record_scalata")
         private val PARTITE_SCALATA = intPreferencesKey("partite_scalata")
         private val LAST_INTERACTED_EXT_ID = stringPreferencesKey("last_interacted_ext_id")
+        private val AVATAR_EQUIPPED = stringPreferencesKey("avatar_equipped")
     }
 
     private val dataFlow: Flow<Preferences> = context.gamificationStore.data
@@ -46,6 +47,7 @@ class GamificationPreferences(private val context: Context) {
     val partiteSopravvivenza: Flow<Int> = dataFlow.map { it[PARTITE_SOPRAVVIVENZA] ?: 0 }
     val recordScalata: Flow<Int> = dataFlow.map { it[RECORD_SCALATA] ?: 0 }
     val partiteScalata: Flow<Int> = dataFlow.map { it[PARTITE_SCALATA] ?: 0 }
+    val avatarEquippato: Flow<String> = dataFlow.map { it[AVATAR_EQUIPPED] ?: "uovo" }
 
     suspend fun aggiungiXp(quantita: Int) {
         context.gamificationStore.edit { prefs ->
@@ -140,6 +142,12 @@ class GamificationPreferences(private val context: Context) {
         }
     }
 
+    suspend fun impostaAvatar(id: String) {
+        context.gamificationStore.edit { prefs ->
+            prefs[AVATAR_EQUIPPED] = id
+        }
+    }
+
     suspend fun getLastInteractedExternalId(): String? =
         dataFlow.first()[LAST_INTERACTED_EXT_ID]?.takeIf { it.isNotBlank() }
 
@@ -163,6 +171,7 @@ class GamificationPreferences(private val context: Context) {
             prefs[RECORD_SCALATA] = 0
             prefs[PARTITE_SCALATA] = 0
             prefs[LAST_INTERACTED_EXT_ID] = ""
+            prefs[AVATAR_EQUIPPED] = "uovo"
         }
     }
 }

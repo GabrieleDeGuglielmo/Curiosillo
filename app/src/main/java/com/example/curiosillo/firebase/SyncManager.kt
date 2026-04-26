@@ -145,7 +145,7 @@ class SyncManager(
         val xpDef            = async { gamifPrefs.xpTotali.first() }
         val streakDef        = async { gamifPrefs.streakCorrente.first() }
         val streakMassimaDef = async { gamifPrefs.streakMassima.first() }
-        
+
         launch {
             FirebaseManager.aggiornaProfilo(uid, mapOf(
                 "xp"             to xpDef.await(),
