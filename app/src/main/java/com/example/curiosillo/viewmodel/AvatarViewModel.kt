@@ -13,9 +13,10 @@ class AvatarViewModel(
     private val gamifPrefs: GamificationPreferences
 ) : ViewModel() {
 
-    // Osserviamo l'avatar attualmente salvato nel DataStore
+    // Osserviamo l'avatar attualmente salvato nel DataStore. 
+    // Default vuoto per gestire l'inizializzazione basata sul tipo di login.
     val avatarEquippato: StateFlow<String> = gamifPrefs.avatarEquippato
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "uovo")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
     // Osserviamo gli XP totali per determinare i livelli di sblocco
     val xpTotali: StateFlow<Int> = gamifPrefs.xpTotali

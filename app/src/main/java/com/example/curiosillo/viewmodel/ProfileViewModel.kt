@@ -34,7 +34,7 @@ data class ProfileUiState(
     val username: String = "",
     val email: String = "",
     val photoUrl: String? = null,
-    val avatarEquippato: String = "uovo",
+    val avatarEquippato: String = "",
     val isLoggato: Boolean = false,
     val isGoogleUser: Boolean = false,
     val isEliminazioneInCorso: Boolean = false,
@@ -65,6 +65,18 @@ class ProfileViewModel(
                         }
                     }
 
+                val savedAvatar = gamifPrefs.avatarEquippato.first()
+                val isGoogle = FirebaseManager.isGoogleUser() && user?.photoUrl != null
+                
+                // Gestione default: se non c'è nulla di salvato (""), impostiamo il default corretto
+                val avatarDaUsare = if (savedAvatar == "") {
+                    val default = if (isGoogle) "google" else "uovo"
+                    gamifPrefs.impostaAvatar(default)
+                    default
+                } else {
+                    savedAvatar
+                }
+
                 val newState =
                     ProfileUiState(
                         totalCuriosità = repo.totaleCuriosità(),
@@ -80,7 +92,7 @@ class ProfileViewModel(
                         username = username,
                         email = user?.email ?: "",
                         photoUrl = user?.photoUrl?.toString(),
-                        avatarEquippato = gamifPrefs.avatarEquippato.first(),
+                        avatarEquippato = avatarDaUsare,
                         isLoggato = user != null,
                         isGoogleUser = FirebaseManager.isGoogleUser(),
                         isLoading = false
@@ -138,9 +150,9 @@ class ProfileViewModel(
         }
     }
 
-    suspend fun selezionaAvatar(id: String) {
-        gamifPrefs.impostaAvatar(id)
+    fun selezionaAvatar(id: String) {
         _state.value = _state.value.copy(avatarEquippato = id)
+        viewModelScope.launch { gamifPrefs.impostaAvatar(id) }
     }
 
     fun resetProgressi() {

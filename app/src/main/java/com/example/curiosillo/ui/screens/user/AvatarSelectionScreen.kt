@@ -26,9 +26,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.curiosillo.data.Avatar
 import com.example.curiosillo.data.AvatarCatalogo
 import com.example.curiosillo.domain.LivelloHelper
+import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.viewmodel.AvatarViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,9 +41,14 @@ fun AvatarSelectionScreen(
 ) {
     val avatarEquippato by viewModel.avatarEquippato.collectAsState()
     val xpTotali by viewModel.xpTotali.collectAsState()
-    
+
     // Calcoliamo il livello una sola volta per la schermata
     val livelloAttuale = remember(xpTotali) { LivelloHelper.daXp(xpTotali).numero }
+
+    // Dati dell'utente per l'opzione Google
+    val user = FirebaseManager.utenteCorrente
+    val isGoogleUser = FirebaseManager.isGoogleUser()
+    val photoUrl = user?.photoUrl?.toString()
 
     Scaffold(
         topBar = {
@@ -68,7 +75,7 @@ fun AvatarSelectionScreen(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
             )
-            
+
             Spacer(Modifier.height(24.dp))
 
             // Griglia ottimizzata
@@ -79,18 +86,33 @@ fun AvatarSelectionScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
+                // 1. Opzione Google se disponibile
+                if (isGoogleUser && photoUrl != null) {
+                    item(key = "google_option") {
+                        AvatarItem(
+                            avatarId = "google",
+                            isSbloccato = true,
+                            isEquippato = avatarEquippato == "google",
+                            photoOverride = photoUrl,
+                            labelOverride = "Google",
+                            onAvatarClick = { viewModel.selezionaAvatar("google") }
+                        )
+                    }
+                }
+
+                // 2. Catalogo standard
                 items(
                     items = AvatarCatalogo.lista,
-                    key = { it.id } // KEY OBBLIGATORIA per recycling efficiente
+                    key = { it.id }
                 ) { avatar ->
                     val isSbloccato = livelloAttuale >= avatar.livelloRichiesto
                     val isEquippato = avatarEquippato == avatar.id
-                    
+
                     AvatarItem(
                         avatar = avatar,
                         isSbloccato = isSbloccato,
                         isEquippato = isEquippato,
-                        onAvatarClick = { 
+                        onAvatarClick = {
                             if (isSbloccato) viewModel.selezionaAvatar(avatar.id)
                         }
                     )
@@ -102,15 +124,19 @@ fun AvatarSelectionScreen(
 
 @Composable
 private fun AvatarItem(
-    avatar: Avatar,
+    avatar: Avatar? = null,
+    avatarId: String? = null,
     isSbloccato: Boolean,
     isEquippato: Boolean,
+    photoOverride: String? = null,
+    labelOverride: String? = null,
     onAvatarClick: () -> Unit
 ) {
-    // PREVENZIONE ALLOCAZIONI: ColorMatrix in remember
     val grayscaleMatrix = remember {
         ColorMatrix().apply { setToSaturation(0f) }
     }
+
+    val id = avatar?.id ?: avatarId ?: ""
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -131,14 +157,23 @@ private fun AvatarItem(
                 .clip(CircleShape)
                 .background(if (isSbloccato) MaterialTheme.colorScheme.surfaceVariant else Color.LightGray)
         ) {
-            Image(
-                painter = painterResource(avatar.drawableRes),
-                contentDescription = avatar.id,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                // Applichiamo il filtro scala di grigi se bloccato
-                colorFilter = if (!isSbloccato) ColorFilter.colorMatrix(grayscaleMatrix) else null
-            )
+            if (photoOverride != null) {
+                AsyncImage(
+                    model = photoOverride,
+                    contentDescription = id,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    colorFilter = if (!isSbloccato) ColorFilter.colorMatrix(grayscaleMatrix) else null
+                )
+            } else if (avatar != null) {
+                Image(
+                    painter = painterResource(avatar.drawableRes),
+                    contentDescription = avatar.id,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    colorFilter = if (!isSbloccato) ColorFilter.colorMatrix(grayscaleMatrix) else null
+                )
+            }
 
             if (!isSbloccato) {
                 Surface(
@@ -158,27 +193,20 @@ private fun AvatarItem(
         }
 
         Spacer(Modifier.height(8.dp))
-        
-        if (!isSbloccato) {
-            Text(
-                "Liv. ${avatar.livelloRichiesto}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error,
-                fontWeight = FontWeight.Bold
-            )
-        } else if (isEquippato) {
-            Text(
-                "In uso",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.ExtraBold
-            )
-        } else {
-            Text(
-                "Sbloccato",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
+
+        val textLabel = when {
+            labelOverride != null -> if (isEquippato) "$labelOverride (Uso)" else labelOverride
+            !isSbloccato -> "Liv. ${avatar?.livelloRichiesto}"
+            isEquippato -> "In uso"
+            else -> "Sbloccato"
         }
+
+        Text(
+            textLabel,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isEquippato) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            fontWeight = if (isEquippato) FontWeight.ExtraBold else FontWeight.Normal,
+            textAlign = TextAlign.Center
+        )
     }
 }

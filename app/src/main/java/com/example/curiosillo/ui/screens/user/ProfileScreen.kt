@@ -120,19 +120,13 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxWidth().heightIn(max = 450.dp)
                 ) {
-                    // 1. Opzione Google se disponibile (COESISTE con l'uovo)
+                    // 1. Opzione Google se disponibile
                     if (state.isGoogleUser && state.photoUrl != null) {
                         item(key = "google_option") {
-                            // Google è l'avatar di default per utenti Google se non hanno ancora
-                            // scelto
-                            val isEquippato =
-                                state.avatarEquippato == "google" ||
-                                        (state.avatarEquippato == "uovo" && state.isGoogleUser)
-
                             AvatarGridItem(
                                 avatar = Avatar("google", 1, 0), // Dummy per l'ID
                                 isSbloccato = true,
-                                isEquippato = isEquippato,
+                                isEquippato = state.avatarEquippato == "google",
                                 photoOverride = state.photoUrl,
                                 labelOverride = "Google",
                                 onSelect = {
@@ -147,16 +141,7 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                     // 2. Catalogo standard (include l'uovo)
                     items(AvatarCatalogo.lista, key = { it.id }) { avatar ->
                         val isSbloccato = livelloAttuale >= avatar.livelloRichiesto
-
-                        // Se l'utente è Google ed è nello stato di default ("uovo"), l'item uovo
-                        // NON risulta equippato visivamente
-                        // perché l'equipped visivo è sulla foto Google.
-                        val isEquippato =
-                            if (state.isGoogleUser && state.avatarEquippato == "uovo") {
-                                false
-                            } else {
-                                state.avatarEquippato == avatar.id
-                            }
+                        val isEquippato = state.avatarEquippato == avatar.id
 
                         AvatarGridItem(
                             avatar = avatar,
@@ -649,17 +634,9 @@ fun ProfileScreen(nav: NavController, onLogout: () -> Unit) {
                                                     },
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            // LOGICA: Google se scelto ("google") oppure default
-                                            // Google per utenti Google ("uovo")
                                             val currentAvatar = state.avatarEquippato
-                                            val isGoogleDefault =
-                                                currentAvatar == "uovo" &&
-                                                        state.isGoogleUser &&
-                                                        state.photoUrl != null
 
-                                            if ((currentAvatar == "google" || isGoogleDefault) &&
-                                                state.photoUrl != null
-                                            ) {
+                                            if (currentAvatar == "google" && state.photoUrl != null) {
                                                 AsyncImage(
                                                     model = state.photoUrl,
                                                     contentDescription = "Foto profilo",
@@ -948,7 +925,7 @@ private fun AvatarGridItem(
         val textLabel =
             when {
                 labelOverride != null ->
-                    if (isEquippato) "$labelOverride (Uso)" else labelOverride
+                    if (isEquippato) "$labelOverride (In uso)" else labelOverride
                 !isSbloccato -> "Liv. ${avatar.livelloRichiesto}"
                 isEquippato -> "In uso"
                 else -> ""

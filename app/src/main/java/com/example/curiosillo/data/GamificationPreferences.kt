@@ -47,7 +47,7 @@ class GamificationPreferences(private val context: Context) {
     val partiteSopravvivenza: Flow<Int> = dataFlow.map { it[PARTITE_SOPRAVVIVENZA] ?: 0 }
     val recordScalata: Flow<Int> = dataFlow.map { it[RECORD_SCALATA] ?: 0 }
     val partiteScalata: Flow<Int> = dataFlow.map { it[PARTITE_SCALATA] ?: 0 }
-    val avatarEquippato: Flow<String> = dataFlow.map { it[AVATAR_EQUIPPED] ?: "uovo" }
+    val avatarEquippato: Flow<String> = dataFlow.map { it[AVATAR_EQUIPPED] ?: "" }
 
     suspend fun aggiungiXp(quantita: Int) {
         context.gamificationStore.edit { prefs ->
@@ -82,7 +82,7 @@ class GamificationPreferences(private val context: Context) {
 
     suspend fun incrementaPartiteScalata() {
         context.gamificationStore.edit { prefs ->
-            prefs[PARTITE_SCALATA] = (prefs[PARTITE_SCALATA] ?: 0) + 1
+            prefs[PARTITE_SCALATA] = (prefs[PARTITE_SOPRAVVIVENZA] ?: 0) + 1
         }
     }
 
@@ -171,7 +171,7 @@ class GamificationPreferences(private val context: Context) {
             prefs[RECORD_SCALATA] = 0
             prefs[PARTITE_SCALATA] = 0
             prefs[LAST_INTERACTED_EXT_ID] = ""
-            prefs[AVATAR_EQUIPPED] = "uovo"
+            prefs[AVATAR_EQUIPPED] = ""
         }
     }
 }
