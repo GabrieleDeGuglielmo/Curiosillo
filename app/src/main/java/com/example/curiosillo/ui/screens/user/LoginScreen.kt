@@ -120,7 +120,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
     var showRecuperoDialog by remember { mutableStateOf(false) }
     var emailRecupero     by rememberSaveable { mutableStateOf("") }
     var showVerificaDialog by remember { mutableStateOf(false) }
-    
+
     // Checkbox state
     var accettatoTermini by rememberSaveable { mutableStateOf(false) }
 
@@ -131,31 +131,23 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
         }
     }
 
-    DisposableEffect(usernameInput) {
-        onDispose {
-            usernameCheckJob?.cancel()
-        }
-    }
-
-    // Funzione helper per il controllo (da chiamare nell'onValueChange)
-    fun checkUsernameAvailability(name: String) {
-        val trimmed = name.trim()
+    // LaunchedEffect: check automatico con debounce, cancella il job precedente
+    // Parte anche quando si entra in modalita' registrazione (isRegistrazione)
+    LaunchedEffect(usernameInput, isRegistrazione) {
+        if (!isRegistrazione) return@LaunchedEffect
+        val trimmed = usernameInput.trim()
         usernameDisponibile = null
-        usernameCheckJob?.cancel()
-
-        if (trimmed.length >= 3) {
-            usernameCheckLoading = true
-            usernameCheckJob = coroutineScope.launch {
-                try {
-                    delay(600) // Debounce per non sovraccaricare Firebase
-                    usernameDisponibile = !FirebaseManager.isUsernameOccupato(trimmed)
-                } catch (e: Exception) {
-                    usernameDisponibile = null // In caso di errore di rete
-                } finally {
-                    usernameCheckLoading = false
-                }
-            }
-        } else {
+        if (trimmed.length < 3) {
+            usernameCheckLoading = false
+            return@LaunchedEffect
+        }
+        usernameCheckLoading = true
+        try {
+            delay(600)
+            usernameDisponibile = !FirebaseManager.isUsernameOccupato(trimmed)
+        } catch (_: Exception) {
+            usernameDisponibile = null
+        } finally {
             usernameCheckLoading = false
         }
     }
@@ -246,6 +238,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
         AlertDialog(
             onDismissRequest = {
                 showVerificaDialog = false
+                isRegistrazione = false
                 vm.resetStato()
             },
             icon = { Text("✉️", fontSize = 32.sp) },
@@ -261,6 +254,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
             confirmButton = {
                 Button(onClick = {
                     showVerificaDialog = false
+                    isRegistrazione = false
                     vm.resetStato()
                 }, modifier = Modifier.height(48.dp)) { Text("Ho capito") }
             }
@@ -544,9 +538,9 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
                         shape                = RoundedCornerShape(14.dp),
                         modifier             = Modifier.fillMaxWidth()
                     )
-                    
+
                     Spacer(Modifier.height(16.dp))
-                    
+
                     // Checkbox TOS & Privacy
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -556,7 +550,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
                             checked = accettatoTermini,
                             onCheckedChange = { accettatoTermini = it },
                             colors = CheckboxDefaults.colors(
-                                uncheckedColor = if (!accettatoTermini && email.isNotBlank() && password.length >= 6 && usernameDisponibile == true) 
+                                uncheckedColor = if (!accettatoTermini && email.isNotBlank() && password.length >= 6 && usernameDisponibile == true)
                                     MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         )
@@ -574,7 +568,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
                             }
                             pop()
                         }
-                        
+
                         ClickableText(
                             text = annotatedText,
                             style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)),

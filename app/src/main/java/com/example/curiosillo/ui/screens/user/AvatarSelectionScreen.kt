@@ -25,7 +25,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.curiosillo.data.Avatar
 import com.example.curiosillo.data.AvatarCatalogo
@@ -92,7 +91,7 @@ fun AvatarSelectionScreen(
                         isSbloccato = isSbloccato,
                         isEquippato = isEquippato,
                         onAvatarClick = { 
-                            if (isSbloccato) viewModel.selezionaAvatar(avatar.id) 
+                            if (isSbloccato) viewModel.selezionaAvatar(avatar.id)
                         }
                     )
                 }
