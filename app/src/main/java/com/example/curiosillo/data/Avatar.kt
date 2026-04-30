@@ -14,9 +14,9 @@ data class Avatar(
 object AvatarCatalogo {
     val lista = listOf(
         Avatar("uovo", 1, R.drawable.avatar_uovo),
-        Avatar("topo", 1, R.drawable.avatar_topo),
-        Avatar("esploratore", 1, R.drawable.avatar_esploratore_uomo),
-        Avatar("scienziato", 1, R.drawable.avatar_scienziato_uomo)
+        Avatar("topo", 3, R.drawable.avatar_topo),
+        Avatar("esploratore", 5, R.drawable.avatar_esploratore_uomo),
+        Avatar("scienziato", 7, R.drawable.avatar_scienziato_uomo)
     )
 
     fun trovaPerId(id: String): Avatar = 
