@@ -64,8 +64,15 @@ class MainActivity : ComponentActivity() {
             CuriosilloTheme(darkTheme = isDarkMode) {
                 val nav = rememberNavController()
 
-                // Punto di partenza: login se non loggato, home se già loggato
-                val startDestination = if (FirebaseManager.isLoggato) "home" else "login"
+                // Punto di partenza: login se non loggato o se l'email non è verificata
+                var startDestination = "login"
+                if (FirebaseManager.isLoggato) {
+                    if (FirebaseManager.utenteCorrente?.isEmailVerified == true || FirebaseManager.isGoogleUser()) {
+                        startDestination = "home"
+                    } else {
+                        FirebaseManager.logout()
+                    }
+                }
 
                 NavHost(nav, startDestination = startDestination) {
                     composable("login") {

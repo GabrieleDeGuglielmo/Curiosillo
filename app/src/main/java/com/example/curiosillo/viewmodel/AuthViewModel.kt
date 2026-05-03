@@ -62,7 +62,11 @@ class AuthViewModel(
             result.fold(
                 onSuccess = { user ->
                     if (!user.isEmailVerified) {
-                        user.sendEmailVerification().await()
+                        try {
+                            user.sendEmailVerification().await()
+                        } catch (e: Exception) {
+                            // Ignoriamo l'errore (potrebbe essere un rate limit)
+                        }
                         FirebaseManager.logout()
                         _state.value = AuthUiState.VerificaEmailInviata
                     } else {
@@ -95,11 +99,11 @@ class AuthViewModel(
                 onSuccess = { user ->
                     try {
                         user.sendEmailVerification().await()
-                        FirebaseManager.logout()
-                        _state.value = AuthUiState.VerificaEmailInviata
                     } catch (e: Exception) {
-                        _state.value = AuthUiState.Errore("Errore invio email verifica: ${e.message}")
+                        // Ignoriamo l'errore (potrebbe essere un rate limit)
                     }
+                    FirebaseManager.logout()
+                    _state.value = AuthUiState.VerificaEmailInviata
                 },
                 onFailure = {
                     _state.value = AuthUiState.Errore(messaggioErrore(it.message))
