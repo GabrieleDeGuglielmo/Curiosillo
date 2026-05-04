@@ -245,7 +245,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
             title = { Text("Verifica la tua email", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
             text = {
                 Text(
-                    "Ti abbiamo inviato un'email di verifica a $email. Per favore, clicca sul link contenuto nell'email per attivare il tuo account prima di accedere.",
+                    "Ti abbiamo inviato un'email di verifica a $email. Per favore, clicca sul link contenuto nell'email per attivare il tuo account prima di accedere.\n(Controlla anche negli spam)",
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
@@ -283,7 +283,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
             text = {
                 if (emailInviata) {
                     Text(
-                        "Controlla la tua casella email\nTi abbiamo inviato un link per reimpostare la password.",
+                        "Controlla la tua casella email (anche negli spam)\nTi abbiamo inviato un link per reimpostare la password.",
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyMedium,
                         color     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
