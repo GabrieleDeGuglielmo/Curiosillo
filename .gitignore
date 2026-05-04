@@ -7,6 +7,8 @@
 /build/
 app/build/
 /captures/
+gradlew
+gradlew.bat
 
 # Keystore files
 *.jks
@@ -17,4 +19,4 @@ app/build/
 Thumbs.db
 
 #Ignore vscode AI rules
-.github\instructions\codacy.instructions.md
+.github/instructions/codacy.instructions.md
