@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -49,6 +50,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.curiosillo.CuriosityApplication
 import com.example.curiosillo.R
+import com.example.curiosillo.domain.PasswordValidationResult
+import com.example.curiosillo.ui.theme.Success
 import com.example.curiosillo.viewmodel.AuthUiState
 import com.example.curiosillo.viewmodel.AuthViewModel
 import com.example.curiosillo.viewmodel.HomeViewModel
@@ -58,7 +61,7 @@ import kotlinx.coroutines.launch
 import androidx.core.net.toUri
 
 @Composable
-fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
+fun LoginScreen(nav: NavController, onLoginSuccesso: (String) -> Unit) {
     val ctx = LocalContext.current
     val app = ctx.applicationContext as CuriosityApplication
 
@@ -76,18 +79,18 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
 
     val state     by vm.state.collectAsState()
     val homeState by homeVm.state.collectAsState()
+    val showWeakPasswordWarning by vm.showWeakPasswordWarning.collectAsState()
 
     var showGoogleUsernameDialog by remember { mutableStateOf(false) }
     var googleUsernameInput by remember { mutableStateOf("") }
 
-    // Naviga alla home dopo login riuscito
-    LaunchedEffect(state) {
-        if (state is AuthUiState.Successo) {
-            onLoginSuccesso()
+    // Naviga alla home dopo login riuscito (solo se non c'è il warning password debole)
+    LaunchedEffect(state, showWeakPasswordWarning) {
+        if (state is AuthUiState.Successo && !showWeakPasswordWarning) {
+            onLoginSuccesso("home")
             vm.resetStato()
         }
         if (state is AuthUiState.RichiedeUsername) {
-            // casella vuota
             googleUsernameInput = ""
             showGoogleUsernameDialog = true
         }
@@ -124,6 +127,49 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
     // Checkbox state
     var accettatoTermini by rememberSaveable { mutableStateOf(false) }
 
+    // Password validation result
+    val passwordValidation = remember(password) { vm.validatePassword(password) }
+
+    // Dialog Password Debole (Post-Login)
+    if (showWeakPasswordWarning) {
+        AlertDialog(
+            onDismissRequest = { /* obbligatorio scegliere */ },
+            icon = { Icon(Icons.Default.Security, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp)) },
+            title = { Text("Aumenta la sicurezza", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            text = {
+                Text(
+                    "Abbiamo notato che la tua password non è ottimale. Vuoi aggiornarla ora per proteggere il tuo account?",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        vm.dismissWeakPasswordWarning()
+                        onLoginSuccesso("change_password")
+                        vm.resetStato()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Aggiorna ora")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        vm.dismissWeakPasswordWarning()
+                        onLoginSuccesso("home")
+                        vm.resetStato()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Più tardi")
+                }
+            }
+        )
+    }
+
     // Gestione stato verifica email
     LaunchedEffect(state) {
         if (state is AuthUiState.VerificaEmailInviata) {
@@ -131,8 +177,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
         }
     }
 
-    // LaunchedEffect: check automatico con debounce, cancella il job precedente
-    // Parte anche quando si entra in modalita' registrazione (isRegistrazione)
+    // LaunchedEffect: check automatico con debounce
     LaunchedEffect(usernameInput, isRegistrazione) {
         if (!isRegistrazione) return@LaunchedEffect
         val trimmed = usernameInput.trim()
@@ -222,7 +267,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
                         showGoogleUsernameDialog = false
                     },
                     enabled = googleUsernameInput.trim().length >= 3 && isAvail == true && !isChecking,
-                    modifier = Modifier.height(48.dp) // Touch target
+                    modifier = Modifier.height(48.dp)
                 ) {
                     if (state is AuthUiState.Loading)
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp,
@@ -507,10 +552,10 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
                 else PasswordVisualTransformation(),
                 keyboardOptions      = KeyboardOptions(keyboardType = KeyboardType.Password),
                 shape                = RoundedCornerShape(14.dp),
-                isError              = isRegistrazione && password.isNotEmpty() && password.length < 6,
+                isError              = isRegistrazione && password.isNotEmpty() && passwordValidation !is PasswordValidationResult.Valid,
                 supportingText       = {
-                    if (isRegistrazione && password.isNotEmpty() && password.length < 6) {
-                        Text("Minimo 6 caratteri", color = MaterialTheme.colorScheme.error)
+                    if (isRegistrazione && password.isNotEmpty()) {
+                        PasswordRequirementsView(password)
                     }
                 },
                 modifier             = Modifier.fillMaxWidth()
@@ -546,11 +591,12 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        @Suppress("DEPRECATION")
                         Checkbox(
                             checked = accettatoTermini,
                             onCheckedChange = { accettatoTermini = it },
                             colors = CheckboxDefaults.colors(
-                                uncheckedColor = if (!accettatoTermini && email.isNotBlank() && password.length >= 6 && usernameDisponibile == true)
+                                uncheckedColor = if (!accettatoTermini && email.isNotBlank() && passwordValidation is PasswordValidationResult.Valid && usernameDisponibile == true)
                                     MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         )
@@ -569,6 +615,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
                             pop()
                         }
 
+                        @Suppress("DEPRECATION")
                         ClickableText(
                             text = annotatedText,
                             style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)),
@@ -582,7 +629,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
                             }
                         )
                     }
-                    if (!accettatoTermini && email.isNotBlank() && password.length >= 6 && usernameDisponibile == true) {
+                    if (!accettatoTermini && email.isNotBlank() && passwordValidation is PasswordValidationResult.Valid && usernameDisponibile == true) {
                         Text(
                             "Accettazione obbligatoria per proseguire",
                             style = MaterialTheme.typography.labelSmall,
@@ -595,7 +642,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
 
             Spacer(Modifier.height(8.dp))
 
-            // Link "Password dimenticata?" — Allineato a 48dp di area tocco
+            // Link "Password dimenticata?"
             AnimatedVisibility(visible = !isRegistrazione) {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                     Text(
@@ -604,7 +651,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
                         style      = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                         modifier   = Modifier
-                            .minimumInteractiveComponentSize() // Assicura 48dp
+                            .minimumInteractiveComponentSize()
                             .clickable {
                                 emailRecupero = email
                                 showRecuperoDialog = true
@@ -631,7 +678,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
                 },
                 enabled = state !is AuthUiState.Loading &&
                         email.isNotBlank() &&
-                        password.length >= 6 &&
+                        (if (isRegistrazione) passwordValidation is PasswordValidationResult.Valid else password.isNotEmpty()) &&
                         (!isRegistrazione || (usernameInput.trim().length >= 3 &&
                                 usernameDisponibile == true &&
                                 !usernameCheckLoading &&
@@ -669,7 +716,7 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
 
             Spacer(Modifier.height(24.dp))
 
-            // Switch login / registrazione — Allineato a 48dp di area tocco
+            // Switch login / registrazione
             Row(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
@@ -695,5 +742,29 @@ fun LoginScreen(nav: NavController, onLoginSuccesso: () -> Unit) {
                 )
             }
         }
+    }
+}
+
+@Composable
+fun PasswordRequirementsView(password: String) {
+    Column(modifier = Modifier.padding(top = 4.dp)) {
+        RequirementRow(text = "Minimo 8 caratteri", satisfied = password.length >= 8)
+        RequirementRow(text = "Almeno una maiuscola", satisfied = password.any { it.isUpperCase() })
+        RequirementRow(text = "Almeno un numero", satisfied = password.any { it.isDigit() })
+    }
+}
+
+@Composable
+fun RequirementRow(text: String, satisfied: Boolean) {
+    val color = if (satisfied) Success else MaterialTheme.colorScheme.error
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = if (satisfied) Icons.Default.CheckCircle else Icons.Default.Cancel,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(12.dp)
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(text = text, color = color, fontSize = 11.sp)
     }
 }

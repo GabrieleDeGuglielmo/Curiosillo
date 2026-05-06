@@ -64,6 +64,8 @@ When generating code, refactoring, or debugging, please adhere to the following 
 ## 🚀 Main Features & Recent Changes
 
 - **Email Verification Check:** Implemented a robust check during login to detect unverified emails and gracefully handle them, preventing app crashes. (May 2026)
+- **Reusable Password Validation:** Created `PasswordValidator` in `domain` to centralize validation logic (min 8 chars, uppercase, digit). (May 2026)
+- **Weak Password Detection:** Added post-login detection for weak passwords with a prompt to update them via the new `ChangePasswordScreen`. (May 2026)
 
 ---
 *Note: This file should be kept up-to-date as the project evolves.*

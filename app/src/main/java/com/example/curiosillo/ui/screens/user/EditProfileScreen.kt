@@ -10,8 +10,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.example.curiosillo.firebase.FirebaseManager
@@ -24,8 +22,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -45,9 +41,6 @@ fun EditProfileScreen(nav: NavController) {
     val state by vm.state.collectAsState()
 
     var usernameInput by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
 
     val coroutineScope           = rememberCoroutineScope()
     var errorMsg by remember { mutableStateOf<String?>(null) }
@@ -205,76 +198,12 @@ fun EditProfileScreen(nav: NavController) {
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
 
-                        OutlinedTextField(
-                            value = password,
-                            onValueChange = {
-                                password = it
-                                errorMsg = null
-                                successMsg = null
-                            },
-                            label = { Text("Nuova Password") },
+                        OutlinedButton(
+                            onClick = { nav.navigate("change_password") },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            trailingIcon = {
-                                val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                    Icon(image, null)
-                                }
-                            },
-                            singleLine = true
-                        )
-
-                        Spacer(Modifier.height(12.dp))
-
-                        OutlinedTextField(
-                            value = confirmPassword,
-                            onValueChange = {
-                                confirmPassword = it
-                                errorMsg = null
-                                successMsg = null
-                            },
-                            label = { Text("Conferma Password") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            singleLine = true
-                        )
-
-                        Spacer(Modifier.height(16.dp))
-
-                        Button(
-                            onClick = {
-                                errorMsg = null
-                                successMsg = null
-                                if (password.length < 6) {
-                                    errorMsg = "La password deve essere di almeno 6 caratteri"
-                                    return@Button
-                                }
-                                if (password != confirmPassword) {
-                                    errorMsg = "Le password non coincidono"
-                                    return@Button
-                                }
-                                isUpdating = true
-                                vm.cambiaPassword(password,
-                                    onSuccess = {
-                                        isUpdating = false
-                                        successMsg = "Password aggiornata con successo!"
-                                        password = ""
-                                        confirmPassword = ""
-                                    },
-                                    onError = {
-                                        isUpdating = false
-                                        errorMsg = it
-                                    }
-                                )
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            enabled = !isUpdating && password.isNotEmpty()
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            if (isUpdating) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                            else Text("Cambia Password")
+                            Text("Modifica Password")
                         }
                     }
 

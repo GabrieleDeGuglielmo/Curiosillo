@@ -78,9 +78,12 @@ class MainActivity : ComponentActivity() {
                     composable("login") {
                         LoginScreen(
                             nav = nav,
-                            onLoginSuccesso = {
+                            onLoginSuccesso = { destinazione ->
                                 nav.navigate("home") {
                                     popUpTo("login") { inclusive = true }
+                                }
+                                if (destinazione != "home") {
+                                    nav.navigate(destinazione)
                                 }
                             }
                         )
@@ -196,6 +199,7 @@ class MainActivity : ComponentActivity() {
                     ) { ArScreen(nav) }
 
                     composable("settings") { SettingsScreen(nav) }
+                    composable("change_password") { ChangePasswordScreen(nav) }
                 }
             }
         }

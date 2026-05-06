@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.curiosillo.data.AppDatabase
 import com.example.curiosillo.data.ContentPreferences
 import com.example.curiosillo.data.GamificationPreferences
+import com.example.curiosillo.domain.PasswordValidationResult
+import com.example.curiosillo.domain.PasswordValidator
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.firebase.SyncManager
 import com.example.curiosillo.repository.CuriosityRepository
@@ -41,7 +43,16 @@ class AuthViewModel(
     private val _state = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val state: StateFlow<AuthUiState> = _state.asStateFlow()
 
+    private val _showWeakPasswordWarning = MutableStateFlow(false)
+    val showWeakPasswordWarning: StateFlow<Boolean> = _showWeakPasswordWarning.asStateFlow()
+
     private val syncManager = SyncManager(repo, gamifPrefs, contentPrefs)
+
+    // ── Password Validation Logic ─────────────────────────────────────────────
+
+    fun validatePassword(password: String): PasswordValidationResult {
+        return PasswordValidator.validate(password)
+    }
 
     // ── Google Sign-In client ─────────────────────────────────────────────────
 
@@ -70,6 +81,11 @@ class AuthViewModel(
                         FirebaseManager.logout()
                         _state.value = AuthUiState.VerificaEmailInviata
                     } else {
+                        // Check if password is weak after successful login
+                        val validation = PasswordValidator.validate(password)
+                        if (validation !is PasswordValidationResult.Valid) {
+                            _showWeakPasswordWarning.value = true
+                        }
                         sincronizzaDopoLogin(user, isNuovo = false)
                     }
                 },
@@ -92,6 +108,12 @@ class AuthViewModel(
     }
 
     fun registraEmail(email: String, password: String, username: String) {
+        // Double check on password validation before sending to Firebase
+        if (validatePassword(password) !is PasswordValidationResult.Valid) {
+            _state.value = AuthUiState.Errore("Password non valida")
+            return
+        }
+
         viewModelScope.launch {
             _state.value = AuthUiState.Loading
             val result = FirebaseManager.registraEmail(email, password, username)
@@ -167,6 +189,10 @@ class AuthViewModel(
         _state.value = AuthUiState.Idle
     }
 
+    fun dismissWeakPasswordWarning() {
+        _showWeakPasswordWarning.value = false
+    }
+
     // ── Sync ──────────────────────────────────────────────────────────────────
 
     private suspend fun sincronizzaDopoLogin(user: FirebaseUser, isNuovo: Boolean) {
@@ -205,7 +231,7 @@ class AuthViewModel(
         "invalid-credential" in raw                 -> "Credenziali errate"
         "badly formatted" in raw                    -> "Email non valida"
         "incorrect, malformed" in raw               -> "Credenziali errate"
-        "at least 6 characters" in raw              -> "La password deve avere almeno 6 caratteri"
+        "at least 8 characters" in raw              -> "La password deve avere almeno 8 caratteri"
         "network error" in raw.lowercase()          -> "Errore di rete — controlla la connessione"
         "Username già in uso" in raw                -> "Username già in uso"
         "too-many-requests" in raw.lowercase()      -> "Troppi tentativi falliti. Riprova più tardi."
