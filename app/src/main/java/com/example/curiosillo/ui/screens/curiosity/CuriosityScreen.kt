@@ -479,7 +479,7 @@ private fun CuriosityContent(
 private fun HoldToConfirmButton(
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
-    holdDuration: Int = 2000,
+    holdDuration: Int = 0,
     text: String = "Ho imparato!"
 ) {
     val coroutineScope = rememberCoroutineScope()

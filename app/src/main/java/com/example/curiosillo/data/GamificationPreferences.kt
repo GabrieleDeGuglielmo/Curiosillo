@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -31,6 +32,7 @@ class GamificationPreferences(private val context: Context) {
         private val PARTITE_SCALATA = intPreferencesKey("partite_scalata")
         private val LAST_INTERACTED_EXT_ID = stringPreferencesKey("last_interacted_ext_id")
         private val AVATAR_EQUIPPED = stringPreferencesKey("avatar_equipped")
+        private val AVATAR_VISTI = stringSetPreferencesKey("avatar_visti")
     }
 
     private val dataFlow: Flow<Preferences> = context.gamificationStore.data
@@ -48,6 +50,15 @@ class GamificationPreferences(private val context: Context) {
     val recordScalata: Flow<Int> = dataFlow.map { it[RECORD_SCALATA] ?: 0 }
     val partiteScalata: Flow<Int> = dataFlow.map { it[PARTITE_SCALATA] ?: 0 }
     val avatarEquippato: Flow<String> = dataFlow.map { it[AVATAR_EQUIPPED] ?: "" }
+
+    /**
+     * IDs of the avatars already "seen" by the user.
+     * Defaults to setOf(0), representing the "Egg" avatar.
+     */
+    val avatarVistiIds: Flow<Set<Int>> = dataFlow.map { prefs ->
+        val stringSet = prefs[AVATAR_VISTI] ?: setOf("0")
+        stringSet.mapNotNull { it.toIntOrNull() }.toSet()
+    }
 
     suspend fun aggiungiXp(quantita: Int) {
         context.gamificationStore.edit { prefs ->
@@ -148,6 +159,17 @@ class GamificationPreferences(private val context: Context) {
         }
     }
 
+    /**
+     * Marks the provided avatar IDs as "seen" by adding them to the persistent set.
+     */
+    suspend fun segnaAvatarComeVisti(ids: Set<Int>) {
+        context.gamificationStore.edit { prefs ->
+            val attuale = prefs[AVATAR_VISTI] ?: setOf("0")
+            val nuovi = attuale + ids.map { it.toString() }
+            prefs[AVATAR_VISTI] = nuovi
+        }
+    }
+
     suspend fun getLastInteractedExternalId(): String? =
         dataFlow.first()[LAST_INTERACTED_EXT_ID]?.takeIf { it.isNotBlank() }
 
@@ -172,6 +194,7 @@ class GamificationPreferences(private val context: Context) {
             prefs[PARTITE_SCALATA] = 0
             prefs[LAST_INTERACTED_EXT_ID] = ""
             prefs[AVATAR_EQUIPPED] = ""
+            prefs[AVATAR_VISTI] = setOf("0")
         }
     }
 }

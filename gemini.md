@@ -48,12 +48,12 @@ When generating code, refactoring, or debugging, please adhere to the following 
 ### 3. Firebase & Data Handling
 - **Async Operations:** Handle Firebase and Room operations asynchronously using Kotlin Coroutines and `suspend` functions.
 - **Error Handling:** Implement robust error handling for network requests and database operations. Ensure the UI gracefully reflects loading, success, and error states.
-- **Synchronization Check:** Before implementing any logic that saves data to the local Room database, you MUST ask the user if this data needs to be synchronized with Firebase.
+- **Synchronization Check:** ALWAYS ask the user if data being saved to the local Room database should also be synchronized/saved to Firebase.
 
 ### 4. Code Quality & Formatting
 - **Kotlin Idioms:** Use Kotlin standard library functions, extension functions, and null-safety features effectively.
 - **Preserve Comments:** Do not remove existing comments or docstrings unless explicitly instructed or if they are directly rendered obsolete by a change.
-- **Minimal Edits:** When fixing a bug, make targeted changes. Do not rewrite entire classes unless asked.
+- **Minimal Edits:** Whether fixing a bug or adding a new feature, make targeted and minimal changes. Do not rewrite entire classes or files unless strictly necessary or explicitly asked.
 
 ### 5. Persistent Context & KIs
 - Always check the workspace Knowledge Items (KIs) and previous conversation logs if you encounter deceptively simple tasks or recurring bugs (e.g., Avatar Selection synchronization issues).
@@ -66,6 +66,7 @@ When generating code, refactoring, or debugging, please adhere to the following 
 - **Email Verification Check:** Implemented a robust check during login to detect unverified emails and gracefully handle them, preventing app crashes. (May 2026)
 - **Reusable Password Validation:** Created `PasswordValidator` in `domain` to centralize validation logic (min 8 chars, uppercase, digit). (May 2026)
 - **Weak Password Detection:** Added post-login detection for weak passwords with a prompt to update them via the new `ChangePasswordScreen`. (May 2026)
+- **"New" Avatar Badge System:** Implemented a local tracking system for newly unlocked avatars. Uses DataStore to store "seen" avatar IDs, a combined Flow in `AvatarViewModel` to identify new items, and a golden border + "NOVITÀ" badge in the UI. (May 2026)
 
 ---
 *Note: This file should be kept up-to-date as the project evolves.*

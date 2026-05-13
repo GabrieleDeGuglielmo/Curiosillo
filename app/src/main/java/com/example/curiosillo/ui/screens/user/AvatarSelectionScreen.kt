@@ -1,5 +1,6 @@
 package com.example.curiosillo.ui.screens.user
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -33,9 +34,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.curiosillo.data.Avatar
-import com.example.curiosillo.data.AvatarCatalogo
-import com.example.curiosillo.domain.LivelloHelper
 import com.example.curiosillo.firebase.FirebaseManager
 import com.example.curiosillo.viewmodel.AvatarViewModel
 
@@ -46,12 +44,16 @@ fun AvatarSelectionScreen(
     viewModel: AvatarViewModel
 ) {
     val avatarEquippato by viewModel.avatarEquippato.collectAsState()
-    val xpTotali by viewModel.xpTotali.collectAsState()
+    val avatarItems by viewModel.avatarItems.collectAsState()
 
-    // Calcoliamo il livello una sola volta per la schermata
-    val livelloAttuale = remember(xpTotali) { LivelloHelper.daXp(xpTotali).numero }
+    DisposableEffect(Unit) {
+        onDispose {
+            // Questo codice viene eseguito SOLO quando la schermata viene chiusa (es. l'utente torna alla Home)
+            viewModel.onWardrobeClosed()
+        }
+    }
 
-    // Dati dell'utente per l'opzione Google
+    // Google user data for the specific Google option
     val user = FirebaseManager.utenteCorrente
     val isGoogleUser = FirebaseManager.isGoogleUser()
     val photoUrl = user?.photoUrl?.toString()
@@ -84,7 +86,7 @@ fun AvatarSelectionScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // Griglia ottimizzata
+            // Optimized grid
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(100.dp),
                 contentPadding = PaddingValues(8.dp),
@@ -92,13 +94,14 @@ fun AvatarSelectionScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                // 1. Opzione Google se disponibile
+                // 1. Google Option if available
                 if (isGoogleUser && photoUrl != null) {
                     item(key = "google_option") {
                         AvatarItem(
                             avatarId = "google",
                             isSbloccato = true,
                             isEquippato = avatarEquippato == "google",
+                            isNew = false,
                             photoOverride = photoUrl,
                             labelOverride = "Google",
                             onAvatarClick = { viewModel.selezionaAvatar("google") }
@@ -106,20 +109,20 @@ fun AvatarSelectionScreen(
                     }
                 }
 
-                // 2. Catalogo standard
+                // 2. Standard Catalog from ViewModel
                 items(
-                    items = AvatarCatalogo.lista,
+                    items = avatarItems,
                     key = { it.id }
-                ) { avatar ->
-                    val isSbloccato = livelloAttuale >= avatar.livelloRichiesto
-                    val isEquippato = avatarEquippato == avatar.id
-
+                ) { itemState ->
                     AvatarItem(
-                        avatar = avatar,
-                        isSbloccato = isSbloccato,
-                        isEquippato = isEquippato,
+                        avatarId = itemState.id,
+                        drawableRes = itemState.resourceId,
+                        isSbloccato = itemState.isUnlocked,
+                        isEquippato = itemState.isEquipped,
+                        isNew = itemState.isNew,
+                        livelloRichiesto = itemState.livelloRichiesto,
                         onAvatarClick = {
-                            if (isSbloccato) viewModel.selezionaAvatar(avatar.id)
+                            if (itemState.isUnlocked) viewModel.selezionaAvatar(itemState.id)
                         }
                     )
                 }
@@ -130,10 +133,12 @@ fun AvatarSelectionScreen(
 
 @Composable
 private fun AvatarItem(
-    avatar: Avatar? = null,
-    avatarId: String? = null,
+    avatarId: String,
+    @DrawableRes drawableRes: Int = 0,
     isSbloccato: Boolean,
     isEquippato: Boolean,
+    isNew: Boolean = false,
+    livelloRichiesto: Int = 1,
     photoOverride: String? = null,
     labelOverride: String? = null,
     onAvatarClick: () -> Unit
@@ -149,8 +154,6 @@ private fun AvatarItem(
         animationSpec = if (isPressed) tween(100) else tween(50),
         label = "scale"
     )
-
-    val id = avatar?.id ?: avatarId ?: ""
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -174,9 +177,16 @@ private fun AvatarItem(
             modifier = Modifier
                 .size(80.dp)
                 .then(
-                    if (isEquippato) {
-                        Modifier.border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                    } else Modifier
+                    when {
+                        isEquippato -> Modifier.border(
+                            3.dp,
+                            MaterialTheme.colorScheme.primary,
+                            CircleShape
+                        )
+                        // Golden border for new avatars
+                        isNew -> Modifier.border(3.dp, Color(0xFFFFD700), CircleShape)
+                        else -> Modifier
+                    }
                 )
                 .padding(4.dp)
                 .clip(CircleShape)
@@ -185,15 +195,15 @@ private fun AvatarItem(
             if (photoOverride != null) {
                 AsyncImage(
                     model = photoOverride,
-                    contentDescription = id,
+                    contentDescription = avatarId,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                     colorFilter = if (!isSbloccato) ColorFilter.colorMatrix(grayscaleMatrix) else null
                 )
-            } else if (avatar != null) {
+            } else {
                 Image(
-                    painter = painterResource(avatar.drawableRes),
-                    contentDescription = avatar.id,
+                    painter = painterResource(drawableRes),
+                    contentDescription = avatarId,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                     colorFilter = if (!isSbloccato) ColorFilter.colorMatrix(grayscaleMatrix) else null
@@ -215,13 +225,31 @@ private fun AvatarItem(
                     }
                 }
             }
+
+            // "NEW" Badge overlay
+            if (isNew) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .background(Color.Red, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "NOVITÀ",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(8.dp))
 
         val textLabel = when {
             labelOverride != null -> if (isEquippato) "$labelOverride (Uso)" else labelOverride
-            !isSbloccato -> "Liv. ${avatar?.livelloRichiesto}"
+            !isSbloccato -> "Liv. $livelloRichiesto"
             isEquippato -> "In uso"
             else -> "Sbloccato"
         }
@@ -229,7 +257,9 @@ private fun AvatarItem(
         Text(
             textLabel,
             style = MaterialTheme.typography.labelSmall,
-            color = if (isEquippato) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            color = if (isEquippato) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(
+                alpha = 0.6f
+            ),
             fontWeight = if (isEquippato) FontWeight.ExtraBold else FontWeight.Normal,
             textAlign = TextAlign.Center
         )

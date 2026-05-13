@@ -405,6 +405,7 @@ object FirebaseManager {
             val uid: String = "",
             val username: String = "",
             val photoUrl: String? = null,
+            val avatarId: Int = -1, // -1 means no local avatar (fallback to photoUrl)
             val score: Int = 0,
             val timestamp: Long = 0,
             val rank: Int = 0
@@ -423,7 +424,7 @@ object FirebaseManager {
         return String.format(Locale.US, "%d-W%02d", year, week)
     }
 
-    suspend fun aggiornaLeaderboard(mode: LeaderboardMode, score: Int) {
+    suspend fun aggiornaLeaderboard(mode: LeaderboardMode, score: Int, avatarId: Int = -1) {
         val currentUid = uid ?: return
         val currentUsername = utenteCorrente?.displayName ?: "Anonimo"
         val photoUrl = utenteCorrente?.photoUrl?.toString()
@@ -435,6 +436,7 @@ object FirebaseManager {
                         "uid" to currentUid,
                         "username" to currentUsername,
                         "photoUrl" to photoUrl,
+                        "avatarId" to avatarId,
                         "score" to score,
                         "timestamp" to timestamp
                 )
@@ -507,7 +509,7 @@ object FirebaseManager {
 
     // ── Sopravvivenza ─────────────────────────────────────────────────────────
 
-    suspend fun salvaStatisticheHardcore(record: Int, totalePartite: Int) {
+    suspend fun salvaStatisticheHardcore(record: Int, totalePartite: Int, avatarId: Int = -1) {
         val u = uid ?: return
         try {
             db.collection("users")
@@ -516,13 +518,13 @@ object FirebaseManager {
                     .await()
 
             // Aggiorniamo anche la leaderboard se è un record
-            aggiornaLeaderboard(LeaderboardMode.SOPRAVVIVENZA, record)
+            aggiornaLeaderboard(LeaderboardMode.SOPRAVVIVENZA, record, avatarId)
         } catch (_: Exception) {}
     }
 
     // ── Scalata Infernale ─────────────────────────────────────────────────────
 
-    suspend fun salvaStatisticheScalata(record: Int, totalePartite: Int) {
+    suspend fun salvaStatisticheScalata(record: Int, totalePartite: Int, avatarId: Int = -1) {
         val u = uid ?: return
         try {
             db.collection("users")
@@ -531,7 +533,7 @@ object FirebaseManager {
                     .await()
 
             // Aggiorniamo anche la leaderboard se è un record
-            aggiornaLeaderboard(LeaderboardMode.SCALATA, record)
+            aggiornaLeaderboard(LeaderboardMode.SCALATA, record, avatarId)
         } catch (_: Exception) {}
     }
 
@@ -889,7 +891,7 @@ object FirebaseManager {
                         .orderBy(
                                 "creatoAt",
                                 com.google.firebase.firestore.Query.Direction.DESCENDING
-                        )
+                                )
                         .get()
                         .await()
                         .documents

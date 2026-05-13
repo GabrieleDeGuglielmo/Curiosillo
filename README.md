@@ -1,4 +1,4 @@
-# <img src="app/src/main/res/drawable/ic_logo.png" width="40" vertical-align="middle"> Curiosillo
+# <img src="app/src/main/res/drawable/ic_logo.webp" width="40" vertical-align="middle"> Curiosillo
 
 [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android)](https://www.android.com)
 [![Tech Stack](https://img.shields.io/badge/Tech-Jetpack%20Compose-4285F4?logo=jetpackcompose)](https://developer.android.com/jetpack/compose)

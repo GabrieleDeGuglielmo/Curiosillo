@@ -385,7 +385,7 @@ fun NoQuestionsView(onExit: () -> Unit) {
     ) {
         Text("🏜️", style = MaterialTheme.typography.displayLarge)
         Text("NESSUNA DOMANDA", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        Text("Hai già letto tutte le curiosità disponibili. Torna più tardi!", 
+        Text("Non hai letto curiosità. Torna quando sarai più pronto!",
             textAlign = TextAlign.Center, color = Color.White.copy(0.7f), modifier = Modifier.padding(16.dp).fillMaxWidth())
         
         Button(onClick = onExit, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) {

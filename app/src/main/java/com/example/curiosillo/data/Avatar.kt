@@ -13,10 +13,13 @@ data class Avatar(
 
 object AvatarCatalogo {
     val lista = listOf(
-        Avatar("uovo", 1, R.drawable.avatar_uovo),
-        Avatar("topo", 3, R.drawable.avatar_topo),
-        Avatar("esploratore", 5, R.drawable.avatar_esploratore_uomo),
-        Avatar("scienziato", 7, R.drawable.avatar_scienziato_uomo)
+        Avatar("0", 1, R.drawable.avatar_0),
+        Avatar("1", 2, R.drawable.avatar_1),
+        Avatar("2", 5, R.drawable.avatar_2),
+        Avatar("3", 7, R.drawable.avatar_3),
+        Avatar("4", 8, R.drawable.avatar_4),
+        Avatar("5", 9, R.drawable.avatar_5),
+        Avatar("6", 10, R.drawable.avatar_6),
     )
 
     fun trovaPerId(id: String): Avatar = 

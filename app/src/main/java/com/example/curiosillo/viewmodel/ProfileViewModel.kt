@@ -35,6 +35,8 @@ data class ProfileUiState(
     val email: String = "",
     val photoUrl: String? = null,
     val avatarEquippato: String = "",
+    // IDs of avatars already seen by the user (used to compute isNew in the UI)
+    val avatarVistiIds: Set<Int> = setOf(0),
     val isLoggato: Boolean = false,
     val isGoogleUser: Boolean = false,
     val isEliminazioneInCorso: Boolean = false,
@@ -67,15 +69,17 @@ class ProfileViewModel(
 
                 val savedAvatar = gamifPrefs.avatarEquippato.first()
                 val isGoogle = FirebaseManager.isGoogleUser() && user?.photoUrl != null
-                
+
                 // Gestione default: se non c'è nulla di salvato (""), impostiamo il default corretto
                 val avatarDaUsare = if (savedAvatar == "") {
-                    val default = if (isGoogle) "google" else "uovo"
+                    val default = if (isGoogle) "google" else "0"
                     gamifPrefs.impostaAvatar(default)
                     default
                 } else {
                     savedAvatar
                 }
+
+                val vistiIds = gamifPrefs.avatarVistiIds.first()
 
                 val newState =
                     ProfileUiState(
@@ -93,6 +97,7 @@ class ProfileViewModel(
                         email = user?.email ?: "",
                         photoUrl = user?.photoUrl?.toString(),
                         avatarEquippato = avatarDaUsare,
+                        avatarVistiIds = vistiIds,
                         isLoggato = user != null,
                         isGoogleUser = FirebaseManager.isGoogleUser(),
                         isLoading = false
@@ -153,6 +158,23 @@ class ProfileViewModel(
     fun selezionaAvatar(id: String) {
         _state.value = _state.value.copy(avatarEquippato = id)
         viewModelScope.launch { gamifPrefs.impostaAvatar(id) }
+    }
+
+    /**
+     * Marks all currently unlocked avatars as "seen". Call when the avatar sheet is dismissed.
+     */
+    fun segnaAvatarComeVisti() {
+        viewModelScope.launch {
+            val livello = com.example.curiosillo.domain.LivelloHelper.daXp(_state.value.xpTotali).numero
+            val unlockedIds = com.example.curiosillo.data.AvatarCatalogo.lista
+                .filter { livello >= it.livelloRichiesto }
+                .mapNotNull { it.id.toIntOrNull() }
+                .toSet()
+            if (unlockedIds.isNotEmpty()) {
+                gamifPrefs.segnaAvatarComeVisti(unlockedIds)
+                _state.value = _state.value.copy(avatarVistiIds = _state.value.avatarVistiIds + unlockedIds)
+            }
+        }
     }
 
     fun resetProgressi() {
